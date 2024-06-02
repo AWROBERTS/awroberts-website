@@ -1,47 +1,47 @@
 let Font;
 let noiseOffset = [];
 let flickerRate = [];
+let globalVideoAlpha = 127;
 
 function preload() {
-    Font = loadFont('CURWENFONT.ttf');
+  Font = loadFont('CURWENFONT.ttf');
 }
 
 function setup() {
-    let canvas = createCanvas(windowWidth, windowHeight);
-    canvas.parent('canvas-container');
-    strokeWeight(20);
-    textFont(Font, 80);
+  let canvas = createCanvas(windowWidth, windowHeight);
+  canvas.parent('canvas-container');
+  strokeWeight(10);
+  textFont(Font, 100); // update the font size to 100
 
-    let textString = 'info@awroberts.co.uk';
-    for(let i = 0; i < textString.length; i++) {
-        noiseOffset[i] = random(10000); // giving each character a random initial offset
-        flickerRate[i] = ((second() + 1) / 100) / 2; // giving each character a flicker rate based on the current second
-    }
+  let textString = 'info@awroberts.co.uk';
+  for(let i = 0; i < textString.length; i++) {
+    noiseOffset[i] = random(10000);
+    flickerRate[i] = ((second() + 1) / 200); // half of the original flicker rate
+  }
 }
 
 function draw() {
-    background(255, 0); // ensure the background is transparent
+  clear(); // making background transparent
 
-    let textString = 'info@awroberts.co.uk';
-    let xStart = 100;
+  let textString = 'info@awroberts.co.uk';
+  let xStart = 100;
 
-    for(let i = 0; i < textString.length; i++) {
-        // Perlin noise gives a value between 0 and 1, multiply by 255 to get full RGB range
-        let n = noise(noiseOffset[i]) * 255;
+  for(let i = 0; i < textString.length; i++) {
+    // use perlin noise for the flickering effect
+    let n = noise(noiseOffset[i]) * 255;
 
-        // For more effect between green and red, we take the value obtained from the Perlin noise n
-        // to be the red component, while green component is the inverse of red (255 - n).
-        // The blue component is fixed at 0
-        let r = n;
-        let g = 255 - n;
-        let b = 0;
+    // draw the character in flickering color
+    let r = n;
+    let g = 255 - n;
+    let b = 0;
 
-        fill(r, g, b);
+    fill(r, g, b, globalVideoAlpha);
+    text(textString.charAt(i), xStart, 130);
 
-        text(textString.charAt(i), xStart, 100);
-        xStart += textWidth(textString.charAt(i));
+    // increment xStart for the next character
+    xStart += textWidth(textString.charAt(i));
 
-        // increment the noise offset at a rate determined by the current second
-        noiseOffset[i] += flickerRate[i];
-    }
+    // increment the noise offset for the next frame at a rate determined by the current second
+    noiseOffset[i] += flickerRate[i];
+  }
 }
