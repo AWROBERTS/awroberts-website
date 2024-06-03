@@ -38,7 +38,7 @@ function draw() {
     let n = noise(noiseOffset[i]) * 255;
 
     // create a dripping effect by adding randomness to the y-coordinate
-    let yDrip = random(130, 140);
+    let yDrip = random(130, 140) + windowHeight / 6;
 
     // draw the character in flickering color
     let r = n;
