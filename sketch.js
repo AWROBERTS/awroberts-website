@@ -11,13 +11,20 @@ function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
   strokeWeight(3); // Set the stroke weight to 3 pixels
-  textFont(Font, 100); // update the font size to 100
 
   let textString = 'info@awroberts.co.uk';
   for(let i = 0; i < textString.length; i++) {
     noiseOffset[i] = random(10000);
     flickerRate[i] = ((second() + 1) / 200); // half of the original flicker rate
   }
+  windowResized(); // call windowResized function after setup
+}
+
+// This function gets called each time the window size is changed.
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  var textSize = min(windowWidth, windowHeight) / 10;
+  textFont(Font, textSize);
 }
 
 function draw() {
