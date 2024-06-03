@@ -24,5 +24,10 @@ body {
 
 #email-link {
     position: absolute;
-    z-index: 3;
+    top: 10%;
+    left: 15%;
+    width: 50%;
+    height: 20%;
+    z-index: 1; /* Lower z-index so that it's behind the canvas */
+    /* Remove color and font-size as we're no longer displaying text in HTML */
 }
