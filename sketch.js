@@ -10,7 +10,7 @@ function preload() {
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
-  strokeWeight(10);
+  strokeWeight(3); // Set the stroke weight to 3 pixels
   textFont(Font, 100); // update the font size to 100
 
   let textString = 'info@awroberts.co.uk';
@@ -30,16 +30,20 @@ function draw() {
     // use perlin noise for the flickering effect
     let n = noise(noiseOffset[i]) * 255;
 
+    // create a dripping effect by adding randomness to the y-coordinate
+    let yDrip = random(130, 140);
+
     // draw the character in flickering color
     let r = n;
     let g = 255 - n;
     let b = 0;
 
+    stroke(255); // Set the stroke color to white
     fill(r, g, b, globalVideoAlpha);
-    text(textString.charAt(i), xStart, 130);
+    text(textString.charAt(i), xStart, yDrip);
 
-    // increment xStart for the next character
-    xStart += textWidth(textString.charAt(i));
+    // increment xStart for the next character by 2 * character width
+    xStart += textWidth(textString.charAt(i)) * 2;
 
     // increment the noise offset for the next frame at a rate determined by the current second
     noiseOffset[i] += flickerRate[i];
