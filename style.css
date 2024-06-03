@@ -23,11 +23,14 @@ body {
 }
 
 #email-link {
+    display: block;
     position: absolute;
-    top: 10%;
-    left: 15%;
-    width: 50%;
-    height: 20%;
-    z-index: 1; /* Lower z-index so that it's behind the canvas */
-    /* Remove color and font-size as we're no longer displaying text in HTML */
+    top: 130px; /* Seems like it should match the lowest possible `yDrip` value */
+    left: 100px; /* Matches the `xStart` value from sketch.js */
+    width: 200px; /* The width you calculated in sketch.js */
+    height: 20px; /* An estimate, adjust as needed */
+    z-index: 3;
+    background: transparent;
+    color: transparent;
+    text-decoration: none;
 }
