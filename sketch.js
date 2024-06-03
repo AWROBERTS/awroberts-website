@@ -10,7 +10,7 @@ function preload() {
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
-  strokeWeight(10);
+  strokeWeight(3); // Set the stroke weight to 3 pixels
   textFont(Font, 100); // update the font size to 100
 
   let textString = 'info@awroberts.co.uk';
@@ -38,6 +38,7 @@ function draw() {
     let g = 255 - n;
     let b = 0;
 
+    stroke(255); // Set the stroke color to white
     fill(r, g, b, globalVideoAlpha);
     text(textString.charAt(i), xStart, yDrip);
 
