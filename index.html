@@ -5,6 +5,13 @@
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="p5.js"></script>
         <script src="sketch.js"></script>
+        <style>
+            #email-link {
+                font-size: 16px; /* we will change this value with JavaScript */
+                width: 50%;
+                height: 20%;
+            }
+        </style>
     </head>
     <body style="background-color:black;">
         <main>
@@ -13,7 +20,18 @@
             </video>
 
             <div id="canvas-container"></div>
-            <a id="email-link" href="mailto:info@awroberts.co.uk" style="position: absolute; top: 10%; left: 15%; width: 50%; height: 20%; z-index: "></a>
+            <a id="email-link" href="mailto:info@awroberts.co.uk" style="position: absolute; top: 10%; left: 15%; z-index: "></a>
         </main>
+
+        <script>
+            function resizeEmailLink() {
+                var emailLink = document.getElementById('email-link');
+                var textSize = Math.min(window.innerWidth, window.innerHeight) / 10;
+                emailLink.style.fontSize = textSize + 'px';
+            }
+
+            window.onresize = resizeEmailLink;
+            resizeEmailLink(); // initial setting
+        </script>
     </body>
 </html>
