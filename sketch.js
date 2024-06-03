@@ -30,16 +30,19 @@ function draw() {
     // use perlin noise for the flickering effect
     let n = noise(noiseOffset[i]) * 255;
 
+    // create a dripping effect by adding randomness to the y-coordinate
+    let yDrip = random(130, 140);
+
     // draw the character in flickering color
     let r = n;
     let g = 255 - n;
     let b = 0;
 
     fill(r, g, b, globalVideoAlpha);
-    text(textString.charAt(i), xStart, 130);
+    text(textString.charAt(i), xStart, yDrip);
 
-    // increment xStart for the next character
-    xStart += textWidth(textString.charAt(i));
+    // increment xStart for the next character by 2 * character width
+    xStart += textWidth(textString.charAt(i)) * 2;
 
     // increment the noise offset for the next frame at a rate determined by the current second
     noiseOffset[i] += flickerRate[i];
