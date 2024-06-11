@@ -1,5 +1,10 @@
 let len;
 let surface;
+let sphereRadius;
+let xoff = 0.0;
+let nX, nY;
+let mx, my;
+let mouseIsMoving = false;
 
 function preload() {
   surface = loadImage("surface.png");
@@ -8,106 +13,143 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   len = 2 * sqrt(sq(windowWidth) + sq(windowHeight));
+  sphereRadius = min(windowWidth, windowHeight) / 10;
   noiseDetail(4, 0.5);
-  ambientLight(255);
 }
 
 function draw() {
-  background(0);
+  // Check if mouse is moving
+  if (mouseX !== mx || mouseY !== my) {
+    mouseIsMoving = true;
+  } else {
+    mouseIsMoving = false;
+  }
+  mx = mouseX;
+  my = mouseY;
 
-  // Draw image as a background
+  background(0);
+  nX = noise(xoff) * width;
+  nY = noise(xoff + 1000) * height;
+
   push();
   translate(0, 0, -len/2);
   texture(surface);
   plane(len, len);
   pop();
 
-  let camX = map(mouseX, 0, width, -PI, PI);
-  let camY = map(mouseY, 0, height, -PI/2, PI/2);
+  if (mouseIsMoving) {
+    // Modify this section to change behavior when mouse is moving
+    push();
+    let camAngle = millis() / 5000.0;
+    rotateZ(camAngle);
 
-  let lightLevel = map(dist(mouseX, mouseY, width / 2, height / 2), 0, dist(0, 0, width / 2, height / 2), 0, 255);
-  ambientLight(lightLevel);
+    var angle = millis() / 1000.0;
 
-  // Array to hold sphere positions
-  let spherePoints = [];
-
-  // Draw 4 spheres
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < 2; j++) {
-      let angleOffset = map(i * j, 0, 3, 0, TWO_PI);
-      let sphereX = (width / 8 * 1.25) * cos(angleOffset); // adjusted here
-      let sphereY = (height / 8 * 1.25) * sin(angleOffset); // adjusted here
-      spherePoints.push({x: sphereX, y: sphereY});
-
-      let whiteStroke = color(255, 255, 255);
-      let greenStroke = color(0, 255, 0);
+    for (let i = 0; i < 2; i++) {
+      let sphereX = 200 * cos(angle);
+      let sphereY = 200 * sin(angle);
 
       push();
-      stroke(dist(sphereX, sphereY, width / 2, height / 2) <= (200 * 0.8 + 210) ? whiteStroke : greenStroke);
       translate(sphereX, sphereY);
-      rotateX(camX);
-      rotateY(camY);
-      createNoiseSphere(200 * 0.8);
+      rotateZ(camAngle);
+      ambientMaterial(i * 255, 0, 0);
+      strokeWeight(2);
+      stroke(i * 255, 0, 0);
+      createNoiseSphere(sphereRadius);
       pop();
+
+      angle += PI;
     }
+    pop();
+  } else {
+    // Modify this section to change behavior when mouse is not moving
+    push();
+    let camAngle = millis() / 5000.0;
+    rotateZ(camAngle);
+    let camX = map(nX, 0, width, -PI, PI);
+    let camY = map(nY, 0, height, -PI/2, PI/2);
+
+    var angle = millis() / 1000.0;
+
+    for (let i = 0; i < 2; i++) {
+      let sphereX = 250 * cos(angle);
+      let sphereY = 250 * sin(angle);
+
+      push();
+      translate(sphereX, sphereY);
+      rotateX(camY);
+      rotateY(camX);
+      let blackRadius = sphereRadius / 2;
+      translate(0, 0, -blackRadius);
+
+      // Draw colored sphere with texture
+      texture(surface);
+      noStroke();
+      sphere(blackRadius);
+
+      // Draw larger dynamic black sphere weighted by noise value
+      noFill();
+      strokeWeight(map(noise(xoff), 0, 1, 0.2, 2)); // Thinner line based on noise
+      stroke(0); // Black color
+      sphere(blackRadius);
+      pop();
+
+      angle += PI;
+    }
+    pop();
   }
 
-  // Checks if the spheres are touching and changes the stroke color accordingly
-  let touch = spheresAreTouching(spherePoints);
-
-  // Overlay semi-transparent rectangle
-  push();
-  translate(0, 0, 10); // on top of everything else
-  let overlayColor = map(noise(mouseX / 100, mouseY / 100), 0, 1, 0, 100); // uses Perlin noise
-  fill(0, overlayColor, 0, 100); // semi-transparent green
-  rectMode(CENTER);
-  rect(0, 0, width, height);
-  pop();
+  xoff += 0.08; // Adjusted for quicker terrain change.
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   len = 2 * sqrt(sq(windowWidth) + sq(windowHeight));
-}
-
-// Checks if any pair of spheres are touching
-function spheresAreTouching(spherePoints) {
-  // Check every pair of spheres
-  for (let i = 0; i < spherePoints.length; i++) {
-    for (let j = i + 1; j < spherePoints.length; j++) {
-      let distance = dist(spherePoints[i].x, spherePoints[i].y, spherePoints[j].x, spherePoints[j].y);
-      // If the distance is less than or equal to the sum of their radii, they are touching
-      if (distance <= 210 * 2) {
-        return true;
-      }
-    }
-  }
-  return false;
+  sphereRadius = min(windowWidth, windowHeight) / 10;
 }
 
 function createNoiseSphere(radius) {
-  noiseSeed(mouseX / 2 * mouseY / 2);
+  // Only used in second sketch
+  noiseSeed(nX / 2 * nY / 2);
+
   let total = 100;
   let increment = TWO_PI / total;
 
+  let r = map(millis() % 256, 0, 256, 0, 255);
+  let g = map((millis() + 85) % 256, 0, 256, 0, 255);
+  let b = map((millis() + 170) % 256, 0, 256, 0, 255);
+
   for (let lat = 0; lat < PI; lat += increment) {
-      beginShape(TRIANGLE_STRIP);
-      for (let lon = 0; lon <= TWO_PI; lon += increment) {
-          let zoom = map(dist(mouseX, mouseY, width / 2, height / 2), 0, dist(0, 0, width / 2, height / 2), 2, 0.25);
-          let r = radius * (1 + zoom * noise(lon, lat));
-          let offsetX = map(noise(lon, lat, frameCount / 60), 0, 1, -120, 120);
-          let offsetY = map(noise(lat, lon, frameCount / 60), 0, 1, -120, 120);
-          let offsetZ = map(noise(lat, lon, frameCount / 60), 0, 1, -120, 120);
-          let x = (r + offsetX) * sin(lat) * cos(lon);
-          let y = (r + offsetY) * sin(lat) * sin(lon);
-          let z = (r + offsetZ) * cos(lat);
-          vertex(x, y, z);
-          r = radius * (1 + zoom * noise(lon, lat + increment));
-          x = (r + offsetX) * sin(lat + increment) * cos(lon);
-          y = (r + offsetY) * sin(lat + increment) * sin(lon);
-          z = (r + offsetZ) * cos(lat + increment);
-          vertex(x, y, z);
-      }
-      endShape();
+    beginShape(TRIANGLE_STRIP);
+    for (let lon = 0; lon <= TWO_PI; lon += increment) {
+      let zoom = map(dist(nX, nY, width / 2, height / 2),
+        0, dist(0, 0, width / 2, height / 2),
+        4, 0.25);
+      let rad = radius * (1 + zoom * noise(lon, lat));
+
+      let offsetX = map(noise(lon, lat, frameCount / 240), 0, 1, -120, 120);
+      let offsetY = map(noise(lat, lon, frameCount / 240), 0, 1, -120, 120);
+      let offsetZ = map(noise(lat, lon, frameCount / 240), 0, 1, -120, 120);
+
+      stroke(r, g, b);
+
+      vertex((rad + offsetX) * sin(lat) * cos(lon),
+        (rad + offsetY) * sin(lat) * sin(lon),
+        (rad + offsetZ) * cos(lat));
+
+      rad = radius * (1 + zoom * noise(lon, lat + increment));
+
+      vertex((rad + offsetX) * sin(lat + increment) * cos(lon),
+        (rad + offsetY) * sin(lat + increment) * sin(lon),
+        (rad + offsetZ) * cos(lat + increment));
+    }
+
+    endShape();
   }
+
+  // Creating inner black spheres
+  let blackRadius = radius / 4;
+  translate(0, 0, -blackRadius);
+  ambientMaterial(0, 0, 0);
+  sphere(blackRadius);
 }
