@@ -1,8 +1,8 @@
 let len;
 let surface;
 let sphereRadius;
-let xoff = 0.0; // new noise offset variable
-let nX, nY; // global variables for noise-adjusted mouseX, mouseY
+let xoff = 0.0;
+let nX, nY;
 
 function preload() {
   surface = loadImage("surface.png");
@@ -17,8 +17,6 @@ function setup() {
 
 function draw() {
   background(0);
-
-  // introducing noise to mouse x,y positions
   nX = noise(xoff) * width;
   nY = noise(xoff + 1000) * height;
 
@@ -33,24 +31,41 @@ function draw() {
 
   let spherePoints = [];
 
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < 2; j++) {
+  for (let i = 0; i <= 2; i++) {
+    for (let j = 0; j <= 2; j++) {
       let angleOffset = ((i + j) % 2 === 0) ? 0 : PI;
-      let sphereX = (width / 4 * i) + cos(angleOffset) * 200;
-      let sphereY = (height / 4 * j) + sin(angleOffset) * 200;
+      let sphereX = (width / 3 * i) + cos(angleOffset) * 200;
+      let sphereY = (height / 3 * j) + sin(angleOffset) * 200;
       spherePoints.push({x: sphereX, y: sphereY});
 
-      let r = nY / width;
-      let g = 200 + nX / height;
-      let b = nX / height;
+      let isTouching = spheresAreTouching(spherePoints, sphereRadius);
+
+      // Color variables for stroke and ambientMaterial
+      let sr, sg, sb, ar, ag, ab;
+
+      if (isTouching) {
+        sr = sg = sb = 255; // White color for stroke if spheres are touching
+      } else {
+        sr = 0; sg = sb = 255; // Neon green color for stroke if spheres are not touching
+      }
+
+      if (j % 2 === 0) {
+        ar = map(mouseX, 0, width, 0, 255);
+        ag = map(mouseY, 0, height, 0, 255);
+        ab = 100;
+      } else {
+        ar = map(mouseX, 0, width, 255, 0);
+        ag = map(mouseY, 0, height, 255, 0);
+        ab = 100;
+      }
 
       push();
       translate(sphereX, sphereY);
       rotateX(camY);
       rotateY(camX);
-      ambientMaterial(r*g, g, b*r);
+      ambientMaterial(ar, ag, ab);
       strokeWeight(2);
-      stroke(spheresAreTouching(spherePoints, sphereRadius) ? 255 : 0);
+      stroke(sr, sg, sb);
       createNoiseSphere(sphereRadius);
       pop();
     }
@@ -64,8 +79,7 @@ function draw() {
   rect(0, 0, width, height);
   pop();
 
-  // increment xoff
-  xoff += 0.01;
+  xoff += 0.02;
 }
 
 function windowResized() {
@@ -75,30 +89,38 @@ function windowResized() {
 }
 
 function createNoiseSphere(radius) {
-  noiseSeed(nX / 2 * nY / 2); // now it works
+  noiseSeed(nX / 2 * nY / 2);
 
   let total = 100;
   let increment = TWO_PI / total;
 
+  let r = map(millis() % 256, 0, 256, 0, 255);
+  let g = map((millis() + 85) % 256, 0, 256, 0, 255);
+  let b = map((millis() + 170) % 256, 0, 256, 0, 255);
+
   for (let lat = 0; lat < PI; lat += increment) {
     beginShape(TRIANGLE_STRIP);
     for (let lon = 0; lon <= TWO_PI; lon += increment) {
-      let zoom = map(dist(nX, nY, width / 2, height / 2), 0, dist(0, 0, width / 2, height / 2), 4, 0.25);
-      let r = radius * (1 + zoom * noise(lon, lat));
+      let zoom = map(dist(nX, nY, width / 2, height / 2),
+                     0, dist(0, 0, width / 2, height / 2),
+                     4, 0.25);
+      let rad = radius * (1 + zoom * noise(lon, lat));
 
-      let offsetX = map(noise(lon, lat, frameCount / 60), 0, 1, -120, 120);
-      let offsetY = map(noise(lat, lon, frameCount / 60), 0, 1, -120, 120);
-      let offsetZ = map(noise(lat, lon, frameCount / 60), 0, 1, -120, 120);
+      let offsetX = map(noise(lon, lat, frameCount / 240), 0, 1, -120, 120);
+      let offsetY = map(noise(lat, lon, frameCount / 240), 0, 1, -120, 120);
+      let offsetZ = map(noise(lat, lon, frameCount / 240), 0, 1, -120, 120);
 
-      vertex((r + offsetX) * sin(lat) * cos(lon),
-             (r + offsetY) * sin(lat) * sin(lon),
-             (r + offsetZ) * cos(lat));
+      stroke(r, g, b);
 
-      r = radius * (1 + zoom * noise(lon, lat + increment));
+      vertex((rad + offsetX) * sin(lat) * cos(lon),
+             (rad + offsetY) * sin(lat) * sin(lon),
+             (rad + offsetZ) * cos(lat));
 
-      vertex((r + offsetX) * sin(lat + increment) * cos(lon),
-             (r + offsetY) * sin(lat + increment) * sin(lon),
-             (r + offsetZ) * cos(lat + increment));
+      rad = radius * (1 + zoom * noise(lon, lat + increment));
+
+      vertex((rad + offsetX) * sin(lat + increment) * cos(lon),
+             (rad + offsetY) * sin(lat + increment) * sin(lon),
+             (rad + offsetZ) * cos(lat + increment));
     }
     endShape();
   }
