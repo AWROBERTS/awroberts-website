@@ -3,6 +3,8 @@ let surface;
 let sphereRadius;
 let xoff = 0.0;
 let nX, nY;
+let mx, my;
+let mouseIsMoving = false;
 
 function preload() {
   surface = loadImage("surface.png");
@@ -16,6 +18,15 @@ function setup() {
 }
 
 function draw() {
+  // Check if mouse is moving
+  if (mouseX !== mx || mouseY !== my) {
+    mouseIsMoving = true;
+  } else {
+    mouseIsMoving = false;
+  }
+  mx = mouseX;
+  my = mouseY;
+
   background(0);
   nX = noise(xoff) * width;
   nY = noise(xoff + 1000) * height;
@@ -26,22 +37,21 @@ function draw() {
   plane(len, len);
   pop();
 
-  push();
-  let camAngle = millis() / 5000.0;
-  rotateZ(camAngle);
-  let camX = map(nX, 0, width, -PI, PI);
-  let camY = map(nY, 0, height, -PI/2, PI/2);
+  if (mouseIsMoving) {
+    // Modify this section to change behavior when mouse is moving
+    push();
+    let camAngle = millis() / 5000.0;
+    rotateZ(camAngle);
 
-  var angle = millis() / 1000.0;
+    var angle = millis() / 1000.0;
 
-  for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 2; i++) {
       let sphereX = 200 * cos(angle);
       let sphereY = 200 * sin(angle);
 
       push();
       translate(sphereX, sphereY);
-      rotateX(camY);
-      rotateY(camX);
+      rotateZ(camAngle);
       ambientMaterial(i * 255, 0, 0);
       strokeWeight(2);
       stroke(i * 255, 0, 0);
@@ -49,16 +59,45 @@ function draw() {
       pop();
 
       angle += PI;
-  }
-  pop();
+    }
+    pop();
+  } else {
+    // Modify this section to change behavior when mouse is not moving
+    push();
+    let camAngle = millis() / 5000.0;
+    rotateZ(camAngle);
+    let camX = map(nX, 0, width, -PI, PI);
+    let camY = map(nY, 0, height, -PI/2, PI/2);
 
-  push();
-  translate(0, 0, 10);
-  let overlayColor = map(noise(nX / 100, nY / 100), 0, 1, 0, 100);
-  fill(0, overlayColor, 0, 100);
-  rectMode(CENTER);
-  rect(0, 0, width, height);
-  pop();
+    var angle = millis() / 1000.0;
+
+    for (let i = 0; i < 2; i++) {
+      let sphereX = 250 * cos(angle);
+      let sphereY = 250 * sin(angle);
+
+      push();
+      translate(sphereX, sphereY);
+      rotateX(camY);
+      rotateY(camX);
+      let blackRadius = sphereRadius / 2;
+      translate(0, 0, -blackRadius);
+
+      // Draw colored sphere with texture
+      texture(surface);
+      noStroke();
+      sphere(blackRadius);
+
+      // Draw larger dynamic black sphere weighted by noise value
+      noFill();
+      strokeWeight(map(noise(xoff), 0, 1, 0.2, 2)); // Thinner line based on noise
+      stroke(0); // Black color
+      sphere(blackRadius);
+      pop();
+
+      angle += PI;
+    }
+    pop();
+  }
 
   xoff += 0.08; // Adjusted for quicker terrain change.
 }
@@ -70,6 +109,7 @@ function windowResized() {
 }
 
 function createNoiseSphere(radius) {
+  // Only used in second sketch
   noiseSeed(nX / 2 * nY / 2);
 
   let total = 100;
@@ -83,8 +123,8 @@ function createNoiseSphere(radius) {
     beginShape(TRIANGLE_STRIP);
     for (let lon = 0; lon <= TWO_PI; lon += increment) {
       let zoom = map(dist(nX, nY, width / 2, height / 2),
-                     0, dist(0, 0, width / 2, height / 2),
-                     4, 0.25);
+        0, dist(0, 0, width / 2, height / 2),
+        4, 0.25);
       let rad = radius * (1 + zoom * noise(lon, lat));
 
       let offsetX = map(noise(lon, lat, frameCount / 240), 0, 1, -120, 120);
@@ -94,14 +134,14 @@ function createNoiseSphere(radius) {
       stroke(r, g, b);
 
       vertex((rad + offsetX) * sin(lat) * cos(lon),
-             (rad + offsetY) * sin(lat) * sin(lon),
-             (rad + offsetZ) * cos(lat));
+        (rad + offsetY) * sin(lat) * sin(lon),
+        (rad + offsetZ) * cos(lat));
 
       rad = radius * (1 + zoom * noise(lon, lat + increment));
 
       vertex((rad + offsetX) * sin(lat + increment) * cos(lon),
-             (rad + offsetY) * sin(lat + increment) * sin(lon),
-             (rad + offsetZ) * cos(lat + increment));
+        (rad + offsetY) * sin(lat + increment) * sin(lon),
+        (rad + offsetZ) * cos(lat + increment));
     }
 
     endShape();
