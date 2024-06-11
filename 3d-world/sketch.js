@@ -26,50 +26,31 @@ function draw() {
   plane(len, len);
   pop();
 
+  push();
+  let camAngle = millis() / 5000.0;
+  rotateZ(camAngle);
   let camX = map(nX, 0, width, -PI, PI);
   let camY = map(nY, 0, height, -PI/2, PI/2);
 
-  let spherePoints = [];
+  var angle = millis() / 1000.0;
 
-  for (let i = 0; i <= 2; i++) {
-    for (let j = 0; j <= 2; j++) {
-      let angleOffset = ((i + j) % 2 === 0) ? 0 : PI;
-      let sphereX = (width / 3 * i) + cos(angleOffset) * 200;
-      let sphereY = (height / 3 * j) + sin(angleOffset) * 200;
-      spherePoints.push({x: sphereX, y: sphereY});
-
-      let isTouching = spheresAreTouching(spherePoints, sphereRadius);
-
-      // Color variables for stroke and ambientMaterial
-      let sr, sg, sb, ar, ag, ab;
-
-      if (isTouching) {
-        sr = sg = sb = 255; // White color for stroke if spheres are touching
-      } else {
-        sr = 0; sg = sb = 255; // Neon green color for stroke if spheres are not touching
-      }
-
-      if (j % 2 === 0) {
-        ar = map(mouseX, 0, width, 0, 255);
-        ag = map(mouseY, 0, height, 0, 255);
-        ab = 100;
-      } else {
-        ar = map(mouseX, 0, width, 255, 0);
-        ag = map(mouseY, 0, height, 255, 0);
-        ab = 100;
-      }
+  for (let i = 0; i < 2; i++) {
+      let sphereX = 200 * cos(angle);
+      let sphereY = 200 * sin(angle);
 
       push();
       translate(sphereX, sphereY);
       rotateX(camY);
       rotateY(camX);
-      ambientMaterial(ar, ag, ab);
+      ambientMaterial(i * 255, 0, 0);
       strokeWeight(2);
-      stroke(sr, sg, sb);
+      stroke(i * 255, 0, 0);
       createNoiseSphere(sphereRadius);
       pop();
-    }
+
+      angle += PI;
   }
+  pop();
 
   push();
   translate(0, 0, 10);
@@ -79,7 +60,7 @@ function draw() {
   rect(0, 0, width, height);
   pop();
 
-  xoff += 0.02;
+  xoff += 0.08; // Adjusted for quicker terrain change.
 }
 
 function windowResized() {
@@ -122,17 +103,13 @@ function createNoiseSphere(radius) {
              (rad + offsetY) * sin(lat + increment) * sin(lon),
              (rad + offsetZ) * cos(lat + increment));
     }
+
     endShape();
   }
-}
 
-function spheresAreTouching(spherePoints, sphereRadius) {
-  for (let i = 0; i < spherePoints.length; i++) {
-    for (let j = i + 1; j < spherePoints.length; j++) {
-      if (dist(spherePoints[i].x, spherePoints[i].y, spherePoints[j].x, spherePoints[j].y) <= 2 * sphereRadius) {
-        return true;
-      }
-    }
-  }
-  return false;
+  // Creating inner black spheres
+  let blackRadius = radius / 4;
+  translate(0, 0, -blackRadius);
+  ambientMaterial(0, 0, 0);
+  sphere(blackRadius);
 }
