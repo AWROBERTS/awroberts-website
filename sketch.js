@@ -23,7 +23,7 @@ function setup() {
 // This function gets called each time the window size is changed.
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  var textSize = min(windowWidth, windowHeight) / 10;
+  let textSize = min(windowWidth, windowHeight) / 10;
   textFont(Font, textSize);
 }
 
@@ -31,7 +31,15 @@ function draw() {
   clear(); // making background transparent
 
   let textString = 'info@awroberts.co.uk';
-  let xStart = 100;
+
+  // compute the total width of the text
+  let totalTextWidth = 0;
+  for (let i = 0; i < textString.length; i++) {
+    totalTextWidth += textWidth(textString.charAt(i)) * 2;
+  }
+
+  // set the start x position to center the text
+  let xStart = (windowWidth - totalTextWidth) / 2;
 
   for(let i = 0; i < textString.length; i++) {
     // use perlin noise for the flickering effect
