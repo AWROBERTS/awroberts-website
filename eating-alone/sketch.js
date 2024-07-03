@@ -7,17 +7,17 @@ let soundFiles = ['07_06_23.wav'];
 
 function preload() {
   soundFiles.forEach((soundFile, i) => {
-    sounds[i] = loadSound('MIXES/' + soundFile);
+    sounds[i] = loadSound('MIXES/' + soundFile, ();
   });
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  fft = new p5.FFT();
+    createCanvas(windowWidth, windowHeight);
+    fft = new p5.FFT();
 
-  button = createButton('Play');
-  button.position(10, 10);
-  button.mousePressed(playSound);
+    button = createButton('Play');
+    button.position(10, 10);
+    button.mousePressed(playSound);
 }
 
 function draw() {
@@ -49,4 +49,9 @@ function playNextSound() {
 
   // Move to the next sound
   index = (index + 1) % sounds.length;
+}
+
+// Handling window resize
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
