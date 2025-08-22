@@ -1,7 +1,7 @@
 let Font;
 let noiseOffset = [];
 let flickerRate = [];
-let globalVideoAlpha = 127;
+let globalVideoAlpha = 255; // make text fully opaque for clean inversion
 
 function preload() {
   Font = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -12,7 +12,7 @@ function setup() {
   canvas.parent('canvas-container');
   pixelDensity(1);
   canvas.elt.style.mixBlendMode = 'difference'; // invert colors under white draws
-  strokeWeight(3); // Set the stroke weight to 3 pixels
+  noStroke(); // remove stroke to avoid colored fringes
 
   let textString = 'info@awroberts.co.uk';
   for (let i = 0; i < textString.length; i++) {
@@ -50,10 +50,8 @@ function draw() {
     // create a dripping effect by adding randomness to the y-coordinate
     let yDrip = random(130, 140) + windowHeight / 6;
 
-    // draw the character in white; mix-blend-mode 'difference' will invert colors underneath
-    // you can still use 'n' to flicker alpha if desired
-    stroke(255);
-    fill(255, 255, 255, globalVideoAlpha); // white with your alpha
+    // draw the character in opaque white; CSS 'difference' will invert colors underneath
+    fill(255, 255, 255, globalVideoAlpha);
     text(textString.charAt(i), xStart, yDrip);
 
     // increment xStart for the next character by 2 * character width
