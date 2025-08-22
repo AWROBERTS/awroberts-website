@@ -4,16 +4,18 @@ let flickerRate = [];
 let globalVideoAlpha = 127;
 
 function preload() {
-  Font = loadFont('CURWENFONT.ttf');
+  Font = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
+  pixelDensity(1);
+  canvas.elt.style.mixBlendMode = 'difference'; // invert colors under white draws
   strokeWeight(3); // Set the stroke weight to 3 pixels
 
   let textString = 'info@awroberts.co.uk';
-  for(let i = 0; i < textString.length; i++) {
+  for (let i = 0; i < textString.length; i++) {
     noiseOffset[i] = random(10000);
     flickerRate[i] = ((second() + 1) / 200); // half of the original flicker rate
   }
@@ -41,20 +43,17 @@ function draw() {
   // set the start x position to center the text
   let xStart = (windowWidth - totalTextWidth) / 2;
 
-  for(let i = 0; i < textString.length; i++) {
+  for (let i = 0; i < textString.length; i++) {
     // use perlin noise for the flickering effect
     let n = noise(noiseOffset[i]) * 255;
 
     // create a dripping effect by adding randomness to the y-coordinate
     let yDrip = random(130, 140) + windowHeight / 6;
 
-    // draw the character in flickering color
-    let r = n;
-    let g = 255 - n;
-    let b = 0;
-
-    stroke(255); // Set the stroke color to white
-    fill(r, g, b, globalVideoAlpha);
+    // draw the character in white; mix-blend-mode 'difference' will invert colors underneath
+    // you can still use 'n' to flicker alpha if desired
+    stroke(255);
+    fill(255, 255, 255, globalVideoAlpha); // white with your alpha
     text(textString.charAt(i), xStart, yDrip);
 
     // increment xStart for the next character by 2 * character width

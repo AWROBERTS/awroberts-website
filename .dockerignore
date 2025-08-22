@@ -7,6 +7,6 @@ nginx.conf
 node_modules
 dist-cache
 
-#ignore directories stored on local machine for certs and media
+# ignore directories stored on local machine for certs and media
 awroberts-certs/
 awroberts-media
