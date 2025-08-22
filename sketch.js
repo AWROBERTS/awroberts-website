@@ -1,14 +1,10 @@
+// Static text in the top half, each letter ripples its size by +/- 10px semi-randomly.
+
 let Font;
 const textString = 'info@awroberts.co.uk';
 
-let posX = 0;   // left of the text
-let posY = 0;   // baseline of the text
-let velX = 0;
-let velY = 0;
-
-let ascent = 0;
-let descent = 0;
-let textW = 0;
+let baseSize = 0;
+let letterNoise = [];
 
 function preload() {
   Font = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -20,80 +16,65 @@ function setup() {
   pixelDensity(1);
   noStroke();
   textAlign(LEFT, BASELINE);
-  initLayout(false);
+  textFont(Font);
+
+  // Base size relative to viewport
+  baseSize = Math.min(windowWidth, windowHeight) / 10;
+
+  // Per-letter noise seeds
+  letterNoise = [];
+  for (let i = 0; i < textString.length; i++) {
+    letterNoise[i] = random(10000);
+  }
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  initLayout(true);
-}
-
-function initLayout(keepPosition = false) {
-  // Set font size relative to viewport
-  const textSizeVal = Math.min(windowWidth, windowHeight) / 10;
-  textFont(Font, textSizeVal);
-
-  // Metrics and total width
-  ascent = textAscent();
-  descent = textDescent();
-  textW = textWidth(textString);
-
-  // Bounds for top half: baseline must stay in [ascent, height/2 - descent]
-  const minX = 0;
-  const maxX = Math.max(0, width - textW);
-  const minY = ascent;
-  const maxY = Math.max(ascent, height / 2 - descent);
-
-  if (!keepPosition) {
-    // Start at a random valid position in the top half
-    posX = random(minX, maxX);
-    posY = random(minY, maxY);
-
-    // Give it a non-zero velocity
-    const choices = [-3, -2, -1, 1, 2, 3];
-    velX = random(choices);
-    velY = random(choices);
-  } else {
-    // Clamp to new bounds after resize
-    posX = constrain(posX, minX, maxX);
-    posY = constrain(posY, minY, maxY);
-    if (velX === 0) velX = 1;
-    if (velY === 0) velY = 1;
-  }
+  baseSize = Math.min(windowWidth, windowHeight) / 10;
 }
 
 function draw() {
   clear();
   fill(255);
 
-  // Bounds for current frame
-  const minX = 0;
-  const maxX = Math.max(0, width - textW);
-  const minY = ascent;
-  const maxY = Math.max(ascent, height / 2 - descent);
+  const t = millis() * 0.0006; // time factor for smooth variation
+  const maxJitter = 10;        // +/- 10px around base size
 
-  // Move
-  posX += velX;
-  posY += velY;
+  // Compute current size and width of each character to center the text
+  const sizes = new Array(textString.length);
+  const widths = new Array(textString.length);
 
-  // Bounce horizontally (keep full string on screen)
-  if (posX <= minX) {
-    posX = minX;
-    velX *= -1;
-  } else if (posX >= maxX) {
-    posX = maxX;
-    velX *= -1;
+  // First pass: measure widths at current per-letter sizes
+  let totalWidth = 0;
+  for (let i = 0; i < textString.length; i++) {
+    // Semi-random smooth jitter using perlin noise
+    const n = noise(letterNoise[i] + t); // 0..1
+    const delta = map(n, 0, 1, -maxJitter, maxJitter);
+    const sz = baseSize + delta;
+
+    sizes[i] = sz;
+    textSize(sz);
+    const w = textWidth(textString.charAt(i));
+    widths[i] = w;
+    totalWidth += w;
   }
 
-  // Bounce vertically within top half (baseline-aware)
-  if (posY <= minY) {
-    posY = minY;
-    velY *= -1;
-  } else if (posY >= maxY) {
-    posY = maxY;
-    velY *= -1;
-  }
+  // Position in the top half, horizontally centered
+  const xStart = (width - totalWidth) / 2;
+  // Choose a baseline safely in the top half
+  // Use the median ascent/descent by sampling at baseSize
+  textSize(baseSize);
+  const ascent = textAscent();
+  const descent = textDescent();
+  const minBaseline = ascent + 10;
+  const maxBaseline = Math.max(ascent + 10, height / 2 - descent - 10);
+  const baselineY = constrain(height * 0.3, minBaseline, maxBaseline);
 
-  // Draw the full, readable string
-  text(textString, posX, posY);
+  // Second pass: draw with the same sizes
+  let x = xStart;
+  for (let i = 0; i < textString.length; i++) {
+    textSize(sizes[i]);
+    text(textString.charAt(i), x, baselineY);
+    x += widths[i];
+  }
 }
