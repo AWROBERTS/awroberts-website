@@ -1,13 +1,14 @@
 let Font;
 const textString = 'info@awroberts.co.uk';
 
-let posX = [];
-let posY = [];
-let velX = [];
-let velY = [];
-let charW = [];
+let posX = 0;   // left of the text
+let posY = 0;   // baseline of the text
+let velX = 0;
+let velY = 0;
+
 let ascent = 0;
 let descent = 0;
+let textW = 0;
 
 function preload() {
   Font = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -19,7 +20,7 @@ function setup() {
   pixelDensity(1);
   noStroke();
   textAlign(LEFT, BASELINE);
-  initLayout();
+  initLayout(false);
 }
 
 function windowResized() {
@@ -27,46 +28,37 @@ function windowResized() {
   initLayout(true);
 }
 
-function initLayout(keepPositions = false) {
+function initLayout(keepPosition = false) {
   // Set font size relative to viewport
   const textSizeVal = Math.min(windowWidth, windowHeight) / 10;
   textFont(Font, textSizeVal);
 
-  // Measure metrics
+  // Metrics and total width
   ascent = textAscent();
   descent = textDescent();
+  textW = textWidth(textString);
 
-  // Measure each character width
-  charW = [];
-  for (let i = 0; i < textString.length; i++) {
-    charW[i] = textWidth(textString.charAt(i));
-  }
+  // Bounds for top half: baseline must stay in [ascent, height/2 - descent]
+  const minX = 0;
+  const maxX = Math.max(0, width - textW);
+  const minY = ascent;
+  const maxY = Math.max(ascent, height / 2 - descent);
 
-  // Initialize or clamp positions/velocities
-  if (!keepPositions || posX.length !== textString.length) {
-    posX = [];
-    posY = [];
-    velX = [];
-    velY = [];
-    for (let i = 0; i < textString.length; i++) {
-      // Random starting position within bounds
-      const w = Math.max(1, charW[i]);
-      posX[i] = random(0, Math.max(1, width - w));
-      posY[i] = random(ascent, Math.max(ascent + 1, height - descent));
+  if (!keepPosition) {
+    // Start at a random valid position in the top half
+    posX = random(minX, maxX);
+    posY = random(minY, maxY);
 
-      // Random velocity (-3..3), avoid zero
-      velX[i] = random([-3, -2, -1, 1, 2, 3]);
-      velY[i] = random([-3, -2, -1, 1, 2, 3]);
-    }
+    // Give it a non-zero velocity
+    const choices = [-3, -2, -1, 1, 2, 3];
+    velX = random(choices);
+    velY = random(choices);
   } else {
-    // Clamp positions to current bounds after resize
-    for (let i = 0; i < textString.length; i++) {
-      const w = Math.max(1, charW[i]);
-      posX[i] = constrain(posX[i], 0, Math.max(0, width - w));
-      posY[i] = constrain(posY[i], ascent, Math.max(ascent, height - descent));
-      if (velX[i] === 0) velX[i] = 1;
-      if (velY[i] === 0) velY[i] = 1;
-    }
+    // Clamp to new bounds after resize
+    posX = constrain(posX, minX, maxX);
+    posY = constrain(posY, minY, maxY);
+    if (velX === 0) velX = 1;
+    if (velY === 0) velY = 1;
   }
 }
 
@@ -74,30 +66,34 @@ function draw() {
   clear();
   fill(255);
 
-  for (let i = 0; i < textString.length; i++) {
-    // Move
-    posX[i] += velX[i];
-    posY[i] += velY[i];
+  // Bounds for current frame
+  const minX = 0;
+  const maxX = Math.max(0, width - textW);
+  const minY = ascent;
+  const maxY = Math.max(ascent, height / 2 - descent);
 
-    // Bounce horizontally
-    if (posX[i] <= 0) {
-      posX[i] = 0;
-      velX[i] *= -1;
-    } else if (posX[i] + charW[i] >= width) {
-      posX[i] = Math.max(0, width - charW[i]);
-      velX[i] *= -1;
-    }
+  // Move
+  posX += velX;
+  posY += velY;
 
-    // Bounce vertically (baseline-aware)
-    if (posY[i] - ascent <= 0) {
-      posY[i] = ascent;
-      velY[i] *= -1;
-    } else if (posY[i] + descent >= height) {
-      posY[i] = Math.max(ascent, height - descent);
-      velY[i] *= -1;
-    }
-
-    // Draw character
-    text(textString.charAt(i), posX[i], posY[i]);
+  // Bounce horizontally (keep full string on screen)
+  if (posX <= minX) {
+    posX = minX;
+    velX *= -1;
+  } else if (posX >= maxX) {
+    posX = maxX;
+    velX *= -1;
   }
+
+  // Bounce vertically within top half (baseline-aware)
+  if (posY <= minY) {
+    posY = minY;
+    velY *= -1;
+  } else if (posY >= maxY) {
+    posY = maxY;
+    velY *= -1;
+  }
+
+  // Draw the full, readable string
+  text(textString, posX, posY);
 }
