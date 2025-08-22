@@ -1,63 +1,103 @@
 let Font;
-let noiseOffset = [];
-let flickerRate = [];
-let globalVideoAlpha = 255; // make text fully opaque for clean inversion
+const textString = 'info@awroberts.co.uk';
+
+let posX = [];
+let posY = [];
+let velX = [];
+let velY = [];
+let charW = [];
+let ascent = 0;
+let descent = 0;
 
 function preload() {
   Font = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
 
 function setup() {
-  let canvas = createCanvas(windowWidth, windowHeight);
+  const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
   pixelDensity(1);
-  canvas.elt.style.mixBlendMode = 'difference'; // invert colors under white draws
-  noStroke(); // remove stroke to avoid colored fringes
-
-  let textString = 'info@awroberts.co.uk';
-  for (let i = 0; i < textString.length; i++) {
-    noiseOffset[i] = random(10000);
-    flickerRate[i] = ((second() + 1) / 200); // half of the original flicker rate
-  }
-  windowResized(); // call windowResized function after setup
+  noStroke();
+  textAlign(LEFT, BASELINE);
+  initLayout();
 }
 
-// This function gets called each time the window size is changed.
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  let textSize = min(windowWidth, windowHeight) / 10;
-  textFont(Font, textSize);
+  initLayout(true);
+}
+
+function initLayout(keepPositions = false) {
+  // Set font size relative to viewport
+  const textSizeVal = Math.min(windowWidth, windowHeight) / 10;
+  textFont(Font, textSizeVal);
+
+  // Measure metrics
+  ascent = textAscent();
+  descent = textDescent();
+
+  // Measure each character width
+  charW = [];
+  for (let i = 0; i < textString.length; i++) {
+    charW[i] = textWidth(textString.charAt(i));
+  }
+
+  // Initialize or clamp positions/velocities
+  if (!keepPositions || posX.length !== textString.length) {
+    posX = [];
+    posY = [];
+    velX = [];
+    velY = [];
+    for (let i = 0; i < textString.length; i++) {
+      // Random starting position within bounds
+      const w = Math.max(1, charW[i]);
+      posX[i] = random(0, Math.max(1, width - w));
+      posY[i] = random(ascent, Math.max(ascent + 1, height - descent));
+
+      // Random velocity (-3..3), avoid zero
+      velX[i] = random([-3, -2, -1, 1, 2, 3]);
+      velY[i] = random([-3, -2, -1, 1, 2, 3]);
+    }
+  } else {
+    // Clamp positions to current bounds after resize
+    for (let i = 0; i < textString.length; i++) {
+      const w = Math.max(1, charW[i]);
+      posX[i] = constrain(posX[i], 0, Math.max(0, width - w));
+      posY[i] = constrain(posY[i], ascent, Math.max(ascent, height - descent));
+      if (velX[i] === 0) velX[i] = 1;
+      if (velY[i] === 0) velY[i] = 1;
+    }
+  }
 }
 
 function draw() {
-  clear(); // making background transparent
-
-  let textString = 'info@awroberts.co.uk';
-
-  // compute the total width of the text
-  let totalTextWidth = 0;
-  for (let i = 0; i < textString.length; i++) {
-    totalTextWidth += textWidth(textString.charAt(i)) * 2;
-  }
-
-  // set the start x position to center the text
-  let xStart = (windowWidth - totalTextWidth) / 2;
+  clear();
+  fill(255);
 
   for (let i = 0; i < textString.length; i++) {
-    // use perlin noise for the flickering effect
-    let n = noise(noiseOffset[i]) * 255;
+    // Move
+    posX[i] += velX[i];
+    posY[i] += velY[i];
 
-    // create a dripping effect by adding randomness to the y-coordinate
-    let yDrip = random(130, 140) + windowHeight / 6;
+    // Bounce horizontally
+    if (posX[i] <= 0) {
+      posX[i] = 0;
+      velX[i] *= -1;
+    } else if (posX[i] + charW[i] >= width) {
+      posX[i] = Math.max(0, width - charW[i]);
+      velX[i] *= -1;
+    }
 
-    // draw the character in opaque white; CSS 'difference' will invert colors underneath
-    fill(255, 255, 255, globalVideoAlpha);
-    text(textString.charAt(i), xStart, yDrip);
+    // Bounce vertically (baseline-aware)
+    if (posY[i] - ascent <= 0) {
+      posY[i] = ascent;
+      velY[i] *= -1;
+    } else if (posY[i] + descent >= height) {
+      posY[i] = Math.max(ascent, height - descent);
+      velY[i] *= -1;
+    }
 
-    // increment xStart for the next character by 2 * character width
-    xStart += textWidth(textString.charAt(i)) * 2;
-
-    // increment the noise offset for the next frame at a rate determined by the current second
-    noiseOffset[i] += flickerRate[i];
+    // Draw character
+    text(textString.charAt(i), posX[i], posY[i]);
   }
 }
