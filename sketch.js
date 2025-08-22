@@ -4,7 +4,7 @@ let flickerRate = [];
 let globalVideoAlpha = 127;
 
 function preload() {
-  Font = loadFont('CURWENFONT.ttf');
+  Font = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
 
 function setup() {
