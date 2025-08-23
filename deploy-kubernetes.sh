@@ -420,22 +420,3 @@ fi
 
 NODE_IPS="$(kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{" "}{end}')"
 PUB_IP="$(curl -s https://api.ipify.org || true)"
-
-echo
-echo "Next steps to access from anywhere:"
-echo "- Open firewall for inbound TCP 80 and 443 on the node."
-if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
-  echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443."
-else
-  echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}."
-fi
-echo "- DNS: set A/AAAA for:"
-echo "  * ${HOST_A}"
-echo "  * ${HOST_B}"
-echo "  to your public IP: ${PUB_IP:-<your-public-ip>}."
-echo
-echo "Rebuild/redeploy loop (no registry):"
-echo "  docker buildx build --platform ${PLATFORM} -t ${FULL_IMAGE} --load ${BUILD_CONTEXT}"
-echo "  docker save ${FULL_IMAGE} | sudo ctr -n k8s.io images import -"
-echo "  kubectl -n ${NAMESPACE} rollout restart deploy/${DEPLOYMENT_NAME}"
-echo "  kubectl -n ${NAMESPACE} rollout status deploy/${DEPLOYMENT_NAME}"
