@@ -46,6 +46,11 @@ BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 CLUSTER_BOOTSTRAP="${CLUSTER_BOOTSTRAP:-true}"
 POD_CIDR="${POD_CIDR:-10.244.0.0/16}"     # Flannel default
 
+# Ingress controller mode
+# true  => hostNetwork: controller binds directly to node ports 80/443 (no NodePorts)
+# false => NodePort: controller uses NodePorts (router forwards to high ports)
+INGRESS_HOSTNETWORK="${INGRESS_HOSTNETWORK:-true}"
+
 # Helper: sudo if not root
 sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
 
@@ -222,16 +227,45 @@ echo "Ensuring ingress-nginx controller is installed (bare-metal preset)..."
 if ! kubectl -n ingress-nginx get deploy ingress-nginx-controller >/dev/null 2>&1; then
   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
 fi
+
+# If desired, switch ingress-nginx to hostNetwork so it binds to node ports 80/443
+if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
+  echo "Configuring ingress-nginx to use hostNetwork (binds to node ports 80/443)..."
+  # Patch Deployment to use hostNetwork and appropriate DNS policy
+  kubectl -n ingress-nginx patch deploy ingress-nginx-controller --type='json' -p='[
+    {"op":"add","path":"/spec/template/spec/hostNetwork","value":true},
+    {"op":"add","path":"/spec/template/spec/dnsPolicy","value":"ClusterFirstWithHostNet"}
+  ]' || true
+
+  # Ensure the Service is ClusterIP (no NodePorts required)
+  kubectl -n ingress-nginx patch svc ingress-nginx-controller --type=merge -p='{
+    "spec":{
+      "type":"ClusterIP",
+      "ports":[
+        {"name":"http","port":80,"targetPort":"http","protocol":"TCP"},
+        {"name":"https","port":443,"targetPort":"https","protocol":"TCP"}
+      ]
+    }
+  }' || true
+else
+  echo "Using ingress-nginx NodePort mode (router must forward WAN 80/443 to NodePorts)."
+fi
+
 echo "Waiting for ingress-nginx-controller to become Ready..."
 kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=300s || true
-echo "Ingress controller Service (NodePorts) status:"
+
+echo "Ingress controller Service status:"
 kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
 
-# Discover NodePort values for HTTP/HTTPS (fallback to common defaults if not found)
-HTTP_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="http")]}{.nodePort}{end}' 2>/dev/null || true)"
-HTTPS_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="https")]}{.nodePort}{end}' 2>/dev/null || true)"
-if [[ -z "${HTTP_NODEPORT}" ]]; then HTTP_NODEPORT="30080"; fi
-if [[ -z "${HTTPS_NODEPORT}" ]]; then HTTPS_NODEPORT="30443"; fi
+# Discover NodePort values for HTTP/HTTPS if in NodePort mode (fallback to common defaults if not found)
+HTTP_NODEPORT=""
+HTTPS_NODEPORT=""
+if [[ "${INGRESS_HOSTNETWORK}" != "true" ]]; then
+  HTTP_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="http")]}{.nodePort}{end}' 2>/dev/null || true)"
+  HTTPS_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="https")]}{.nodePort}{end}' 2>/dev/null || true)"
+  if [[ -z "${HTTP_NODEPORT}" ]]; then HTTP_NODEPORT="30080"; fi
+  if [[ -z "${HTTPS_NODEPORT}" ]]; then HTTPS_NODEPORT="30443"; fi
+fi
 
 # ===== Safe pruning: keep current image and any image in use by pods =====
 cleanup_old_images() {
@@ -368,7 +402,12 @@ kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=2
 # ===== Notes =====
 # To be reachable from the Internet:
 #  - Allow inbound TCP 80/443 on the node.
-#  - Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}.
+#  - Router/NAT:
+if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
+  echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443 (ingress-nginx hostNetwork)."
+else
+  echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT} (ingress-nginx NodePorts)."
+fi
 #  - Point your domain A/AAAA records at your public IP.
 
 echo
@@ -385,7 +424,11 @@ PUB_IP="$(curl -s https://api.ipify.org || true)"
 echo
 echo "Next steps to access from anywhere:"
 echo "- Open firewall for inbound TCP 80 and 443 on the node."
-echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT} (ingress-nginx NodePorts)."
+if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
+  echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443."
+else
+  echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}."
+fi
 echo "- DNS: set A/AAAA for:"
 echo "  * ${HOST_A}"
 echo "  * ${HOST_B}"
