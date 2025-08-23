@@ -60,6 +60,20 @@ if ! docker buildx version >/dev/null 2>&1; then
   exit 1
 fi
 
+# Ensure kubeadm/kubelet/kubectl are installed (auto-install if missing)
+if ! command -v kubeadm >/dev/null 2>&1; then
+  echo "kubeadm not found. Installing kubeadm, kubelet, kubectl..."
+  sudo apt-get update
+  sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+  sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg \
+    https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | \
+    sudo tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
+  sudo apt-get update
+  sudo apt-get install -y kubelet kubeadm kubectl
+  sudo systemctl enable --now kubelet
+fi
+
 [[ -f "$HOST_CERT_PATH" ]] || { echo "Cert not found at $HOST_CERT_PATH"; exit 1; }
 [[ -f "$HOST_KEY_PATH" ]] || { echo "Key not found at $HOST_KEY_PATH"; exit 1; }
 [[ -d "$MANIFEST_DIR" ]] || { echo "Manifest directory not found: $MANIFEST_DIR"; exit 1; }
