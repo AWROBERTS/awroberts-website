@@ -39,17 +39,3 @@ spec:
           hostPath:
             path: /var/www/html/awroberts/awroberts-media
             type: DirectoryOrCreate
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: awroberts-web
-  namespace: awroberts
-spec:
-  type: ClusterIP
-  selector:
-    app: awroberts-web
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
