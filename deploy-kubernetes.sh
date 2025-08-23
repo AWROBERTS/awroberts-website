@@ -14,8 +14,8 @@ HOST_A="${HOST_A:-awroberts.co.uk}"
 HOST_B="${HOST_B:-www.awroberts.co.uk}"
 
 # TLS certs (full chain + unencrypted key)
-HOST_CERT_PATH="${HOST_CERT_PATH:-/path/to/fullchain.crt}"
-HOST_KEY_PATH="${HOST_KEY_PATH:-/path/to/privkey.key}"
+HOST_CERT_PATH="${HOST_CERT_PATH:-/var/www/html/awroberts/awroberts-certs/fullchain.crt}"
+HOST_KEY_PATH="${HOST_KEY_PATH:-/var/www/html/awroberts/awroberts-certs/awroberts_co_uk.key}"
 
 # Local image build settings
 IMAGE_NAME="${IMAGE_NAME:-awroberts}"     # untagged base
@@ -27,7 +27,7 @@ PLATFORM="${PLATFORM:-linux/amd64}"       # set to your dev arch (e.g., linux/ar
 BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 
 # MetalLB address pool (auto-derive if empty)
-# You can override with: METALLB_RANGE_START=192.168.49.240 METALLB_RANGE_END=192.168.49.250
+# Override with: METALLB_RANGE_START=192.168.49.240 METALLB_RANGE_END=192.168.49.250
 METALLB_RANGE_START="${METALLB_RANGE_START:-}"
 METALLB_RANGE_END="${METALLB_RANGE_END:-}"
 
@@ -130,95 +130,8 @@ if [[ "$SVC_TYPE" != "LoadBalancer" ]]; then
   kubectl -n ingress-nginx patch svc ingress-nginx-controller -p '{"spec":{"type":"LoadBalancer"}}'
 fi
 
-# Enable MetalLB core components
-echo "Enabling metallb addon"
+echo "Enabling MetalLB addon"
 minikube addons enable metallb >/dev/null || true
-kubectl -n metallb-system rollout status deploy/controller --timeout=180s || true
-kubectl -n metallb-system rollout status ds/speaker --timeout=180s || true
 
-# Derive a sensible IP pool in the minikube network if not provided
-if [[ -z "${METALLB_RANGE_START}" || -z "${METALLB_RANGE_END}" ]]; then
-  MK_IP="$(minikube ip)"
-  # Assume /24 and take a high range (last /28): .240-.250
-  IFS='.' read -r A B C D <<<"${MK_IP}"
-  METALLB_RANGE_START="${A}.${B}.${C}.240"
-  METALLB_RANGE_END="${A}.${B}.${C}.250"
-fi
-echo "Configuring MetalLB IPAddressPool: ${METALLB_RANGE_START}-${METALLB_RANGE_END}"
-
-# Apply IPAddressPool and L2Advertisement (idempotent)
-kubectl apply -f - <<EOF
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: minikube-pool
-  namespace: metallb-system
-spec:
-  addresses:
-  - ${METALLB_RANGE_START}-${METALLB_RANGE_END}
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: minikube-l2
-  namespace: metallb-system
-spec: {}
-EOF
-
-# Wait for ingress-nginx-controller Service to get a usable EXTERNAL-IP
-echo "Waiting for LoadBalancer EXTERNAL-IP from MetalLB..."
-LB_IP=""
-for i in {1..60}; do
-  LB_IP="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
-  # Accept non-empty, non-10.x (cluster) IP
-  if [[ -n "$LB_IP" && "$LB_IP" != 10.* ]]; then
-    break
-  fi
-  sleep 2
-done
-
-if [[ -z "$LB_IP" || "$LB_IP" == 10.* ]]; then
-  echo "Error: MetalLB did not assign a usable EXTERNAL-IP. Current: '${LB_IP:-none}'"
-  echo "Debug tips:"
-  echo "- kubectl -n metallb-system get all"
-  echo "- kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide"
-  exit 1
-fi
-
-echo "LoadBalancer EXTERNAL-IP acquired: ${LB_IP}"
-
-# Update /etc/hosts to map your domains to LB_IP
-update_hosts() {
-  local ip="$1"
-  local host="$2"
-  if grep -qE "^[^#]*\\b${host}\\b" /etc/hosts; then
-    if ! grep -qE "^${ip}[[:space:]].*\\b${host}\\b" /etc/hosts; then
-      echo "Adjusting /etc/hosts for ${host} -> ${ip}"
-      tmpfile="$(mktemp)"
-      awk -v h="${host}" '!($0 ~ "^[^#].*\\b" h "\\b") {print}' /etc/hosts > "${tmpfile}"
-      echo "${ip} ${host}" >> "${tmpfile}"
-      if cp "${tmpfile}" /etc/hosts 2>/dev/null; then :; else sudo cp "${tmpfile}" /etc/hosts; fi
-      rm -f "${tmpfile}"
-    else
-      echo "/etc/hosts already maps ${host} -> ${ip}"
-    fi
-  else
-    echo "Adding ${host} -> ${ip} to /etc/hosts"
-    if echo "${ip} ${host}" >> /etc/hosts 2>/dev/null; then :; else echo "${ip} ${host}" | sudo tee -a /etc/hosts >/dev/null; fi
-  fi
-}
-update_hosts "${LB_IP}" "${HOST_A}"
-update_hosts "${LB_IP}" "${HOST_B}"
-
-# Verify reachability via Ingress
-echo "Verifying routing via Ingress..."
-set +e
-curl -sS -I "http://${HOST_A}/" || true
-curl -k -sS -I "https://${HOST_A}/" || true
-curl -sS -I "http://${HOST_B}/" || true
-curl -k -sS -I "https://${HOST_B}/" || true
-set -e
-
-echo "Deployment complete: ${FULL_IMAGE}"
-echo "Ingress reachable via LoadBalancer IP: ${LB_IP}"
-echo "If the browser warns about cert trust, that is expected for untrusted local certs."
+echo "Waiting for MetalLB components (controller & speaker) to be ready..."
+kubectl -n metallb-system rollout status deploy/controller --timeout=
