@@ -46,11 +46,12 @@ BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 CLUSTER_BOOTSTRAP="${CLUSTER_BOOTSTRAP:-true}"
 POD_CIDR="${POD_CIDR:-10.244.0.0/16}"     # Flannel default
 
-# ===== Pre-flight checks =====
+# Helper: sudo if not root
+sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
+
+# ===== Pre-flight: core tools =====
 command -v docker >/dev/null 2>&1 || { echo "docker not found"; exit 1; }
-command -v kubectl >/dev/null 2>&1 || { echo "kubectl not found"; exit 1; }
-command -v kubeadm >/dev/null 2>&1 || { echo "kubeadm not found"; exit 1; }
-command -v containerd >/dev/null 2>&1 || { echo "containerd not found"; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "curl not found"; exit 1; }
 
 # Enforce Docker Buildx availability (no fallback)
 if ! docker buildx version >/dev/null 2>&1; then
@@ -61,25 +62,29 @@ if ! docker buildx version >/dev/null 2>&1; then
 fi
 
 # Ensure kubeadm/kubelet/kubectl are installed (auto-install if missing)
-if ! command -v kubeadm >/dev/null 2>&1; then
-  echo "kubeadm not found. Installing kubeadm, kubelet, kubectl..."
-  sudo apt-get update
-  sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-  sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg \
+if ! command -v kubeadm >/dev/null 2>&1 || ! command -v kubectl >/dev/null 2>&1; then
+  echo "Installing kubeadm, kubelet, kubectl..."
+  sudo_if_needed apt-get update
+  sudo_if_needed apt-get install -y apt-transport-https ca-certificates curl gpg
+  sudo_if_needed curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg \
     https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
   echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | \
-    sudo tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
-  sudo apt-get update
-  sudo apt-get install -y kubelet kubeadm kubectl
-  sudo systemctl enable --now kubelet
+    sudo_if_needed tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
+  sudo_if_needed apt-get update
+  sudo_if_needed apt-get install -y kubelet kubeadm kubectl
+  sudo_if_needed systemctl enable --now kubelet
+fi
+
+# Ensure containerd exists
+if ! command -v containerd >/dev/null 2>&1; then
+  echo "Installing containerd..."
+  sudo_if_needed apt-get update
+  sudo_if_needed apt-get install -y containerd
 fi
 
 [[ -f "$HOST_CERT_PATH" ]] || { echo "Cert not found at $HOST_CERT_PATH"; exit 1; }
 [[ -f "$HOST_KEY_PATH" ]] || { echo "Key not found at $HOST_KEY_PATH"; exit 1; }
 [[ -d "$MANIFEST_DIR" ]] || { echo "Manifest directory not found: $MANIFEST_DIR"; exit 1; }
-
-# Helper: sudo if not root
-sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
 
 # ===== Optional: bootstrap kubeadm single-node with Flannel if no cluster =====
 if [[ "${CLUSTER_BOOTSTRAP}" == "true" ]]; then
