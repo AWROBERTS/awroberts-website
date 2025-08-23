@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Cluster targeting (override if needed)
-#   export KUBECONFIG_PATH=/etc/kubernetes/admin.conf
-#   export KUBE_CONTEXT=kubernetes-admin@kubernetes
+export KUBECONFIG_PATH=/etc/kubernetes/admin.conf
+export KUBE_CONTEXT=kubernetes-admin@kubernetes
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-/etc/kubernetes/admin.conf}"
 if [[ -f "${KUBECONFIG_PATH}" ]]; then
   export KUBECONFIG="${KUBECONFIG_PATH}"
@@ -84,13 +84,19 @@ EOF
       sudo_if_needed apt-get update
       sudo_if_needed apt-get install -y containerd
     fi
-    echo "Ensuring containerd uses systemd cgroups..."
+
+    echo "Ensuring containerd is configured (SystemdCgroup=true) and running..."
     sudo_if_needed mkdir -p /etc/containerd
     if ! sudo_if_needed test -f /etc/containerd/config.toml; then
       containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
     fi
     sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
+    # Enable and restart to apply config (idempotent)
     sudo_if_needed systemctl enable --now containerd
+    sudo_if_needed systemctl restart containerd
+    # Optional check
+    sudo_if_needed ctr -n k8s.io images ls >/dev/null 2>&1 || true
+
 
     # 4) Install kubeadm, kubelet, kubectl if missing
     if ! command -v kubeadm >/dev/null 2>&1; then
