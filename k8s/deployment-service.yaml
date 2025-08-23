@@ -30,6 +30,15 @@ spec:
               port: 80
             initialDelaySeconds: 15
             periodSeconds: 20
+          volumeMounts:
+            - name: media
+              mountPath: /usr/share/nginx/html/awroberts-media
+              readOnly: true
+      volumes:
+        - name: media
+          hostPath:
+            path: /var/www/html/awroberts/awroberts-media
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
