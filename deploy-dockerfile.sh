@@ -13,7 +13,7 @@ else
 fi
 
 # Recreate container
-docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+sudo docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 
 sudo docker run -d \
   --name "${CONTAINER_NAME}" \
