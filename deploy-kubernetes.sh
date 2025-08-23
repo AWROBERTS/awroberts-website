@@ -49,6 +49,17 @@ POD_CIDR="${POD_CIDR:-10.244.0.0/16}"     # Flannel default
 # Helper: sudo if not root
 sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
 
+# Ensure current user has a readable kubeconfig if admin.conf exists
+if [[ -f /etc/kubernetes/admin.conf ]]; then
+  if [[ ! -r /etc/kubernetes/admin.conf ]]; then
+    echo "Preparing kubeconfig for current user from /etc/kubernetes/admin.conf..."
+    mkdir -p "$HOME/.kube"
+    sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
+    sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+    export KUBECONFIG="$HOME/.kube/config"
+  fi
+fi
+
 # ===== Pre-flight: core tools =====
 command -v docker >/dev/null 2>&1 || { echo "docker not found"; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "curl not found"; exit 1; }
@@ -88,7 +99,28 @@ fi
 
 # ===== Optional: bootstrap kubeadm single-node with Flannel if no cluster =====
 if [[ "${CLUSTER_BOOTSTRAP}" == "true" ]]; then
-  if ! kubectl get nodes >/dev/null 2>&1; then
+  # If control plane is already present (files/ports), skip re-init and just ensure kubeconfig
+  NEED_INIT="false"
+  if kubectl get nodes >/dev/null 2>&1; then
+    NEED_INIT="false"
+  else
+    if [[ -f /etc/kubernetes/manifests/kube-apiserver.yaml ]] || \
+       sudo_if_needed ss -lnt '( sport = :6443 )' | grep -q 6443; then
+      echo "Existing kubeadm control plane detected; skipping kubeadm init."
+      # Ensure kubeconfig for current user
+      if [[ -f /etc/kubernetes/admin.conf ]]; then
+        mkdir -p "$HOME/.kube"
+        sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
+        sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+        export KUBECONFIG="$HOME/.kube/config"
+      fi
+      kubectl wait --for=condition=Ready node --all --timeout=120s >/dev/null 2>&1 || true
+    else
+      NEED_INIT="true"
+    fi
+  fi
+
+  if [[ "${NEED_INIT}" == "true" ]]; then
     echo "No reachable Kubernetes cluster via kubectl. Bootstrapping control plane with kubeadm (Flannel)..."
 
     # 1) Prep: disable swap and set sysctls
