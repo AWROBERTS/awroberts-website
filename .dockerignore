@@ -1,7 +1,5 @@
 .git
 .gitignore
-Dockerfile
-nginx.conf
 *.log
 *.tmp
 node_modules
