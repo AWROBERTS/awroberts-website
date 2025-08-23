@@ -133,5 +133,129 @@ fi
 echo "Enabling MetalLB addon"
 minikube addons enable metallb >/dev/null || true
 
-echo "Waiting for MetalLB components (controller & speaker) to be ready..."
-kubectl -n metallb-system rollout status deploy/controller --timeout=
+echo "Waiting for MetalLB namespace..."
+for i in {1..60}; do
+  kubectl get ns metallb-system >/dev/null 2>&1 && break
+  sleep 2
+done
+
+echo "Waiting for MetalLB controller Deployment to be ready..."
+kubectl -n metallb-system rollout status deploy/controller --timeout=180s || true
+
+# Some kubectl versions don't support daemonset rollout timeout well; use a readiness wait on pods instead
+echo "Waiting for MetalLB speaker pods to be Ready..."
+kubectl -n metallb-system wait --for=condition=Ready pod -l app=metallb,component=speaker --timeout=180s || true
+
+# Derive a sensible IP pool in the minikube network if not provided
+if [[ -z "${METALLB_RANGE_START}" || -z "${METALLB_RANGE_END}" ]]; then
+  MK_IP="$(minikube ip)"
+  IFS='.' read -r A B C D <<<"${MK_IP}"
+  METALLB_RANGE_START="${A}.${B}.${C}.240"
+  METALLB_RANGE_END="${A}.${B}.${C}.250"
+fi
+echo "Configuring MetalLB address pool: ${METALLB_RANGE_START}-${METALLB_RANGE_END}"
+
+# Detect whether CRDs exist (new API) or fallback to legacy ConfigMap
+CRD_READY="false"
+for i in {1..60}; do
+  if kubectl get crd ipaddresspools.metallb.io >/dev/null 2>&1 && kubectl get crd l2advertisements.metallb.io >/dev/null 2>&1; then
+    CRD_READY="true"
+    break
+  fi
+  sleep 2
+done
+
+if [[ "$CRD_READY" == "true" ]]; then
+  echo "MetalLB CRDs detected (using metallb.io/v1beta1 resources). Applying IPAddressPool + L2Advertisement..."
+  kubectl apply -f - <<EOF
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: minikube-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - ${METALLB_RANGE_START}-${METALLB_RANGE_END}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: minikube-l2
+  namespace: metallb-system
+spec: {}
+EOF
+else
+  echo "MetalLB CRDs not available. Falling back to legacy ConfigMap configuration."
+  kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - ${METALLB_RANGE_START}-${METALLB_RANGE_END}
+EOF
+fi
+
+# Wait for ingress-nginx-controller Service to get a usable EXTERNAL-IP
+echo "Waiting for LoadBalancer EXTERNAL-IP from MetalLB..."
+LB_IP=""
+for i in {1..60}; do
+  LB_IP="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+  if [[ -n "$LB_IP" && "$LB_IP" != 10.* ]]; then
+    break
+  fi
+  sleep 2
+done
+
+if [[ -z "$LB_IP" || "$LB_IP" == 10.* ]]; then
+  echo "Error: MetalLB did not assign a usable EXTERNAL-IP. Current: '${LB_IP:-none}'"
+  echo "Debug tips:"
+  echo "- kubectl -n metallb-system get all"
+  echo "- kubectl -n metallb-system get ipaddresspools.metallb.io,l2advertisements.metallb.io || echo '(using legacy ConfigMap)'"
+  echo "- kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide"
+  exit 1
+fi
+
+echo "LoadBalancer EXTERNAL-IP acquired: ${LB_IP}"
+
+# Update /etc/hosts to map your domains to LB_IP
+update_hosts() {
+  local ip="$1"
+  local host="$2"
+  if grep -qE "^[^#]*\\b${host}\\b" /etc/hosts; then
+    if ! grep -qE "^${ip}[[:space:]].*\\b${host}\\b" /etc/hosts; then
+      echo "Adjusting /etc/hosts for ${host} -> ${ip}"
+      tmpfile="$(mktemp)"
+      awk -v h="${host}" '!($0 ~ "^[^#].*\\b" h "\\b") {print}' /etc/hosts > "${tmpfile}"
+      echo "${ip} ${host}" >> "${tmpfile}"
+      if cp "${tmpfile}" /etc/hosts 2>/dev/null; then :; else sudo cp "${tmpfile}" /etc/hosts; fi
+      rm -f "${tmpfile}"
+    else
+      echo "/etc/hosts already maps ${host} -> ${ip}"
+    fi
+  else
+    echo "Adding ${host} -> ${ip} to /etc/hosts"
+    if echo "${ip} ${host}" >> /etc/hosts 2>/dev/null; then :; else echo "${ip} ${host}" | sudo tee -a /etc/hosts >/dev/null; fi
+  fi
+}
+update_hosts "${LB_IP}" "${HOST_A}"
+update_hosts "${LB_IP}" "${HOST_B}"
+
+# Verify reachability via Ingress
+echo "Verifying routing via Ingress..."
+set +e
+curl -sS -I "http://${HOST_A}/" || true
+curl -k -sS -I "https://${HOST_A}/" || true
+curl -sS -I "http://${HOST_B}/" || true
+curl -k -sS -I "https://${HOST_B}/" || true
+set -e
+
+echo "Deployment complete: ${FULL_IMAGE}"
+echo "Ingress reachable via LoadBalancer IP: ${LB_IP}"
+echo "If the browser warns about cert trust, that is expected for untrusted local certs."
