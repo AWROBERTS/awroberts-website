@@ -5,10 +5,10 @@ set -euo pipefail
 NAMESPACE="${NAMESPACE:-awroberts}"
 SECRET_NAME="${SECRET_NAME:-awroberts-tls}"
 
-DEPLOYMENT_NAME="awroberts"           # fixed
-CONTAINER_NAME_IN_DEPLOY="awroberts"  # fixed
-MANIFEST_DIR="${MANIFEST_DIR:-./k8s}" # your manifests live here (deployment, service, ingress, etc.)
-INGRESS_NAME="${INGRESS_NAME:-}"      # set if you want to wait for LB address (optional)
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-awroberts-web}"   # your Deployment name
+CONTAINER_NAME_IN_DEPLOY="${CONTAINER_NAME_IN_DEPLOY:-}" # leave empty to auto-detect from Deployment
+MANIFEST_DIR="${MANIFEST_DIR:-./k8s}"                  # folder with deployment/service/ingress YAMLs
+INGRESS_NAME="${INGRESS_NAME:-}"                       # optional: wait for LB address
 
 # TLS certs (full chain + unencrypted key)
 HOST_CERT_PATH="${HOST_CERT_PATH:-/path/to/fullchain.crt}"
@@ -20,7 +20,7 @@ IMAGE_TAG="${IMAGE_TAG:-v1}"            # single tag to deploy
 IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"     # strip any tag if passed via env
 FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
 BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
-PLATFORM="${PLATFORM:-linux/amd64}"     # set to your dev arch if needed (e.g., linux/arm64)
+PLATFORM="${PLATFORM:-linux/amd64}"     # set to your dev arch (e.g., linux/arm64)
 BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 
 # ===== Pre-flight checks =====
@@ -52,7 +52,7 @@ docker buildx build \
 # ===== Make the image available to the cluster =====
 CTX="$(kubectl config current-context || true)"
 if command -v kind >/dev/null 2>&1 && kind get clusters >/dev/null 2>&1 && [[ "$CTX" == kind* ]]; then
-  # If context is kind or kind-<name>, determine cluster name
+  # Detect kind cluster name from context if possible
   if [[ "$CTX" == "kind" ]]; then
     KIND_CLUSTER_NAME="kind"
   elif [[ "$CTX" == kind-* ]]; then
@@ -66,7 +66,7 @@ elif command -v minikube >/dev/null 2>&1 && minikube status >/dev/null 2>&1 && [
   echo "Loading image into minikube"
   minikube image load "${FULL_IMAGE}"
 else
-  # Docker Desktop’s Kubernetes shares the Docker daemon; nothing to do.
+  # Docker Desktop Kubernetes shares the Docker daemon; nothing to do.
   # For remote clusters, a registry is required.
   if [[ "$CTX" != "docker-desktop" ]]; then
     echo "Note: Current context '${CTX}' may not see local images. For remote clusters, push to a registry or load images to nodes."
@@ -88,23 +88,41 @@ kubectl -n "$NAMESPACE" create secret tls "$SECRET_NAME" \
 echo "Applying manifests from: ${MANIFEST_DIR}"
 kubectl -n "$NAMESPACE" apply -f "$MANIFEST_DIR"
 
-# 4) Point the Deployment at the freshly built local image
+# 4) Determine the container name (auto-detect if not provided)
+if [[ -z "$CONTAINER_NAME_IN_DEPLOY" ]]; then
+  CONTAINERS_IN_DEPLOY="$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.spec.template.spec.containers[*].name}')"
+  if [[ -z "$CONTAINERS_IN_DEPLOY" ]]; then
+    echo "Error: No containers found in deployment/${DEPLOYMENT_NAME}"
+    exit 1
+  fi
+  # Use the first container if multiple
+  CONTAINER_NAME_IN_DEPLOY="$(echo "$CONTAINERS_IN_DEPLOY" | awk '{print $1}')"
+  if [[ "$(echo "$CONTAINERS_IN_DEPLOY" | wc -w)" -gt 1 ]]; then
+    echo "Warning: Multiple containers detected in deployment/${DEPLOYMENT_NAME}: ${CONTAINERS_IN_DEPLOY}. Using '${CONTAINER_NAME_IN_DEPLOY}'."
+  fi
+fi
+echo "Updating image for container '${CONTAINER_NAME_IN_DEPLOY}' in deployment/${DEPLOYMENT_NAME} to ${FULL_IMAGE}"
+
+# 5) Point the Deployment at the freshly built local image
 kubectl -n "$NAMESPACE" set image deployment/"$DEPLOYMENT_NAME" \
   "${CONTAINER_NAME_IN_DEPLOY}=${FULL_IMAGE}"
 
-# 5) Ensure pods roll when certs change (optional but recommended)
+# 6) Ensure pods roll when certs change (optional but recommended)
 TLS_CHECKSUM="$(cat "$HOST_CERT_PATH" "$HOST_KEY_PATH" | sha256sum | awk '{print $1}')"
 kubectl -n "$NAMESPACE" annotate deployment/"$DEPLOYMENT_NAME" \
   tls-checksum="$TLS_CHECKSUM" --overwrite
 
-# 6) Prefer not to force pulls for a local image
+# 7) Prefer not to force pulls for a local image
 kubectl -n "$NAMESPACE" patch deployment "$DEPLOYMENT_NAME" \
-  -p '{"spec":{"template":{"spec":{"containers":[{"name":"awroberts","imagePullPolicy":"IfNotPresent"}]}}}}' || true
+  --type='json' \
+  -p="[
+    {\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/imagePullPolicy\",\"value\":\"IfNotPresent\"}
+  ]" || true
 
-# 7) Wait for rollout
+# 8) Wait for rollout
 kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=180s
 
-# 8) (Optional) Wait for Ingress to get an address
+# 9) (Optional) Wait for Ingress to get an address
 if [[ -n "$INGRESS_NAME" ]]; then
   kubectl -n "$NAMESPACE" wait ingress/"$INGRESS_NAME" \
     --for=jsonpath='{.status.loadBalancer.ingress[0]}' --timeout=180s || true
