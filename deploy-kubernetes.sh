@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===== Cluster targeting (override if needed) =====
-# Run with, for example:
+# Example:
 #   KUBECONFIG_PATH=/etc/kubernetes/admin.conf KUBE_CONTEXT=kubernetes-admin@kubernetes ./deploy-kubernetes.sh
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-/etc/kubernetes/admin.conf}"
 if [[ -f "${KUBECONFIG_PATH}" ]]; then
@@ -42,9 +42,15 @@ BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
 PLATFORM="${PLATFORM:-linux/amd64}"       # set to your dev arch (e.g., linux/arm64)
 BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 
+# Bootstrap options (single-node kubeadm + Flannel)
+CLUSTER_BOOTSTRAP="${CLUSTER_BOOTSTRAP:-true}"
+POD_CIDR="${POD_CIDR:-10.244.0.0/16}"     # Flannel default
+
 # ===== Pre-flight checks =====
 command -v docker >/dev/null 2>&1 || { echo "docker not found"; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl not found"; exit 1; }
+command -v kubeadm >/dev/null 2>&1 || { echo "kubeadm not found"; exit 1; }
+command -v containerd >/dev/null 2>&1 || { echo "containerd not found"; exit 1; }
 
 # Enforce Docker Buildx availability (no fallback)
 if ! docker buildx version >/dev/null 2>&1; then
@@ -58,46 +64,85 @@ fi
 [[ -f "$HOST_KEY_PATH" ]] || { echo "Key not found at $HOST_KEY_PATH"; exit 1; }
 [[ -d "$MANIFEST_DIR" ]] || { echo "Manifest directory not found: $MANIFEST_DIR"; exit 1; }
 
-# Context (informational)
-CTX="$(kubectl config current-context || true)"
+# Helper: sudo if not root
+sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
+
+# ===== Optional: bootstrap kubeadm single-node with Flannel if no cluster =====
+if [[ "${CLUSTER_BOOTSTRAP}" == "true" ]]; then
+  if ! kubectl get nodes >/dev/null 2>&1; then
+    echo "No reachable Kubernetes cluster via kubectl. Bootstrapping control plane with kubeadm (Flannel)..."
+
+    # 1) Prep: disable swap and set sysctls
+    echo "Disabling swap and updating /etc/fstab..."
+    sudo_if_needed swapoff -a || true
+    if [[ -f /etc/fstab ]]; then
+      sudo_if_needed sed -i.bak -E 's@^([^#].*\s+swap\s+)@#\1@' /etc/fstab || true
+    fi
+
+    echo "Configuring kernel sysctls for bridged traffic and forwarding..."
+    sudo_if_needed modprobe br_netfilter || true
+    sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null <<EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
+EOF
+    sudo_if_needed sysctl --system >/dev/null
+
+    # 2) Ensure containerd uses systemd cgroups
+    echo "Ensuring containerd uses systemd cgroups..."
+    sudo_if_needed mkdir -p /etc/containerd
+    if ! sudo_if_needed test -f /etc/containerd/config.toml; then
+      containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
+    fi
+    sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
+    sudo_if_needed systemctl enable --now containerd
+    sudo_if_needed systemctl restart containerd
+
+    # 3) kubeadm init with Flannel pod CIDR
+    echo "Initializing control plane with pod CIDR ${POD_CIDR}..."
+    sudo_if_needed kubeadm init --pod-network-cidr="${POD_CIDR}"
+
+    # 4) Configure kubectl for current user
+    echo "Configuring kubeconfig for current user..."
+    mkdir -p "$HOME/.kube"
+    sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
+    sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+    export KUBECONFIG="$HOME/.kube/config"
+
+    # 5) Install Flannel CNI
+    echo "Installing Flannel CNI..."
+    kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+    # 6) Allow scheduling on control plane (single-node)
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+
+    # 7) Wait for node Ready
+    echo "Waiting for node to become Ready..."
+    kubectl wait --for=condition=Ready node --all --timeout=300s || true
+  fi
+fi
+
+# ===== Info =====
+CTX="$(kubectl config current-context || true || echo)"
+if [[ -z "${CTX}" ]]; then
+  echo "No current kubectl context is set. Set KUBECONFIG to your kubeadm admin.conf or run kubeadm init first."
+  exit 1
+fi
 echo "Current kube-context: ${CTX}"
 echo "Assuming kubeadm/containerd runtime"
 
-# ===== Ensure containerd is configured (idempotent) =====
-if command -v containerd >/dev/null 2>&1; then
-  echo "Ensuring containerd config exists and uses systemd cgroups..."
-  sudo mkdir -p /etc/containerd
-  if [[ ! -f /etc/containerd/config.toml ]]; then
-    sudo bash -c 'containerd config default > /etc/containerd/config.toml'
-  fi
-  sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
-  sudo systemctl enable --now containerd
-  sudo systemctl restart containerd
-  # Optional check
-  sudo ctr -n k8s.io images ls >/dev/null 2>&1 || true
+# ===== Ensure containerd config each run (idempotent) =====
+echo "Ensuring containerd config exists and uses systemd cgroups..."
+sudo_if_needed mkdir -p /etc/containerd
+if ! sudo_if_needed test -f /etc/containerd/config.toml; then
+  containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
 fi
+sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
+sudo_if_needed systemctl enable --now containerd
+sudo_if_needed systemctl restart containerd
+sudo_if_needed ctr -n k8s.io images ls >/dev/null 2>&1 || true
 
-# ===== Verify containerd/kubelet setup (kubeadm) =====
-if command -v ctr >/dev/null 2>&1; then
-  echo "Verifying containerd..."
-  CONTAINERD_STATUS="$(systemctl is-active containerd 2>/dev/null || true)"
-  if [[ "${CONTAINERD_STATUS}" != "active" ]]; then
-    echo "Warning: containerd service is not active (status: ${CONTAINERD_STATUS})."
-    echo "         Start it with: sudo systemctl enable --now containerd"
-  fi
-  if [[ -f /etc/containerd/config.toml ]]; then
-    if grep -q 'SystemdCgroup = false' /etc/containerd/config.toml; then
-      echo "Warning: SystemdCgroup=false in /etc/containerd/config.toml. Recommended: SystemdCgroup=true"
-      echo "         Fix: sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml && sudo systemctl restart containerd"
-    fi
-  fi
-  if ! sudo ctr -n k8s.io images ls >/dev/null 2>&1; then
-    echo "Warning: Unable to list images via 'sudo ctr -n k8s.io images ls'. Ensure containerd is healthy and your user can run sudo."
-  fi
-else
-  echo "Note: 'ctr' CLI not found; skipping containerd verification."
-fi
-
+# ===== Verify kubelet cgroup driver =====
 if [[ -f /var/lib/kubelet/config.yaml ]]; then
   if ! grep -q '^cgroupDriver: systemd' /var/lib/kubelet/config.yaml; then
     echo "Warning: kubelet cgroupDriver is not 'systemd'. With containerd, 'systemd' is recommended."
@@ -112,7 +157,6 @@ cleanup_old_images() {
   epoch_cutoff=$(( now - days*24*3600 ))
   in_use_tmp="$(mktemp)"
 
-  # Collect images used by all pods (containers + initContainers), across all namespaces
   kubectl get pods -A -o jsonpath='{range .items[*].spec.containers[*]}{.image}{"\n"}{end}{range .items[*].spec.initContainers[*]}{.image}{"\n"}{end}' \
     2>/dev/null | awk 'NF' | sort -u > "$in_use_tmp" || true
 
@@ -122,7 +166,6 @@ cleanup_old_images() {
 
   _in_use() { grep -Fxq "$1" "$in_use_tmp"; }
 
-  # Containerd images
   if command -v ctr >/dev/null 2>&1; then
     while IFS= read -r ref; do
       [[ "$ref" == ${base}:* ]] || continue
@@ -134,13 +177,12 @@ cleanup_old_images() {
         local ts; ts="$(date -u -d "$d" +%s 2>/dev/null || echo 0)"
         if (( ts > 0 && ts < epoch_cutoff )); then
           echo "  Removing containerd image: $ref (tag time: $d)"
-          sudo ctr -n k8s.io images rm "$ref" || true
+          sudo_if_needed ctr -n k8s.io images rm "$ref" || true
         fi
       fi
-    done < <(sudo ctr -n k8s.io images ls -q 2>/dev/null || true)
+    done < <(sudo_if_needed ctr -n k8s.io images ls -q 2>/dev/null || true)
   fi
 
-  # Docker local cache
   while IFS= read -r ref; do
     [[ "$ref" == ${base}:* ]] || continue
     [[ "$ref" == "$keep_image" ]] && continue
@@ -175,13 +217,13 @@ docker buildx build \
 
 # ===== Make the image available to the cluster (no external registry) =====
 echo "Importing image into containerd (kubeadm)"
-if docker save "${FULL_IMAGE}" | sudo ctr -n k8s.io images import -; then
+if docker save "${FULL_IMAGE}" | sudo_if_needed ctr -n k8s.io images import -; then
   echo "Image imported into containerd."
 else
   echo "Image import via pipe failed. Falling back to tar file..."
   TAR_NAME="$(echo "${IMAGE_NAME}_${IMAGE_TAG}" | tr '/:' '__').tar"
   docker save -o "${TAR_NAME}" "${FULL_IMAGE}"
-  sudo ctr -n k8s.io images import "${TAR_NAME}"
+  sudo_if_needed ctr -n k8s.io images import "${TAR_NAME}"
 fi
 
 # Prune old images (keeps current and anything in use)
