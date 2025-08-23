@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  web:
+    container_name: ${CONTAINER_NAME:-awroberts}
+    image: ${IMAGE_NAME:-awroberts:latest}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - "${HOST_CERT_PATH}:/etc/nginx/ssl/cert.crt:ro"
+      - "${HOST_KEY_PATH}:/etc/nginx/ssl/key.key:ro"
+      - "${HOST_MEDIA_PATH}:/usr/share/nginx/html/awroberts-media:ro"
+    restart: unless-stopped
