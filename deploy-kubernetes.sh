@@ -227,6 +227,12 @@ kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeou
 echo "Ingress controller Service (NodePorts) status:"
 kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
 
+# Discover NodePort values for HTTP/HTTPS (fallback to common defaults if not found)
+HTTP_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="http")]}{.nodePort}{end}' 2>/dev/null || true)"
+HTTPS_NODEPORT="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{range .spec.ports[?(@.name=="https")]}{.nodePort}{end}' 2>/dev/null || true)"
+if [[ -z "${HTTP_NODEPORT}" ]]; then HTTP_NODEPORT="30080"; fi
+if [[ -z "${HTTPS_NODEPORT}" ]]; then HTTPS_NODEPORT="30443"; fi
+
 # ===== Safe pruning: keep current image and any image in use by pods =====
 cleanup_old_images() {
   local base="$1" days="$2" keep_image="$3"
@@ -362,7 +368,7 @@ kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=2
 # ===== Notes =====
 # To be reachable from the Internet:
 #  - Allow inbound TCP 80/443 on the node.
-#  - Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443.
+#  - Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}.
 #  - Point your domain A/AAAA records at your public IP.
 
 echo
@@ -379,7 +385,7 @@ PUB_IP="$(curl -s https://api.ipify.org || true)"
 echo
 echo "Next steps to access from anywhere:"
 echo "- Open firewall for inbound TCP 80 and 443 on the node."
-echo "- Router/NAT: forward WAN 80 -> NODE_IP:30080 and WAN 443 -> NODE_IP:30443 (ingress-nginx NodePorts)."
+echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT} (ingress-nginx NodePorts)."
 echo "- DNS: set A/AAAA for:"
 echo "  * ${HOST_A}"
 echo "  * ${HOST_B}"
