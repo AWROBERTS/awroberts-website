@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Cluster targeting (override if needed)
+#   export KUBECONFIG_PATH=/etc/kubernetes/admin.conf
+#   export KUBE_CONTEXT=kubernetes-admin@kubernetes
+KUBECONFIG_PATH="${KUBECONFIG_PATH:-/etc/kubernetes/admin.conf}"
+if [[ -f "${KUBECONFIG_PATH}" ]]; then
+  export KUBECONFIG="${KUBECONFIG_PATH}"
+fi
+if [[ -n "${KUBE_CONTEXT:-}" ]]; then
+  kubectl config use-context "${KUBE_CONTEXT}" >/dev/null 2>&1 || true
+fi
+
 # ===== Config =====
 NAMESPACE="${NAMESPACE:-awroberts}"
 SECRET_NAME="${SECRET_NAME:-awroberts-tls}"
@@ -31,6 +42,111 @@ BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
 PLATFORM="${PLATFORM:-linux/amd64}"       # set to your dev arch (e.g., linux/arm64)
 BUILDER_NAME="${BUILDER_NAME:-localbuilder}"
 
+# Optional kubeadm bootstrap (one-time) - set CLUSTER_BOOTSTRAP=true to enable
+CLUSTER_BOOTSTRAP="${CLUSTER_BOOTSTRAP:-false}"
+POD_CIDR="${POD_CIDR:-10.244.0.0/16}"         # matches flannel default
+CNI_TYPE="${CNI_TYPE:-flannel}"               # flannel|calico
+ENABLE_INGRESS="${ENABLE_INGRESS:-true}"
+SKIP_SWAP_DISABLE="${SKIP_SWAP_DISABLE:-false}"
+
+# Helper to run sudo when not root
+sudo_if_needed() {
+  if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi
+}
+
+# If asked to bootstrap and no cluster is reachable, run kubeadm init flow
+if [[ "${CLUSTER_BOOTSTRAP}" == "true" ]]; then
+  if ! kubectl get nodes >/dev/null 2>&1; then
+    echo "No Kubernetes cluster detected via kubectl. Bootstrapping single-node control plane with kubeadm..."
+
+    # 1) Disable swap (required by kubelet)
+    if [[ "${SKIP_SWAP_DISABLE}" != "true" ]]; then
+      echo "Disabling swap..."
+      sudo_if_needed swapoff -a || true
+      if [[ -f /etc/fstab ]]; then
+        sudo_if_needed sed -i.bak -E 's@^([^#].*\s+swap\s+)@#\1@' /etc/fstab || true
+      fi
+    fi
+
+    # 2) Kernel params for Kubernetes networking
+    echo "Configuring sysctl for bridged traffic and ip_forward..."
+    sudo_if_needed modprobe br_netfilter || true
+    sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null <<EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
+EOF
+    sudo_if_needed sysctl --system >/dev/null
+
+    # 3) Install and configure containerd
+    if ! command -v containerd >/dev/null 2>&1; then
+      echo "Installing containerd..."
+      sudo_if_needed apt-get update
+      sudo_if_needed apt-get install -y containerd
+    fi
+    echo "Ensuring containerd uses systemd cgroups..."
+    sudo_if_needed mkdir -p /etc/containerd
+    if ! sudo_if_needed test -f /etc/containerd/config.toml; then
+      containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
+    fi
+    sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
+    sudo_if_needed systemctl enable --now containerd
+
+    # 4) Install kubeadm, kubelet, kubectl if missing
+    if ! command -v kubeadm >/dev/null 2>&1; then
+      echo "Installing kubeadm, kubelet, kubectl..."
+      sudo_if_needed apt-get update
+      sudo_if_needed apt-get install -y apt-transport-https ca-certificates curl gpg
+      sudo_if_needed curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg \
+        https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+      echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | \
+        sudo_if_needed tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
+      sudo_if_needed apt-get update
+      sudo_if_needed apt-get install -y kubelet kubeadm kubectl
+      sudo_if_needed systemctl enable --now kubelet
+    fi
+
+    # 5) kubeadm init
+    echo "Initializing control plane with pod CIDR ${POD_CIDR}..."
+    sudo_if_needed kubeadm init --pod-network-cidr="${POD_CIDR}"
+
+    # 6) Kubeconfig for current user (if not already set)
+    mkdir -p "$HOME/.kube"
+    sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
+    sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+    export KUBECONFIG="$HOME/.kube/config"
+
+    # 7) Install CNI
+    case "${CNI_TYPE}" in
+      flannel|Flannel)
+        echo "Installing Flannel CNI..."
+        kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+        ;;
+      calico|Calico)
+        echo "Installing Calico CNI..."
+        kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/calico.yaml
+        ;;
+      *)
+        echo "Unknown CNI_TYPE='${CNI_TYPE}'. Supported: flannel, calico."
+        exit 1
+        ;;
+    esac
+
+    # 8) Allow scheduling on control plane (single-node)
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+
+    # 9) Optional ingress controller
+    if [[ "${ENABLE_INGRESS}" == "true" ]]; then
+      echo "Installing ingress-nginx..."
+      kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+    fi
+
+    echo "kubeadm bootstrap complete."
+  else
+    echo "Cluster detected; skipping kubeadm bootstrap."
+  fi
+fi
+
 # ===== Pre-flight checks =====
 command -v docker >/dev/null 2>&1 || { echo "docker not found"; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl not found"; exit 1; }
@@ -52,7 +168,6 @@ if command -v ctr >/dev/null 2>&1; then
     echo "Warning: containerd service is not active (status: ${CONTAINERD_STATUS})."
     echo "         Start it with: sudo systemctl enable --now containerd"
   fi
-
   CONTAINERD_CFG="/etc/containerd/config.toml"
   if [[ -f "${CONTAINERD_CFG}" ]]; then
     if grep -q 'SystemdCgroup = false' "${CONTAINERD_CFG}"; then
@@ -64,7 +179,6 @@ if command -v ctr >/dev/null 2>&1; then
     echo "      sudo mkdir -p /etc/containerd && containerd config default | sudo tee ${CONTAINERD_CFG} >/dev/null"
     echo "      sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' ${CONTAINERD_CFG} && sudo systemctl restart containerd"
   fi
-
   if ! sudo ctr -n k8s.io images ls >/dev/null 2>&1; then
     echo "Warning: Unable to list images via 'sudo ctr -n k8s.io images ls'."
     echo "         Ensure containerd is healthy and your user can run sudo."
@@ -72,7 +186,6 @@ if command -v ctr >/dev/null 2>&1; then
 else
   echo "Note: 'ctr' CLI not found; skipping containerd verification."
 fi
-
 if [[ -f /var/lib/kubelet/config.yaml ]]; then
   if ! grep -q '^cgroupDriver: systemd' /var/lib/kubelet/config.yaml; then
     echo "Warning: kubelet cgroupDriver is not 'systemd'."
@@ -87,27 +200,17 @@ cleanup_old_images() {
   now="$(date -u +%s)"
   epoch_cutoff=$(( now - days*24*3600 ))
   in_use_tmp="$(mktemp)"
-
-  # Collect images used by all pods (containers + initContainers), across all namespaces
   kubectl get pods -A -o jsonpath='{range .items[*].spec.containers[*]}{.image}{"\n"}{end}{range .items[*].spec.initContainers[*]}{.image}{"\n"}{end}' \
     2>/dev/null | awk 'NF' | sort -u > "$in_use_tmp" || true
-
   echo "Pruning timestamp-tagged images older than ${days} days for base '${base}:'"
   echo "Keeping current image: ${keep_image}"
   echo "Also keeping any image currently used by running pods."
-
-  # Helper: check if ref is in-use
-  _in_use() {
-    local ref="$1"
-    grep -Fxq "$ref" "$in_use_tmp"
-  }
-
-  # Containerd images
+  _in_use() { grep -Fxq "$1" "$in_use_tmp"; }
   if command -v ctr >/dev/null 2>&1; then
     while IFS= read -r ref; do
       [[ "$ref" == ${base}:* ]] || continue
       [[ "$ref" == "$keep_image" ]] && continue
-      if _in_use "$ref"; then continue; fi
+      _in_use "$ref" && continue
       local tag="${ref#${base}:}"
       if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
         local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
@@ -119,12 +222,10 @@ cleanup_old_images() {
       fi
     done < <(sudo ctr -n k8s.io images ls -q 2>/dev/null || true)
   fi
-
-  # Docker local cache
   while IFS= read -r ref; do
     [[ "$ref" == ${base}:* ]] || continue
     [[ "$ref" == "$keep_image" ]] && continue
-    if _in_use "$ref"; then continue; fi
+    _in_use "$ref" && continue
     local tag="${ref#${base}:}"
     if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
       local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
@@ -135,22 +236,19 @@ cleanup_old_images() {
       fi
     fi
   done < <(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true)
-
   rm -f "$in_use_tmp"
 }
 
 # ===== Build local image with Buildx (loaded into local Docker daemon) =====
-if ! docker buildx version >/dev/null 2>&1; then
+if ! docker buildx version >/dev/null 2%; then
   echo "docker buildx not found. Please install Docker Buildx."
   exit 1
 fi
-
 if ! docker buildx inspect "$BUILDER_NAME" >/dev/null 2>&1; then
   docker buildx create --name "$BUILDER_NAME" --use >/dev/null
 else
   docker buildx use "$BUILDER_NAME" >/dev/null
 fi
-
 echo "Building local image ${FULL_IMAGE} for ${PLATFORM}"
 docker buildx build \
   --platform "${PLATFORM}" \
@@ -173,33 +271,22 @@ fi
 cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
 
 # ===== Kubernetes deploy =====
-
-# 1) Ensure namespace exists
 kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
-
-# 2) Create or update the TLS Secret idempotently
 kubectl -n "$NAMESPACE" create secret tls "$SECRET_NAME" \
   --cert="$HOST_CERT_PATH" \
   --key="$HOST_KEY_PATH" \
   --dry-run=client -o yaml | kubectl apply -f -
-
-# 3) Apply app manifests (Deployment, Service, Ingress, etc.)
 echo "Applying manifests from: ${MANIFEST_DIR}"
 kubectl -n "$NAMESPACE" apply -f "$MANIFEST_DIR"
-
-# Ensure a Service exists; if not, create one for the Deployment (ClusterIP for Ingress)
 if ! kubectl -n "$NAMESPACE" get svc "${SERVICE_NAME}" >/dev/null 2>&1; then
   echo "No Service named '${SERVICE_NAME}' found. Creating one for Deployment '${DEPLOYMENT_NAME}'."
   kubectl -n "$NAMESPACE" expose deploy "$DEPLOYMENT_NAME" \
     --name "${SERVICE_NAME}" --port=80 --target-port=80 --type=ClusterIP
 fi
-
-# 4) Determine the container name (auto-detect if not provided)
 if [[ -z "$CONTAINER_NAME_IN_DEPLOY" ]]; then
   CONTAINERS_IN_DEPLOY="$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.spec.template.spec.containers[*].name}')"
   if [[ -z "$CONTAINERS_IN_DEPLOY" ]]; then
-    echo "Error: No containers found in deployment/${DEPLOYMENT_NAME}"
-    exit 1
+    echo "Error: No containers found in deployment/${DEPLOYMENT_NAME}"; exit 1
   fi
   CONTAINER_NAME_IN_DEPLOY="$(echo "$CONTAINERS_IN_DEPLOY" | awk '{print $1}')"
   if [[ "$(echo "$CONTAINERS_IN_DEPLOY" | wc -w)" -gt 1 ]]; then
@@ -208,26 +295,11 @@ if [[ -z "$CONTAINER_NAME_IN_DEPLOY" ]]; then
 fi
 echo "Updating image for container '${CONTAINER_NAME_IN_DEPLOY}' in deployment/${DEPLOYMENT_NAME} to ${FULL_IMAGE}"
 kubectl -n "$NAMESPACE" set image deployment/"$DEPLOYMENT_NAME" "${CONTAINER_NAME_IN_DEPLOY}=${FULL_IMAGE}"
-
-# 5) Ensure we don't force pulls (so local image is used)
 kubectl -n "$NAMESPACE" patch deployment "$DEPLOYMENT_NAME" \
-  --type='json' \
-  -p="[
-    {\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/imagePullPolicy\",\"value\":\"IfNotPresent\"}
-  ]" || true
-
-# 6) Optional: roll pods when certs change (handy for hot cert swaps)
+  --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"IfNotPresent"}]' || true
 TLS_CHECKSUM="$(cat "$HOST_CERT_PATH" "$HOST_KEY_PATH" | sha256sum | awk '{print $1}')"
 kubectl -n "$NAMESPACE" annotate deployment/"$DEPLOYMENT_NAME" tls-checksum="$TLS_CHECKSUM" --overwrite
-
-# 7) Wait for rollout
 kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=240s
-
-# ===== No cluster networking magic here by default =====
-# To be reachable from the Internet:
-#  - Allow inbound TCP 80/443 on the node.
-#  - Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443.
-#  - Point your domain A/AAAA records at your public IP.
 
 echo
 echo "Deployment done. Quick status:"
@@ -236,10 +308,8 @@ kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o wide || true
 if kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" >/dev/null 2>&1; then
   kubectl -n "$NAMESPACE" get ingress "$INGRESS_NAME" -o wide
 fi
-
 NODE_IPS="$(kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{" "}{end}')"
 PUB_IP="$(curl -s https://api.ipify.org || true)"
-
 echo
 echo "Next steps to access from anywhere:"
 echo "- Open firewall for inbound TCP 80 and 443 on the node."
