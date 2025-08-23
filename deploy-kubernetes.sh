@@ -217,6 +217,16 @@ if [[ -f /var/lib/kubelet/config.yaml ]]; then
   fi
 fi
 
+# ===== Ensure ingress-nginx (bare-metal) is installed =====
+echo "Ensuring ingress-nginx controller is installed (bare-metal preset)..."
+if ! kubectl -n ingress-nginx get deploy ingress-nginx-controller >/dev/null 2>&1; then
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
+fi
+echo "Waiting for ingress-nginx-controller to become Ready..."
+kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=300s || true
+echo "Ingress controller Service (NodePorts) status:"
+kubectl -n ingress-nginx get svc ingress-nginx-controller -o wide || true
+
 # ===== Safe pruning: keep current image and any image in use by pods =====
 cleanup_old_images() {
   local base="$1" days="$2" keep_image="$3"
@@ -369,7 +379,7 @@ PUB_IP="$(curl -s https://api.ipify.org || true)"
 echo
 echo "Next steps to access from anywhere:"
 echo "- Open firewall for inbound TCP 80 and 443 on the node."
-echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443 (choose one of: ${NODE_IPS})."
+echo "- Router/NAT: forward WAN 80 -> NODE_IP:30080 and WAN 443 -> NODE_IP:30443 (ingress-nginx NodePorts)."
 echo "- DNS: set A/AAAA for:"
 echo "  * ${HOST_A}"
 echo "  * ${HOST_B}"
