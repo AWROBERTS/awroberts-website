@@ -164,8 +164,12 @@ if command -v minikube >/dev/null 2>&1 && minikube status >/dev/null 2>&1 && [[ 
       if ! grep -qE "^${MINIKUBE_IP}[[:space:]].*\b${host}\b" /etc/hosts; then
         echo "Updating /etc/hosts entry for ${host} to ${MINIKUBE_IP}..."
         tmpfile="$(mktemp)"
-        awk -v h="${host}" 'BEGIN{updated=0} {if($0 ~ "^[^#].*\\b"h"\\b"){next} print} END{}' /etc/hosts > "${tmpfile}"
-        echo "${MINIKUBE_IP} ${host}" | tee -a "${tmpfile}" >/dev/null || true
+        awk -v h="${host}" '!($0 ~ "^[^#].*\\b" h "\\b") {print}' /etc/hosts > "${tmpfile}"
+        if echo "${MINIKUBE_IP} ${host}" >> "${tmpfile}" 2>/dev/null; then
+          :
+        else
+          echo "Failed to append to temp file"; rm -f "${tmpfile}"; exit 1
+        fi
         if cp "${tmpfile}" /etc/hosts 2>/dev/null; then
           :
         else
@@ -184,7 +188,7 @@ if command -v minikube >/dev/null 2>&1 && minikube status >/dev/null 2>&1 && [[ 
         echo "Escalating with sudo to append /etc/hosts..."
         echo "${MINIKUBE_IP} ${host}" | sudo tee -a /etc/hosts >/dev/null
       fi
-    end
+    fi
   }
 
   # Add both hosts
