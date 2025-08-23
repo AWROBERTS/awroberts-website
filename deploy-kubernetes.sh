@@ -18,9 +18,14 @@ HOST_CERT_PATH="${HOST_CERT_PATH:-/var/www/html/awroberts/awroberts-certs/fullch
 HOST_KEY_PATH="${HOST_KEY_PATH:-/var/www/html/awroberts/awroberts-certs/awroberts_co_uk.key}"
 
 # Local image build settings
-IMAGE_NAME="${IMAGE_NAME:-awroberts}"     # untagged base
-IMAGE_TAG="${IMAGE_TAG:-v1}"              # tag to deploy
+IMAGE_NAME="${IMAGE_NAME:-awroberts}"     # repository/name (can include registry)
+USE_TIMESTAMP="${USE_TIMESTAMP:-true}"    # true -> auto timestamp tag if IMAGE_TAG not set
+RETENTION_DAYS="${RETENTION_DAYS:-7}"     # prune timestamp-tagged images older than this
+IMAGE_TAG="${IMAGE_TAG:-}"                # optional; if unset and USE_TIMESTAMP=true, a timestamp is used
 IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"       # strip any tag if present
+if [[ "${USE_TIMESTAMP}" == "true" && -z "${IMAGE_TAG}" ]]; then
+  IMAGE_TAG="$(date -u +%Y%m%d-%H%M%S)"
+fi
 FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
 BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
 PLATFORM="${PLATFORM:-linux/amd64}"       # set to your dev arch (e.g., linux/arm64)
@@ -75,6 +80,65 @@ if [[ -f /var/lib/kubelet/config.yaml ]]; then
   fi
 fi
 
+# Safe pruning: keep current image and any image in use by pods
+cleanup_old_images() {
+  local base="$1" days="$2" keep_image="$3"
+  local now epoch_cutoff in_use_tmp
+  now="$(date -u +%s)"
+  epoch_cutoff=$(( now - days*24*3600 ))
+  in_use_tmp="$(mktemp)"
+
+  # Collect images used by all pods (containers + initContainers), across all namespaces
+  kubectl get pods -A -o jsonpath='{range .items[*].spec.containers[*]}{.image}{"\n"}{end}{range .items[*].spec.initContainers[*]}{.image}{"\n"}{end}' \
+    2>/dev/null | awk 'NF' | sort -u > "$in_use_tmp" || true
+
+  echo "Pruning timestamp-tagged images older than ${days} days for base '${base}:'"
+  echo "Keeping current image: ${keep_image}"
+  echo "Also keeping any image currently used by running pods."
+
+  # Helper: check if ref is in-use
+  _in_use() {
+    local ref="$1"
+    grep -Fxq "$ref" "$in_use_tmp"
+  }
+
+  # Containerd images
+  if command -v ctr >/dev/null 2>&1; then
+    while IFS= read -r ref; do
+      [[ "$ref" == ${base}:* ]] || continue
+      [[ "$ref" == "$keep_image" ]] && continue
+      if _in_use "$ref"; then continue; fi
+      local tag="${ref#${base}:}"
+      if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
+        local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
+        local ts; ts="$(date -u -d "$d" +%s 2>/dev/null || echo 0)"
+        if (( ts > 0 && ts < epoch_cutoff )); then
+          echo "  Removing containerd image: $ref (tag time: $d)"
+          sudo ctr -n k8s.io images rm "$ref" || true
+        fi
+      fi
+    done < <(sudo ctr -n k8s.io images ls -q 2>/dev/null || true)
+  fi
+
+  # Docker local cache
+  while IFS= read -r ref; do
+    [[ "$ref" == ${base}:* ]] || continue
+    [[ "$ref" == "$keep_image" ]] && continue
+    if _in_use "$ref"; then continue; fi
+    local tag="${ref#${base}:}"
+    if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
+      local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
+      local ts; ts="$(date -u -d "$d" +%s 2>/dev/null || echo 0)"
+      if (( ts > 0 && ts < epoch_cutoff )); then
+        echo "  Removing docker image: $ref (tag time: $d)"
+        docker image rm "$ref" >/dev/null 2>&1 || true
+      fi
+    fi
+  done < <(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true)
+
+  rm -f "$in_use_tmp"
+}
+
 # ===== Build local image with Buildx (loaded into local Docker daemon) =====
 if ! docker buildx version >/dev/null 2>&1; then
   echo "docker buildx not found. Please install Docker Buildx."
@@ -104,6 +168,9 @@ else
   docker save -o "${TAR_NAME}" "${FULL_IMAGE}"
   sudo ctr -n k8s.io images import "${TAR_NAME}"
 fi
+
+# Prune old images (keeps current and anything in use)
+cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
 
 # ===== Kubernetes deploy =====
 
