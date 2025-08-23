@@ -14,8 +14,8 @@ HOST_A="${HOST_A:-awroberts.co.uk}"
 HOST_B="${HOST_B:-www.awroberts.co.uk}"
 
 # TLS certs (full chain + unencrypted key)
-HOST_CERT_PATH="${HOST_CERT_PATH:-/path/to/fullchain.crt}"
-HOST_KEY_PATH="${HOST_KEY_PATH:-/path/to/privkey.key}"
+HOST_CERT_PATH="${HOST_CERT_PATH:-/var/www/html/awroberts-certs/fullchain.crt}"
+HOST_KEY_PATH="${HOST_KEY_PATH:-/var/www/html/awroberts-certs/awroberts_co.uk.key}"
 
 # Local image build settings
 IMAGE_NAME="${IMAGE_NAME:-awroberts}"     # untagged base
@@ -132,80 +132,105 @@ kubectl -n "$NAMESPACE" patch deployment "$DEPLOYMENT_NAME" \
 # 8) Wait for rollout
 kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=180s
 
-# ===== Minikube Ingress automation (enable addon, wait, hosts entries, verify) =====
+# ===== Minikube Ingress automation (enable addon, LB or port-forward fallback, hosts entries, verify) =====
 if command -v minikube >/dev/null 2>&1 && minikube status >/dev/null 2>&1 && [[ "$CTX" == minikube* ]]; then
   echo "Minikube detected. Enabling ingress addon (idempotent)."
   minikube addons enable ingress >/dev/null || true
 
   echo "Waiting for ingress-nginx controller to be ready..."
-  # Try common controller names depending on minikube version
-  kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=180s || \
-  kubectl -n ingress-nginx rollout status deploy/nginx-ingress-controller --timeout=180s || true
+  kubectl -n ingress-nginx rollout status deploy/ingress-nginx-controller --timeout=180s || true
   kubectl -n ingress-nginx get pods
 
-  echo "Verifying Ingress '${INGRESS_NAME}' exists in namespace '${NAMESPACE}'..."
-  if ! kubectl -n "$NAMESPACE" get ingress "${INGRESS_NAME}" >/dev/null 2>&1; then
-    echo "Warning: Ingress '${INGRESS_NAME}' not found. Ensure it exists in ${MANIFEST_DIR} and references service '${SERVICE_NAME}'."
-  else
-    kubectl -n "$NAMESPACE" get ingress "${INGRESS_NAME}"
+  echo "Ensuring ingress controller Service is LoadBalancer..."
+  SVC_TYPE="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.spec.type}' 2>/dev/null || echo "")"
+  if [[ "$SVC_TYPE" != "LoadBalancer" ]]; then
+    kubectl -n ingress-nginx patch svc ingress-nginx-controller -p '{"spec":{"type":"LoadBalancer"}}'
   fi
 
-  echo "Ensuring Service '${SERVICE_NAME}' has endpoints..."
-  kubectl -n "$NAMESPACE" get endpoints "${SERVICE_NAME}" -o wide || true
+  # Try to start minikube tunnel non-interactively; if it cannot start, we fallback to port-forward.
+  TUNNEL_STARTED="false"
+  if ! pgrep -f "minikube tunnel" >/dev/null 2>&1; then
+    echo "Attempting to start 'minikube tunnel' non-interactively..."
+    if sudo -n true 2>/dev/null; then
+      nohup sudo -E env "MINIKUBE_HOME=$HOME/.minikube" "KUBECONFIG=$HOME/.kube/config" \
+        minikube -p minikube tunnel >/tmp/minikube-tunnel.log 2>&1 &
+      disown || true
+      TUNNEL_STARTED="true"
+      sleep 3
+    else
+      echo "No passwordless sudo available; skipping tunnel start (will fall back to port-forward)."
+    fi
+  else
+    echo "'minikube tunnel' already running."
+    TUNNEL_STARTED="true"
+  fi
 
-  echo "Resolving Minikube IP..."
-  MINIKUBE_IP="$(minikube ip)"
-  echo "Minikube IP: ${MINIKUBE_IP}"
+  echo "Resolving external IP for LoadBalancer..."
+  TARGET_IP=""
+  if [[ "$TUNNEL_STARTED" == "true" ]]; then
+    for i in {1..30}; do
+      EXTERNAL_IP="$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+      if [[ -n "$EXTERNAL_IP" && "$EXTERNAL_IP" != 10.* ]]; then
+        TARGET_IP="$EXTERNAL_IP"
+        break
+      fi
+      sleep 2
+    done
+    if [[ -n "$TARGET_IP" ]]; then
+      echo "LoadBalancer EXTERNAL-IP ready: ${TARGET_IP}"
+    else
+      echo "No usable EXTERNAL-IP (still internal or empty). Will fall back to port-forward."
+    fi
+  fi
 
+  # Fallback: port-forward ingress-nginx 80/443 to localhost
+  if [[ -z "$TARGET_IP" ]]; then
+    echo "Starting port-forward on 127.0.0.1:80 and :443..."
+    # Free ports if busy (best-effort)
+    command -v lsof >/dev/null 2>&1 && lsof -ti tcp:80 2>/dev/null | xargs -r kill -9 || true
+    command -v lsof >/dev/null 2>&1 && lsof -ti tcp:443 2>/dev/null | xargs -r kill -9 || true
+    nohup kubectl -n ingress-nginx port-forward --address=127.0.0.1 svc/ingress-nginx-controller 80:80 443:443 >/tmp/ingress-pf.log 2>&1 &
+    disown || true
+    TARGET_IP="127.0.0.1"
+    sleep 2
+  fi
+
+  echo "Updating /etc/hosts for ${HOST_A} and ${HOST_B} -> ${TARGET_IP}"
   add_host_entry() {
-    local host="$1"
-    # If entry exists but points elsewhere, update it; otherwise append
+    local ip="$1"
+    local host="$2"
     if grep -qE "^[^#]*\b${host}\b" /etc/hosts; then
-      if ! grep -qE "^${MINIKUBE_IP}[[:space:]].*\b${host}\b" /etc/hosts; then
-        echo "Updating /etc/hosts entry for ${host} to ${MINIKUBE_IP}..."
+      if ! grep -qE "^${ip}[[:space:]].*\b${host}\b" /etc/hosts; then
+        echo "Adjusting /etc/hosts for ${host} -> ${ip}"
         tmpfile="$(mktemp)"
         awk -v h="${host}" '!($0 ~ "^[^#].*\\b" h "\\b") {print}' /etc/hosts > "${tmpfile}"
-        if echo "${MINIKUBE_IP} ${host}" >> "${tmpfile}" 2>/dev/null; then
-          :
-        else
-          echo "Failed to append to temp file"; rm -f "${tmpfile}"; exit 1
-        fi
-        if cp "${tmpfile}" /etc/hosts 2>/dev/null; then
-          :
-        else
-          echo "Escalating with sudo to update /etc/hosts..."
-          sudo cp "${tmpfile}" /etc/hosts
-        fi
+        echo "${ip} ${host}" >> "${tmpfile}"
+        if cp "${tmpfile}" /etc/hosts 2>/dev/null; then :; else sudo cp "${tmpfile}" /etc/hosts; fi
         rm -f "${tmpfile}"
       else
-        echo "/etc/hosts already has ${host} -> ${MINIKUBE_IP}"
+        echo "/etc/hosts already maps ${host} -> ${ip}"
       fi
     else
-      echo "Adding ${host} -> ${MINIKUBE_IP} to /etc/hosts..."
-      if echo "${MINIKUBE_IP} ${host}" >> /etc/hosts 2>/dev/null; then
-        :
-      else
-        echo "Escalating with sudo to append /etc/hosts..."
-        echo "${MINIKUBE_IP} ${host}" | sudo tee -a /etc/hosts >/dev/null
-      fi
+      echo "Adding ${host} -> ${ip} to /etc/hosts"
+      if echo "${ip} ${host}" >> /etc/hosts 2>/dev/null; then :; else echo "${ip} ${host}" | sudo tee -a /etc/hosts >/dev/null; fi
     fi
   }
+  add_host_entry "${TARGET_IP}" "${HOST_A}"
+  add_host_entry "${TARGET_IP}" "${HOST_B}"
 
-  # Add both hosts
-  add_host_entry "${HOST_A}"
-  add_host_entry "${HOST_B}"
-
-  echo "Testing HTTP reachability via Ingress..."
+  echo "Verifying routing via Ingress..."
   set +e
   curl -sS -I "http://${HOST_A}/" || true
-  curl -sS -I "http://${HOST_B}/" || true
-
-  echo "Testing HTTPS reachability via Ingress (ignoring cert trust issues)..."
   curl -k -sS -I "https://${HOST_A}/" || true
+  curl -sS -I "http://${HOST_B}/" || true
   curl -k -sS -I "https://${HOST_B}/" || true
   set -e
 
-  echo "If you see HTTP/1.1 200 OK above, Ingress routing is working."
+  if [[ "${TARGET_IP}" == "127.0.0.1" ]]; then
+    echo "Ingress reachable via localhost (port-forward fallback active)."
+  else
+    echo "Ingress reachable via LoadBalancer EXTERNAL-IP ${TARGET_IP} (tunnel active)."
+  fi
 fi
 
 echo "Deployment complete: ${FULL_IMAGE}"
