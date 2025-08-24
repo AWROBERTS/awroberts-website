@@ -27,8 +27,8 @@ jobs:
 
       - name: Set executable permissions for shell scripts
         run: |
-          chmod +x ./mahogany-teeth-github/scripts/get-github-secrets.sh
-          chmod +x ./mahogany-teeth-github/scripts/get-terraform-workspace-variables.sh
+          chmod +x ./awroberts-github/scripts/get-github-secrets.sh
+          chmod +x ./awroberts-github/scripts/get-terraform-workspace-variables.sh
 
       - name: Get Variables from Github Secrets
         run: ./mahogany-teeth-github/scripts/get-github-secrets.sh
