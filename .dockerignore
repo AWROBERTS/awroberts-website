@@ -8,3 +8,9 @@ dist-cache
 # ignore directories stored on local machine for certs and media
 awroberts-certs/
 awroberts-media
+
+# Ignore env files so they are not sent in the Docker build context
+.env
+*.env
+*.cenv
+.env.*
