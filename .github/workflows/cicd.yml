@@ -12,9 +12,6 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./terraform
 
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TFE_TOKEN }}
@@ -54,18 +51,23 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: ./terraform
 
       - name: Terraform Validate
         run: terraform validate
+        working-directory: ./terraform
 
       - name: Terraform Plan
         run: terraform plan
+        working-directory: ./terraform
 
       - name: Terraform Apply (only on push to main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply --auto-approve
+        working-directory: ./terraform
 
       - name: Cleanup .tfvars files
         run: |
           rm -f github-terraform.auto.tfvars
           rm -f terraform.auto.tfvars
+        working-directory: ./terraform
