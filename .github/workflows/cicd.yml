@@ -31,7 +31,7 @@ jobs:
           chmod +x ./terraform/awroberts-github/scripts/get-terraform-workspace-variables.sh
 
       - name: Get Variables from Github Secrets
-        run: ./mahogany-teeth-github/scripts/get-github-secrets.sh
+        run: ./terraform/awroberts-github//scripts/get-github-secrets.sh
         env:
           GITHUB_REPOSITORY: ${{ secrets.AWROBERTS_GITHUB_REPOSITORY }}
           AWROBERTS_GITHUB_TOKEN: ${{ secrets.AWROBERTS_GITHUB_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
           TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
 
       - name: Get Workspace Variables from Terraform Cloud
-        run: ./mahogany-teeth-github/scripts/get-terraform-workspace-variables.sh
+        run: ./terraform/awroberts-github/scripts/get-terraform-workspace-variables.sh
         env:
           TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
           TF_CLOUD_WORKSPACE_ID: ${{ secrets.TF_CLOUD_WORKSPACE_ID }}
