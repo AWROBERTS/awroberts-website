@@ -36,7 +36,7 @@ jobs:
       - name: Get Variables from Github Secrets
         run: ./awroberts-github/scripts/get-github-secrets.sh
         env:
-          GITHUB_REPOSITORY: ${{ secrets.AWROBERTS_GITHUB_REPOSITORY }}
+          AWROBERTS_GITHUB_REPOSITORY: ${{ secrets.AWROBERTS_GITHUB_REPOSITORY }}
           AWROBERTS_GITHUB_TOKEN: ${{ secrets.AWROBERTS_GITHUB_TOKEN }}
           TF_CLOUD_TERRAFORM_VERSION: ${{ secrets.TF_CLOUD_TERRAFORM_VERSION }}
           TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
