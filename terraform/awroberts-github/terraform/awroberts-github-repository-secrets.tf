@@ -1,6 +1,6 @@
 resource "github_actions_secret" "awroberts_secrets_github_repository" {
   repository      = var.awroberts_github_repository
-  secret_name     = "awroberts_GITHUB_REPOSITORY"
+  secret_name     = "AWROBERTS_GITHUB_REPOSITORY"
   plaintext_value = var.awroberts_github_repository
 }
 
