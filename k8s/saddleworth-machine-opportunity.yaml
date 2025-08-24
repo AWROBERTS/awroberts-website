@@ -13,7 +13,7 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: saddleworth-pi
+  name: saddleworth-machine-opportunity
   namespace: awroberts
 subsets:
   - addresses:
@@ -25,7 +25,7 @@ subsets:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: saddleworth-pi
+  name: saddleworth-machine-opportunity
   namespace: awroberts
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -39,6 +39,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: saddleworth-pi
+                name: saddleworth-machine-opportunity
                 port:
                   number: 80
