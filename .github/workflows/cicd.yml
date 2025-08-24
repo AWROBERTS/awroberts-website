@@ -12,6 +12,9 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
 
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TFE_TOKEN }}
@@ -27,11 +30,11 @@ jobs:
 
       - name: Set executable permissions for shell scripts
         run: |
-          chmod +x ./terraform/awroberts-github/scripts/get-github-secrets.sh
-          chmod +x ./terraform/awroberts-github/scripts/get-terraform-workspace-variables.sh
+          chmod +x ./awroberts-github/scripts/get-github-secrets.sh
+          chmod +x ./awroberts-github/scripts/get-terraform-workspace-variables.sh
 
       - name: Get Variables from Github Secrets
-        run: ./terraform/awroberts-github//scripts/get-github-secrets.sh
+        run: ./awroberts-github/scripts/get-github-secrets.sh
         env:
           GITHUB_REPOSITORY: ${{ secrets.AWROBERTS_GITHUB_REPOSITORY }}
           AWROBERTS_GITHUB_TOKEN: ${{ secrets.AWROBERTS_GITHUB_TOKEN }}
@@ -39,7 +42,7 @@ jobs:
           TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
 
       - name: Get Workspace Variables from Terraform Cloud
-        run: ./terraform/awroberts-github/scripts/get-terraform-workspace-variables.sh
+        run: ./awroberts-github/scripts/get-terraform-workspace-variables.sh
         env:
           TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
           TF_CLOUD_WORKSPACE_ID: ${{ secrets.TF_CLOUD_WORKSPACE_ID }}
@@ -51,23 +54,18 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./terraform
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ./terraform
 
       - name: Terraform Plan
         run: terraform plan
-        working-directory: ./terraform
 
       - name: Terraform Apply (only on push to main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply --auto-approve
-        working-directory: ./terraform
 
       - name: Cleanup .tfvars files
         run: |
           rm -f github-terraform.auto.tfvars
           rm -f terraform.auto.tfvars
-        working-directory: ./terraform
