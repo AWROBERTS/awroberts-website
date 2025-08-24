@@ -1,5 +1,5 @@
 data "github_repository" "awroberts" {
-  name = var.awroberts_github_repository
+  full_name = var.awroberts_github_repository
 }
 
 resource "github_branch_protection" "awroberts_main" {
