@@ -1,0 +1,68 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TFE_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Set executable permissions for shell scripts
+        run: |
+          chmod +x ./mahogany-teeth-github/scripts/get-github-secrets.sh
+          chmod +x ./mahogany-teeth-github/scripts/get-terraform-workspace-variables.sh
+
+      - name: Get Variables from Github Secrets
+        run: ./mahogany-teeth-github/scripts/get-github-secrets.sh
+        env:
+          GITHUB_REPOSITORY: ${{ secrets.AWROBERTS_GITHUB_REPOSITORY }}
+          AWROBERTS_GITHUB_TOKEN: ${{ secrets.AWROBERTS_GITHUB_TOKEN }}
+          TF_CLOUD_TERRAFORM_VERSION: ${{ secrets.TF_CLOUD_TERRAFORM_VERSION }}
+          TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
+
+      - name: Get Workspace Variables from Terraform Cloud
+        run: ./mahogany-teeth-github/scripts/get-terraform-workspace-variables.sh
+        env:
+          TFE_TOKEN: ${{ secrets.TFE_TOKEN }}
+          TF_CLOUD_WORKSPACE_ID: ${{ secrets.TF_CLOUD_WORKSPACE_ID }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ secrets.TF_CLOUD_TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply (only on push to main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply --auto-approve
+
+      - name: Cleanup .tfvars files
+        run: |
+          rm -f github-terraform.auto.tfvars
+          rm -f terraform.auto.tfvars
