@@ -1,36 +1,50 @@
-<html>
-    <head>
-        <link rel="icon" href="/favicon.ico?v=1" sizes="any" type="image/x-icon">
-        <link rel="stylesheet" type="text/css" href="style.css">
-        <script src="p5/p5.js"></script>
-        <script src="sketch.js"></script>
-        <style>
-            #email-link {
-                font-size: 16px; /* we will change this value with JavaScript */
-                width: 50%;
-                height: 20%;
-            }
-        </style>
-    </head>
-    <body style="background-color:black;">
-        <main>
-            <video class="background" autoplay muted loop>
-                <source src="awroberts-media/background.mp4" />
-            </video>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AW Roberts</title>
+    <link rel="icon" href="/favicon.ico?v=1" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="p5/p5.js"></script>
+    <script src="sketch.js"></script>
+    <style>
+        #email-link {
+            font-size: 16px;
+            width: 50%;
+            height: 20%;
+        }
+        video.background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            min-width: 100%;
+            min-height: 100%;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body style="background-color:black;">
+    <main>
+        <video class="background" autoplay muted loop>
+            <source src="awroberts-media/background.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
 
-            <div id="canvas-container"></div>
-            <a id="email-link" href="mailto:info@awroberts.co.uk" style="position: absolute; top: 10%; left: 15%; z-index: "></a>
-        </main>
+        <div id="canvas-container"></div>
+        <a id="email-link" href="mailto:info@awroberts.co.uk" style="position: absolute; top: 10%; left: 15%; z-index: 10;">
+            Contact Us
+        </a>
+    </main>
 
-        <script>
-            function resizeEmailLink() {
-                var emailLink = document.getElementById('email-link');
-                var textSize = Math.min(window.innerWidth, window.innerHeight) / 10;
-                emailLink.style.fontSize = textSize + 'px';
-            }
+    <script>
+        function resizeEmailLink() {
+            var emailLink = document.getElementById('email-link');
+            var textSize = Math.min(window.innerWidth, window.innerHeight) / 10;
+            emailLink.style.fontSize = textSize + 'px';
+        }
 
-            window.onresize = resizeEmailLink;
-            resizeEmailLink(); // initial setting
-        </script>
-    </body>
+        window.onresize = resizeEmailLink;
+        resizeEmailLink();
+    </script>
+</body>
 </html>
