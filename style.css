@@ -1,4 +1,3 @@
-/* Reset and full viewport coverage */
 html, body {
   margin: 0;
   padding: 0;
@@ -8,37 +7,13 @@ html, body {
   background-color: black;
 }
 
-/* Fullscreen background video */
-video.background {
+.background-video {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  object-fit: cover; /* This ensures the video fills the container */
-  overflow: hidden;
+  object-fit: cover;
   z-index: -1;
-}
-
-/* Canvas container for overlays */
-#canvas-container {
-  position: relative;
-  z-index: 1;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-}
-
-/* Invisible link mapped to canvas coordinates */
-#email-link {
   display: block;
-  position: absolute;
-  top: 130px;   /* Adjust to match your sketch.js logic */
-  left: 100px;
-  width: 200px;
-  height: 20px;
-  z-index: 3;
-  background: transparent;
-  color: transparent;
-  text-decoration: none;
 }
