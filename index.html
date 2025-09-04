@@ -2,22 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AW Roberts</title>
+  <title>Fullscreen Video</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Fullscreen background video -->
-  <video class="background" autoplay muted loop playsinline>
-    <source src="/awroberts-media/background.mp4" type="video/mp4">
+  <video autoplay muted loop playsinline webkit-playsinline class="background-video">
+    <source src="https://awroberts.co.uk/awroberts-media/background.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
-
-  <!-- Canvas container for overlays -->
-  <div id="canvas-container">
-    <!-- p5.js or other content can render here -->
-  </div>
-
-  <!-- Optional invisible link mapped to canvas coordinates -->
-  <a id="email-link" href="mailto:example@example.com"></a>
 </body>
 </html>
