@@ -1,11 +1,11 @@
-/* Ensure full viewport coverage and remove default spacing */
+/* Reset and full viewport coverage */
 html, body {
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: black; /* fallback if video fails */
+  background-color: black;
 }
 
 /* Fullscreen background video */
@@ -17,15 +17,6 @@ video.background {
   height: 100vh;
   object-fit: cover;
   z-index: -1;
-  opacity: 0;
-  animation: fadeIn 2s ease forwards;
-}
-
-/* Fade-in animation for smooth load */
-@keyframes fadeIn {
-  to {
-    opacity: 1;
-  }
 }
 
 /* Canvas container for overlays */
@@ -41,10 +32,10 @@ video.background {
 #email-link {
   display: block;
   position: absolute;
-  top: 130px;   /* Matches yDrip from sketch.js */
-  left: 100px;  /* Matches xStart from sketch.js */
-  width: 200px; /* Matches calculated width */
-  height: 20px; /* Estimated height */
+  top: 130px;   /* Adjust to match your sketch.js logic */
+  left: 100px;
+  width: 200px;
+  height: 20px;
   z-index: 3;
   background: transparent;
   color: transparent;
