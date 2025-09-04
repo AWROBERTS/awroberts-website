@@ -4,10 +4,30 @@
   <meta charset="UTF-8">
   <title>Fullscreen Video</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: black;
+    }
+
+    video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+      z-index: -1;
+    }
+  </style>
 </head>
 <body>
-  <video autoplay muted loop playsinline webkit-playsinline class="background-video">
+  <video autoplay muted loop playsinline webkit-playsinline>
     <source src="https://awroberts.co.uk/awroberts-media/background.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
