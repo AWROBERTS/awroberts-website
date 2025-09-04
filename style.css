@@ -3,34 +3,35 @@ body {
 }
 
 .background {
-    background-color: #000000;
     position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    left: 0;
-    top: 0;
     z-index: 1;
+    background-color: #000000;
 }
 
 #canvas-container {
     position: fixed;
-    width: 100%;
-    height: 100%;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
     z-index: 2;
 }
 
 #email-link {
     display: block;
     position: absolute;
-    top: 130px; /* Seems like it should match the lowest possible `yDrip` value */
-    left: 100px; /* Matches the `xStart` value from sketch.js */
-    width: 200px; /* The width you calculated in sketch.js */
-    height: 20px; /* An estimate, adjust as needed */
-    z-index: 3;
+    top: 10%;
+    left: 15%;
+    width: 200px;
+    height: 20px;
+    z-index: 10;
     background: transparent;
     color: transparent;
     text-decoration: none;
+    font-size: 16px; /* Will be overridden by JS */
 }
