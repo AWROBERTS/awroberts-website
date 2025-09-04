@@ -3,32 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <title>Video Background Test</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: black;
-      overflow: hidden;
-    }
-
-    video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <video autoplay muted loop playsinline>
-    <source src="awroberts-media/background.mp4" type="video/mp4">
+  <!-- Fullscreen background video -->
+  <video class="background" autoplay muted loop playsinline>
+    <source src="/awroberts-media/background.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
+
+  <!-- Canvas container for p5.js or other overlays -->
+  <div id="canvas-container">
+    <!-- Your sketch.js canvas will render here -->
+  </div>
+
+  <!-- Invisible email link for interaction mapping -->
+  <a id="email-link" href="mailto:example@example.com"></a>
 </body>
 </html>
-
