@@ -1,41 +1,34 @@
-/* Ensure full viewport coverage and remove scrollbars */
-html, body {
+/* Reset default margins and ensure full viewport coverage */
+body, main {
   margin: 0;
   padding: 0;
-  height: 100%;
-  width: 100%;
-  background-color: black; /* fallback if video fails */
-  overflow: hidden;
-}
-
-/* Main container fills the screen */
-main {
-  position: relative;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
+  position: relative;
+  font-family: sans-serif;
 }
 
-/* Video background stretches and stays behind everything */
+/* Fullscreen background video */
 video.background {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   object-fit: cover;
-  z-index: 0;
+  z-index: -1;
 }
 
-/* Canvas container sits above video, ready for p5.js */
+/* Canvas container for p5.js or other content */
 #canvas-container {
-  position: absolute;
-  top: 0;
-  left: 0;
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
-  z-index: 1;
-  pointer-events: none;
-  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #email-link {
