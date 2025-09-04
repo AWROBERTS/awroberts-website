@@ -17,9 +17,18 @@ video.background {
   height: 100vh;
   object-fit: cover;
   z-index: -1;
+  opacity: 0;
+  animation: fadeIn 2s ease forwards;
 }
 
-/* Canvas container for p5.js or other content */
+/* Fade-in animation for smooth load */
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Canvas container for overlays */
 #canvas-container {
   position: relative;
   z-index: 1;
@@ -28,15 +37,16 @@ video.background {
   pointer-events: none;
 }
 
+/* Invisible link mapped to canvas coordinates */
 #email-link {
-    display: block;
-    position: absolute;
-    top: 130px; /* Seems like it should match the lowest possible `yDrip` value */
-    left: 100px; /* Matches the `xStart` value from sketch.js */
-    width: 200px; /* The width you calculated in sketch.js */
-    height: 20px; /* An estimate, adjust as needed */
-    z-index: 3;
-    background: transparent;
-    color: transparent;
-    text-decoration: none;
+  display: block;
+  position: absolute;
+  top: 130px;   /* Matches yDrip from sketch.js */
+  left: 100px;  /* Matches xStart from sketch.js */
+  width: 200px; /* Matches calculated width */
+  height: 20px; /* Estimated height */
+  z-index: 3;
+  background: transparent;
+  color: transparent;
+  text-decoration: none;
 }
