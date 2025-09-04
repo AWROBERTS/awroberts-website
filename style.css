@@ -15,7 +15,8 @@ video.background {
   left: 0;
   width: 100vw;
   height: 100vh;
-  object-fit: cover;
+  object-fit: cover; /* This ensures the video fills the container */
+  overflow: hidden;
   z-index: -1;
 }
 
