@@ -1,32 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AW Roberts</title>
-    <link rel="icon" href="/favicon.ico?v=1" sizes="any" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <script src="p5/p5.js"></script>
-    <script src="sketch.js"></script>
+  <meta charset="UTF-8">
+  <title>AW Roberts</title>
+  <link rel="icon" href="/favicon.ico?v=1" sizes="any" type="image/x-icon">
+  <link rel="stylesheet" href="style.css">
+  <script src="p5/p5.js"></script>
+  <script src="sketch.js"></script>
 </head>
 <body>
-    <main>
-        <video class="background" autoplay muted loop>
-            <source src="awroberts-media/background.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-
-        <div id="canvas-container"></div>
-    </main>
-
-    <script>
-        function resizeEmailLink() {
-            const emailLink = document.getElementById('email-link');
-            const textSize = Math.min(window.innerWidth, window.innerHeight) / 10;
-            emailLink.style.fontSize = textSize + 'px';
-        }
-
-        window.addEventListener('resize', resizeEmailLink);
-        resizeEmailLink();
-    </script>
+  <main>
+    <video class="background" autoplay muted loop>
+      <source src="awroberts-media/background.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <div id="canvas-container"></div>
+  </main>
 </body>
 </html>
