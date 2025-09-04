@@ -2,20 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AW Roberts</title>
-  <link rel="icon" href="/favicon.ico?v=1" sizes="any" type="image/x-icon">
-  <link rel="stylesheet" href="style.css">
-  <script src="p5/p5.js"></script>
-  <script src="sketch.js"></script>
+  <title>Video Background Test</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: black;
+      overflow: hidden;
+    }
+
+    video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+  </style>
 </head>
 <body>
-  <main>
-    <video class="background" autoplay muted loop playsinline>
-      <source src="awroberts-media/background.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-    <div id="canvas-container"></div>
-  </main>
+  <video autoplay muted loop playsinline>
+    <source src="awroberts-media/background.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
 </body>
 </html>
 
