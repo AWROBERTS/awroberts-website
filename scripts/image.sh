@@ -81,6 +81,14 @@ import_image() {
     sudo_if_needed ctr -n k8s.io images import "${TAR_NAME}"
   fi
 
+  # Patch deployment to always use local image (not remote registry)
+  if [[ -n "${NAMESPACE:-}" && -n "${DEPLOYMENT_NAME:-}" ]]; then
+    echo "Setting imagePullPolicy: Never on deployment/${DEPLOYMENT_NAME} in namespace ${NAMESPACE}"
+    kubectl -n "${NAMESPACE}" patch deployment "${DEPLOYMENT_NAME}" \
+      --type='json' \
+      -p='[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' || true
+  fi
+
   # Prune old images (keeps current and anything in use)
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
 }
