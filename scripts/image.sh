@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
-# Image build/import/prune
+# Robust image build/import/prune for Kubernetes with unique tags
+
+# Always source config and helpers first
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./scripts/lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+gen_image_tag() {
+  # Always generate a unique timestamp tag if not set/exported
+  echo "fix-$(date +%Y%m%d-%H%M%S)"
+}
+
+set_image_vars() {
+  IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"
+  if [[ -z "${IMAGE_TAG:-}" ]]; then
+    IMAGE_TAG="$(gen_image_tag)"
+  fi
+  FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
+}
 
 cleanup_old_images() {
   local base="$1" days="$2" keep_image="$3"
@@ -13,47 +31,34 @@ cleanup_old_images() {
 
   echo "Pruning timestamp-tagged images older than ${days} days for base '${base}:'"
   echo "Keeping current image: ${keep_image}"
-  echo "Also keeping any image currently used by running pods."
 
   _in_use() { grep -Fxq "$1" "$in_use_tmp"; }
 
+  # Clean containerd images
   if command -v ctr >/dev/null 2>&1; then
-    while IFS= read -r ref; do
+    for ref in $(sudo_if_needed ctr -n k8s.io images ls -q 2>/dev/null || true); do
       [[ "$ref" == ${base}:* ]] || continue
       [[ "$ref" == "$keep_image" ]] && continue
       _in_use "$ref" && continue
-      local tag="${ref#${base}:}"
-      if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
-        local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
-        local ts; ts="$(date -u -d "$d" +%s 2>/dev/null || echo 0)"
-        if (( ts > 0 && ts < epoch_cutoff )); then
-          echo "  Removing containerd image: $ref (tag time: $d)"
-          sudo_if_needed ctr -n k8s.io images rm "$ref" || true
-        fi
-      fi
-    done < <(sudo_if_needed ctr -n k8s.io images ls -q 2>/dev/null || true)
+      echo "  Removing containerd image: $ref"
+      sudo_if_needed ctr -n k8s.io images rm "$ref" || true
+    done
   fi
 
-  while IFS= read -r ref; do
+  # Clean docker images
+  for ref in $(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true); do
     [[ "$ref" == ${base}:* ]] || continue
     [[ "$ref" == "$keep_image" ]] && continue
     _in_use "$ref" && continue
-    local tag="${ref#${base}:}"
-    if [[ "$tag" =~ ^[0-9]{8}-[0-9]{6}$ ]]; then
-      local d="${tag:0:4}-${tag:4:2}-${tag:6:2} ${tag:9:2}:${tag:11:2}:${tag:13:2} UTC"
-      local ts; ts="$(date -u -d "$d" +%s 2>/dev/null || echo 0)"
-      if (( ts > 0 && ts < epoch_cutoff )); then
-        echo "  Removing docker image: $ref (tag time: $d)"
-        docker image rm "$ref" >/dev/null 2>&1 || true
-      fi
-    fi
-  done < <(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true)
+    echo "  Removing docker image: $ref"
+    docker image rm "$ref" >/dev/null 2>&1 || true
+  done
 
   rm -f "$in_use_tmp"
 }
 
 build_image() {
-  # Build local image with Buildx (strict; no docker build fallback)
+  set_image_vars
   if ! docker buildx inspect "$BUILDER_NAME" >/dev/null 2>&1; then
     docker buildx create --name "$BUILDER_NAME" --use >/dev/null
   else
@@ -69,26 +74,35 @@ build_image() {
 }
 
 import_image() {
-  # Make the image available to the cluster (no external registry)
-  echo "Importing image into containerd (kubeadm)"
+  set_image_vars
+  echo "Importing image into containerd (kubeadm): ${FULL_IMAGE}"
   if docker save "${FULL_IMAGE}" | sudo_if_needed ctr -n k8s.io images import -; then
     echo "Image imported into containerd."
   else
     echo "Image import via pipe failed. Falling back to tar file..."
     local TAR_NAME
-    TAR_NAME="$(echo "${IMAGE_NAME}_${IMAGE_TAG}" | tr '/:' '__').tar"
+    TAR_NAME="$(echo "${IMAGE_NAME_BASE}_${IMAGE_TAG}" | tr '/:' '__').tar"
     docker save -o "${TAR_NAME}" "${FULL_IMAGE}"
     sudo_if_needed ctr -n k8s.io images import "${TAR_NAME}"
   fi
 
-  # Patch deployment to always use local image (not remote registry)
-  if [[ -n "${NAMESPACE:-}" && -n "${DEPLOYMENT_NAME:-}" ]]; then
-    echo "Setting imagePullPolicy: Never on deployment/${DEPLOYMENT_NAME} in namespace ${NAMESPACE}"
-    kubectl -n "${NAMESPACE}" patch deployment "${DEPLOYMENT_NAME}" \
-      --type='json' \
-      -p='[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' || true
-  fi
+  # Patch deployment to use our unique tag + local pull only
+  echo "Updating deployment ${DEPLOYMENT_NAME} for tag ${IMAGE_TAG}"
+  kubectl -n "${NAMESPACE}" set image deployment/"${DEPLOYMENT_NAME}" web="${FULL_IMAGE}"
+  kubectl -n "${NAMESPACE}" patch deployment "${DEPLOYMENT_NAME}" \
+    --type='json' \
+    -p='[{"op":"add","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]' || true
 
-  # Prune old images (keeps current and anything in use)
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
+
+  # Delete old pods to fully enforce rollout
+  echo "Deleting old pods to ensure a fresh rollout"
+  kubectl -n "${NAMESPACE}" delete pod -l app="${DEPLOYMENT_NAME%-web}" --ignore-not-found
 }
+
+# If script is executed directly, do everything!
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  build_image
+  import_image
+  echo "-- Build/import complete! Now using: ${FULL_IMAGE} --"
+fi
