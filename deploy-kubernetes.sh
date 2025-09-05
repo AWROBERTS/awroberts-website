@@ -3,14 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=./scripts/lib/common.sh
+# Always source from the scripts/ subfolder, relative to project root
 source "${SCRIPT_DIR}/scripts/lib/common.sh"
-# shellcheck source=./scripts/cluster.sh
 source "${SCRIPT_DIR}/scripts/cluster.sh"
-# shellcheck source=./scripts/image.sh
 source "${SCRIPT_DIR}/scripts/image.sh"
-# shellcheck source=./scripts/deploy.sh
-source "${SCRIPT_DIR}/deploy.sh"
+source "${SCRIPT_DIR}/scripts/deploy.sh"
 
 main() {
   cluster_targeting
