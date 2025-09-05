@@ -75,15 +75,18 @@ bootstrap_cluster_if_needed() {
   if [[ "${NEED_INIT}" == "true" ]]; then
     echo "No reachable Kubernetes cluster via kubectl. Bootstrapping control plane with kubeadm (Flannel)..."
 
-    # 1) Prep: disable swap and set sysctls
+    # 1) Prep: disable swap and set sysctls, kernel modules
     echo "Disabling swap and updating /etc/fstab..."
     sudo_if_needed swapoff -a || true
     if [[ -f /etc/fstab ]]; then
       sudo_if_needed sed -i.bak -E 's@^([^#].*\s+swap\s+)@#\1@' /etc/fstab || true
     fi
 
-    echo "Configuring kernel sysctls for bridged traffic and forwarding..."
+    echo "Ensuring br_netfilter kernel module is loaded"
     sudo_if_needed modprobe br_netfilter || true
+    echo 'br_netfilter' | sudo_if_needed tee /etc/modules-load.d/br_netfilter.conf >/dev/null
+
+    echo "Configuring kernel sysctls for bridged traffic and forwarding..."
     sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null <<EOF
 net.bridge.bridge-nf-call-iptables = 1
 net.bridge.bridge-nf-call-ip6tables = 1
