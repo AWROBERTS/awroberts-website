@@ -14,7 +14,3 @@ awroberts-media
 *.env
 *.cenv
 .env.*
-
-# Prevent stray Nginx configs except our chosen one
-*.conf
-!nginx.conf
