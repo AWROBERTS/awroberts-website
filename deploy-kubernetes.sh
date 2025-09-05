@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Try the most robust way to always get project root (will work even if sh is the shell)
+SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-# Always source from the scripts/ subfolder, relative to project root
-source "${SCRIPT_DIR}/scripts/lib/common.sh"
-source "${SCRIPT_DIR}/scripts/cluster.sh"
-source "${SCRIPT_DIR}/scripts/image.sh"
-source "${SCRIPT_DIR}/scripts/deploy.sh"
+echo "PROJECT_ROOT: $PROJECT_ROOT"
+
+source "${PROJECT_ROOT}/scripts/lib/common.sh"
+source "${PROJECT_ROOT}/scripts/cluster.sh"
+source "${PROJECT_ROOT}/scripts/image.sh"
+source "${PROJECT_ROOT}/scripts/deploy.sh"
 
 main() {
   cluster_targeting
