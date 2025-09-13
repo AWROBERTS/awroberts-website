@@ -42,4 +42,16 @@ preflight_core_tools() {
   [[ -f "$HOST_CERT_PATH" ]] || { echo "Cert not found at $HOST_CERT_PATH"; exit 1; }
   [[ -f "$HOST_KEY_PATH" ]] || { echo "Key not found at $HOST_KEY_PATH"; exit 1; }
   [[ -d "$MANIFEST_DIR" ]] || { echo "Manifest directory not found: $MANIFEST_DIR"; exit 1; }
+
+  # 🛠️ Helm check and install
+  if ! command -v helm &> /dev/null; then
+    echo "Helm not found. Installing Helm..."
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh
+    rm get_helm.sh
+  else
+    echo "Helm is already installed."
+  fi
 }
+
