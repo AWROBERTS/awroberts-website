@@ -71,6 +71,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "⏳ Waiting for kube-proxy to become ready..."
   kubectl rollout status daemonset/kube-proxy -n kube-system
 
+  if ! kubectl get deployment ingress-nginx-controller -n ingress-nginx &>/dev/null; then
+  echo "🔧 Installing ingress-nginx controller..."
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/baremetal/deploy.yaml
+  kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx
+  else
+    echo "✅ ingress-nginx controller already installed."
+  fi
+
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
   echo "-- ✅ Deployment complete! Using image: ${FULL_IMAGE} (also tagged as latest) --"
