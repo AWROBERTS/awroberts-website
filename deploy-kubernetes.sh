@@ -23,7 +23,7 @@ main() {
   ensure_ingress_nginx
   build_image
   import_image
-  kubernetes_deploy
+  deploy_with_helm
   notes_and_status
 }
 
