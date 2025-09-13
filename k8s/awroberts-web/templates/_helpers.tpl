@@ -1,3 +1,8 @@
-{{- define "awroberts-web.fullname" -}}
-{{- printf "%s-%s" .Release.Name .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- define "awroberts-web.labels" -}}
+app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
+{{- define "awroberts-web.name" -}}
+{{- .Chart.Name -}}
 {{- end -}}
