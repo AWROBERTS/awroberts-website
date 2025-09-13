@@ -175,6 +175,24 @@ verify_kubelet_cgroup() {
   fi
 }
 
+ensure_ingress_admission_secret() {
+  if ! kubectl get secret ingress-nginx-admission -n ingress-nginx &>/dev/null; then
+    echo "🔐 Creating ingress-nginx admission webhook TLS secret..."
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+      -keyout webhook.key -out webhook.crt \
+      -subj "/CN=ingress-nginx-controller-admission.ingress-nginx.svc"
+
+    kubectl create secret tls ingress-nginx-admission \
+      --cert=webhook.crt \
+      --key=webhook.key \
+      -n ingress-nginx
+
+    rm -f webhook.crt webhook.key
+  else
+    echo "✅ Admission webhook TLS secret already exists."
+  fi
+}
+
 ensure_ingress_nginx() {
   echo "Ensuring ingress-nginx controller is installed (bare-metal preset)..."
   if ! kubectl -n ingress-nginx get deploy ingress-nginx-controller >/dev/null 2>&1; then
