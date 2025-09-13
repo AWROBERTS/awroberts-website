@@ -18,15 +18,19 @@ spec:
       secretName: {{ .Values.ingress.tls.secretName }}
   rules:
     {{- range .Values.ingress.rules }}
+    {{- if and .host .paths (gt (len .paths) 0) }}
     - host: {{ .host }}
       http:
         paths:
-          - path: {{ (index .paths 0).path }}
-            pathType: {{ (index .paths 0).pathType }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
             backend:
               service:
                 name: {{ include "awroberts-web.fullname" $ }}
                 port:
-                  number: {{ (index .paths 0).servicePort }}
+                  number: {{ .servicePort }}
+          {{- end }}
+    {{- end }}
     {{- end }}
 {{- end }}
