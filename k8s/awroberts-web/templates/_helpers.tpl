@@ -3,16 +3,16 @@
 {{- .Chart.Name -}}
 {{- end -}}
 
-{{/* Returns a full name combining release and chart name */}}
+{{/* Returns a full name using just the release name to avoid duplication */}}
 {{- define "awroberts-web.fullname" -}}
-{{- printf "%s-%s" .Release.Name (include "awroberts-web.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- .Release.Name -}}
 {{- end -}}
 
 {{/* Common labels for metadata */}}
 {{- define "awroberts-web.labels" -}}
 app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/version: {{ .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | default "latest" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
@@ -20,4 +20,13 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "awroberts-web.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
+{{/* Returns the service account name, defaulting to 'default' */}}
+{{- define "awroberts-web.serviceAccountName" -}}
+{{- if .Values.serviceAccount.name }}
+{{ .Values.serviceAccount.name }}
+{{- else }}
+default
+{{- end -}}
 {{- end -}}
