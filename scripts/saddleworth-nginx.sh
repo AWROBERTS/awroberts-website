@@ -3,8 +3,8 @@ set -euo pipefail
 
 saddleworth_nginx(){
   echo "Applying ingress-nginx customizations"
-  kubectl apply -k "${PROJECT_ROOT}/saddleworth-nginx-customize"
+  kubectl apply -k "${PROJECT_ROOT}/k8s/saddleworth-nginx-customize"
 
   echo "Applying Saddleworth Machine Opportunity forwarding"
-  kubectl apply -f "${PROJECT_ROOT}/saddleworth-forwarding/saddleworth-machine-opportunity.yaml"
+  kubectl apply -f "${PROJECT_ROOT}/k8s/saddleworth-forwarding/saddleworth-machine-opportunity.yaml"
 }
