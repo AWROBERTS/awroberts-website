@@ -1,9 +1,16 @@
-FROM nginx:1.27-alpine
+FROM alpine:latest
 
-RUN rm -rf /usr/share/nginx/html/*
+# Install NGINX
+RUN apk add --no-cache nginx
 
+# Remove default config and web files
+RUN rm -rf /etc/nginx/conf.d/* /var/www/localhost/htdocs/*
+
+# Copy your custom config and site files
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY . /usr/share/nginx/html
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Ensure NGINX runs in foreground
+CMD ["nginx", "-g", "daemon off;"]
 
 EXPOSE 80
