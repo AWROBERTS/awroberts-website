@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Common config, defaults, and helpers. Source this first.
 
+# Helper: sudo if not root
+sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
+
 # Load all variables from the env file
 ENV_FILE="./awroberts.env"
 if [[ -f "$ENV_FILE" ]]; then
@@ -42,9 +45,6 @@ if [[ "${USE_TIMESTAMP}" == "true" && -z "${IMAGE_TAG}" ]]; then
 fi
 FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
 
-# Helper: sudo if not root
-sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
-
 # TLS secret creation
 ensure_tls_secret() {
   kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
@@ -77,4 +77,3 @@ preflight_core_tools() {
     echo "Helm is already installed."
   fi
 }
-
