@@ -18,10 +18,10 @@ spec:
         {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
-  {{- if .Values.ingress.rules }}
+  {{- if and .Values.ingress.rules (gt (len .Values.ingress.rules) 0) }}
   rules:
     {{- range .Values.ingress.rules }}
-    {{- if .paths }}
+    {{- if and .host .paths (gt (len .paths) 0) }}
     - host: {{ .host }}
       http:
         paths:
