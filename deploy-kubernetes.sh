@@ -22,6 +22,7 @@ main() {
   info_and_validate_context
   ensure_containerd_config
   verify_kubelet_cgroup
+  ensure_ingress_admission_secret
   ensure_ingress_nginx
   saddleworth_nginx
   build_image
