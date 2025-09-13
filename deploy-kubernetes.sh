@@ -11,6 +11,7 @@ source "${PROJECT_ROOT}/scripts/lib/common.sh"
 source "${PROJECT_ROOT}/scripts/cluster.sh"
 source "${PROJECT_ROOT}/scripts/image.sh"
 source "${PROJECT_ROOT}/scripts/deploy.sh"
+source "${PROJECT_ROOT}/scripts/saddleworth-nginx.sh"
 
 main() {
   cluster_targeting
@@ -21,6 +22,7 @@ main() {
   ensure_containerd_config
   verify_kubelet_cgroup
   ensure_ingress_nginx
+  saddleworth_nginx
   build_image
   import_image
   deploy_with_helm
