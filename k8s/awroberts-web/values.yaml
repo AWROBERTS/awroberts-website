@@ -1,0 +1,55 @@
+replicaCount: 1
+
+image:
+  repository: awroberts
+  tag: latest
+  pullPolicy: Never
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    secretName: awroberts-tls
+    hosts:
+      - awroberts.co.uk
+      - www.awroberts.co.uk
+  rules:
+    - host: awroberts.co.uk
+      paths:
+        - path: /
+          pathType: Prefix
+          servicePort: 80
+    - host: www.awroberts.co.uk
+      paths:
+        - path: /
+          pathType: Prefix
+          servicePort: 80
+
+volume:
+  hostPath: /var/www/html/awroberts/awroberts-media
+  mountPath: /usr/share/nginx/html/awroberts-media
+
+containerPort: 80
+
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+service:
+  type: ClusterIP
+  port: 80
+
