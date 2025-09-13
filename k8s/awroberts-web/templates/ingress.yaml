@@ -10,35 +10,23 @@ metadata:
     {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.ingress.tls }}
   tls:
     - hosts:
         {{- range .Values.ingress.tls.hosts }}
         - {{ . }}
         {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
-  {{- end }}
-  {{- $validRules := list }}
-  {{- range .Values.ingress.rules }}
-    {{- if and .host .paths (gt (len .paths) 0) }}
-      {{- $validRules = append $validRules . }}
-    {{- end }}
-  {{- end }}
-  {{- if gt (len $validRules) 0 }}
   rules:
-    {{- range $rule := $validRules }}
-    - host: {{ $rule.host }}
+    {{- range .Values.ingress.rules }}
+    - host: {{ .host }}
       http:
         paths:
-          {{- range $path := $rule.paths }}
-          - path: {{ $path.path }}
-            pathType: {{ $path.pathType }}
+          - path: {{ (index .paths 0).path }}
+            pathType: {{ (index .paths 0).pathType }}
             backend:
               service:
                 name: {{ include "awroberts-web.fullname" $ }}
                 port:
-                  number: {{ $path.servicePort }}
-          {{- end }}
+                  number: {{ (index .paths 0).servicePort }}
     {{- end }}
-  {{- end }}
 {{- end }}
