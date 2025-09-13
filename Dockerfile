@@ -7,10 +7,10 @@ RUN apk add --no-cache nginx
 RUN rm -rf /etc/nginx/conf.d/* /var/www/localhost/htdocs/*
 
 # Copy your custom config and site files
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY . /usr/share/nginx/html
 
-# Ensure NGINX runs in foreground
+# Run NGINX in foreground
 CMD ["nginx", "-g", "daemon off;"]
 
 EXPOSE 80
