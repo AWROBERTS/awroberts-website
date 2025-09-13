@@ -182,7 +182,7 @@ ensure_ingress_admission_secret() {
       -keyout webhook.key -out webhook.crt \
       -subj "/CN=ingress-nginx-controller-admission.ingress-nginx.svc"
 
-    kubectl create secret tls ingress-nginx-admission \
+    kubectl create secret generic ingress-nginx-admission \
       --cert=webhook.crt \
       --key=webhook.key \
       -n ingress-nginx
