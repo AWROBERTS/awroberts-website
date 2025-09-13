@@ -53,3 +53,6 @@ service:
   type: ClusterIP
   port: 80
 
+autoscaling:
+  enabled: false
+
