@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Common config, defaults, and helpers. Source this first.
 
+# Prevent double sourcing
+[[ -n "${COMMON_SH_LOADED:-}" ]] && return
+export COMMON_SH_LOADED=true
+
 # Helper: sudo if not root
 sudo_if_needed() { if [[ $EUID -ne 0 ]]; then sudo "$@"; else "$@"; fi; }
 
@@ -15,19 +19,25 @@ else
   exit 1
 fi
 
-# Kernel networking setup for Kubernetes + Flannel
-echo "🔧 Ensuring br_netfilter and sysctl settings for Kubernetes networking..."
+# Kernel networking setup for Kubernetes + Flannel (quiet, guarded)
+setup_kubernetes_networking() {
+  if [[ -n "${SYSCTL_ALREADY_APPLIED:-}" ]]; then
+    return
+  fi
 
-sudo_if_needed modprobe br_netfilter >/dev/null 2>&1 || true
-echo 'br_netfilter' | sudo_if_needed tee /etc/modules-load.d/br_netfilter.conf >/dev/null 2>&1
+  sudo_if_needed modprobe br_netfilter >/dev/null 2>&1 || true
+  echo 'br_netfilter' | sudo_if_needed tee /etc/modules-load.d/br_netfilter.conf >/dev/null 2>&1
 
-sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null 2>&1 <<EOF
+  sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null 2>&1 <<EOF
 net.bridge.bridge-nf-call-iptables = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward = 1
 EOF
 
-echo "✅ Networking config applied."
+  export SYSCTL_ALREADY_APPLIED=true
+  echo "🔧 Ensuring br_netfilter and sysctl settings for Kubernetes networking..."
+  echo "✅ Networking config applied."
+}
 
 # Derived values (only if not already set)
 : "${IMAGE_NAME_BASE:=${IMAGE_NAME%%:*}}"

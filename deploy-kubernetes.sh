@@ -14,6 +14,7 @@ source "${PROJECT_ROOT}/scripts/deploy.sh"
 source "${PROJECT_ROOT}/scripts/saddleworth-nginx.sh"
 
 main() {
+  setup_kubernetes_networking
   cluster_targeting
   preflight_core_tools
   ensure_k8s_and_containerd_installed
