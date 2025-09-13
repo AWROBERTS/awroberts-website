@@ -12,6 +12,29 @@ else
   exit 1
 fi
 
+# Kernel networking setup for Kubernetes + Flannel
+echo "🔧 Ensuring br_netfilter and sysctl settings for Kubernetes networking..."
+
+sudo_if_needed modprobe br_netfilter || true
+echo 'br_netfilter' | sudo_if_needed tee /etc/modules-load.d/br_netfilter.conf >/dev/null
+
+sudo_if_needed tee /etc/sysctl.d/99-kubernetes-cri.conf >/dev/null <<EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+sudo_if_needed sysctl --system
+
+if [[ ! -f /proc/sys/net/bridge/bridge-nf-call-iptables ]]; then
+  echo "❌ br_netfilter not loaded correctly. Networking may fail."
+  exit 1
+fi
+
+echo "✅ Sysctl values applied:"
+sysctl net.bridge.bridge-nf-call-iptables
+sysctl net.ipv4.ip_forward
+
 # Derived values
 IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"
 if [[ "${USE_TIMESTAMP}" == "true" && -z "${IMAGE_TAG}" ]]; then
