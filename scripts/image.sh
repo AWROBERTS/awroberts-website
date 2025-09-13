@@ -1,22 +1,10 @@
 #!/usr/bin/env bash
-# Build, tag, and deploy a Kubernetes image using Helm with dynamic tagging
+# Build, tag, and deploy a Kubernetes image using Helm
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-gen_image_tag() {
-  echo "fix-$(date +%Y%m%d-%H%M%S)"
-}
-
-set_image_vars() {
-  IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"
-  IMAGE_TAG="$(gen_image_tag)"
-  FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
-  LATEST_IMAGE="${IMAGE_NAME_BASE}:latest"
-}
-
 build_image() {
-  set_image_vars
   docker buildx use "$BUILDER_NAME" || docker buildx create --name "$BUILDER_NAME" --use
   echo "🔨 Building image ${FULL_IMAGE} and tagging as latest for ${PLATFORM}"
   docker buildx build --platform "${PLATFORM}" \
@@ -26,7 +14,6 @@ build_image() {
 }
 
 import_image() {
-  set_image_vars
   echo "📦 Importing image into containerd: ${FULL_IMAGE}"
   if docker save "${FULL_IMAGE}" | sudo_if_needed ctr -n k8s.io images import -; then
     echo "✅ Image imported successfully."
