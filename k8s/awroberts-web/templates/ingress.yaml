@@ -18,6 +18,7 @@ spec:
       secretName: {{ .Values.ingress.tls.secretName }}
   rules:
     {{- range .Values.ingress.rules }}
+    {{- if .paths }}
     - host: {{ .host }}
       http:
         paths:
@@ -30,5 +31,6 @@ spec:
                 port:
                   number: {{ .servicePort }}
           {{- end }}
+    {{- end }}
     {{- end }}
 {{- end }}
