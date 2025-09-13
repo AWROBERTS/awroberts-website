@@ -10,24 +10,26 @@ gen_image_tag() {
 
 set_image_vars() {
   IMAGE_NAME_BASE="${IMAGE_NAME%%:*}"
-  if [[ -z "${IMAGE_TAG:-}" ]]; then
-    IMAGE_TAG="$(gen_image_tag)"
-  fi
+  IMAGE_TAG="$(gen_image_tag)"
   FULL_IMAGE="${IMAGE_NAME_BASE}:${IMAGE_TAG}"
+  LATEST_IMAGE="${IMAGE_NAME_BASE}:latest"
 }
 
 build_image() {
   set_image_vars
   docker buildx use "$BUILDER_NAME" || docker buildx create --name "$BUILDER_NAME" --use
-  echo "Building image ${FULL_IMAGE} for ${PLATFORM}"
-  docker buildx build --platform "${PLATFORM}" -t "${FULL_IMAGE}" --load "${BUILD_CONTEXT}"
+  echo "🔨 Building image ${FULL_IMAGE} and tagging as latest for ${PLATFORM}"
+  docker buildx build --platform "${PLATFORM}" \
+    -t "${FULL_IMAGE}" \
+    -t "${LATEST_IMAGE}" \
+    --load "${BUILD_CONTEXT}"
 }
 
 import_image() {
   set_image_vars
-  echo "Importing image into containerd: ${FULL_IMAGE}"
+  echo "📦 Importing image into containerd: ${FULL_IMAGE}"
   if docker save "${FULL_IMAGE}" | sudo_if_needed ctr -n k8s.io images import -; then
-    echo "Image imported successfully."
+    echo "✅ Image imported successfully."
   else
     local TAR_NAME="$(echo "${IMAGE_NAME_BASE}_${IMAGE_TAG}" | tr '/:' '__').tar"
     docker save -o "${TAR_NAME}" "${FULL_IMAGE}"
@@ -36,7 +38,7 @@ import_image() {
 }
 
 deploy_with_helm() {
-  echo "Deploying with Helm using image tag ${IMAGE_TAG}"
+  echo "🚀 Deploying with Helm using image tag ${IMAGE_TAG}"
   helm upgrade --install "${DEPLOYMENT_NAME}" "${HELM_CHART_PATH}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${IMAGE_NAME_BASE}" \
@@ -72,5 +74,5 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   ensure_tls_secret
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
-  echo "-- Deployment complete! Using image: ${FULL_IMAGE} --"
+  echo "-- ✅ Deployment complete! Using image: ${FULL_IMAGE} (also tagged as latest) --"
 fi
