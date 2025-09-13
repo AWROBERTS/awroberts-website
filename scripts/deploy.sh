@@ -3,22 +3,6 @@
 
 source "${PROJECT_ROOT}/scripts/lib/common.sh"
 
-kubernetes_deploy() {
-  ensure_tls_secret
-  echo "Deploying ${DEPLOYMENT_NAME} with Helm using image tag ${IMAGE_TAG}"
-  helm upgrade --install "${DEPLOYMENT_NAME}" "${HELM_CHART_PATH}" \
-    --namespace "${NAMESPACE}" \
-    --set image.repository="${IMAGE_NAME_BASE}" \
-    --set image.tag="${IMAGE_TAG}" \
-    --set image.pullPolicy="Never" \
-    --set ingress.tls.secretName="${SECRET_NAME}" \
-    --set ingress.rules[0].host="${HOST_A}" \
-    --set ingress.rules[1].host="${HOST_B}" \
-    --set volume.hostPath="${HOST_MEDIA_PATH}" \
-    --set volume.mountPath="/usr/share/nginx/html/awroberts-media"
-  kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=240s
-}
-
 notes_and_status() {
   if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
     echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443"
