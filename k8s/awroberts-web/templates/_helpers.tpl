@@ -3,9 +3,9 @@
 {{- .Chart.Name -}}
 {{- end -}}
 
-{{/* Full name = release name only */}}
+{{/* Full name = release name + suffix to avoid repetition */}}
 {{- define "awroberts-web.fullname" -}}
-{{- .Release.Name -}}
+{{- printf "%s-deploy" .Release.Name -}}
 {{- end -}}
 
 {{/* Common labels */}}
