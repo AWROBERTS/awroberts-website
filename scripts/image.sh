@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Build, tag, and deploy a Kubernetes image using Helm
 
+set -e
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
@@ -59,6 +61,16 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   build_image
   import_image
   ensure_tls_secret
+
+  echo "🔧 Applying kube-proxy ConfigMap..."
+  kubectl apply -f "${SCRIPT_DIR}/kube-proxy-config.yaml"
+
+  echo "🔁 Restarting kube-proxy..."
+  kubectl delete pod -n kube-system -l k8s-app=kube-proxy
+
+  echo "⏳ Waiting for kube-proxy to become ready..."
+  kubectl rollout status daemonset/kube-proxy -n kube-system
+
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
   echo "-- ✅ Deployment complete! Using image: ${FULL_IMAGE} (also tagged as latest) --"
