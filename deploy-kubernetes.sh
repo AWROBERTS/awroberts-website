@@ -44,6 +44,16 @@ else
   echo "Warning: cluster directory not found at $CLUSTER_DIR"
 fi
 
+# Source image functions
+IMAGE_DIR="${PROJECT_ROOT}/scripts/functions/image"
+if [ -d "$IMAGE_DIR" ]; then
+  for file in "$IMAGE_DIR"/*.sh; do
+    [ -f "$file" ] && source "$file"
+  done
+else
+  echo "Warning: image directory not found at $IMAGE_DIR"
+fi
+
 main() {
   setup_kubernetes_networking
   image_vars
@@ -58,6 +68,12 @@ main() {
   ensure_ingress_nginx
   ensure_tls_secret
 
+  build_image
+  import_image
+  restart_kube_proxy
+  ensure_ingress_nginx_helm
+  deploy_with_helm
+  cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
 }
 
 main "$@"
