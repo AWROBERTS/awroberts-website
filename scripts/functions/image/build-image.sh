@@ -1,13 +1,32 @@
 #!/usr/bin/env bash
+
 build_image() {
-  # Create or use a builder with DNS settings passed to BuildKit
+  # Define builder name and config path
+  BUILDER_NAME="custom-builder"
+  BUILDKIT_CONFIG="buildkitd.toml"
+
+  # Create BuildKit config file if it doesn't exist
+  if [[ ! -f "$BUILDKIT_CONFIG" ]]; then
+    echo "📄 Creating BuildKit config with custom DNS..."
+    cat <<EOF > "$BUILDKIT_CONFIG"
+[worker.oci]
+  dns = ["8.8.8.8", "1.1.1.1"]
+EOF
+  fi
+
+  # Check if builder exists
   if ! docker buildx inspect "$BUILDER_NAME" &>/dev/null; then
-    echo "🔧 Creating builder '$BUILDER_NAME' with custom DNS settings..."
+    echo "🔧 Creating builder '$BUILDER_NAME' with DNS config..."
     docker buildx create \
       --name "$BUILDER_NAME" \
       --driver docker-container \
-      --buildkitd-flags '--dns=8.8.8.8 --dns=1.1.1.1' \
+      --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
       --use
+
+    # Copy config into builder container
+    BUILDER_CONTAINER=$(docker ps -qf "name=$BUILDER_NAME")
+    docker cp "$BUILDKIT_CONFIG" "$BUILDER_CONTAINER":/etc/buildkit/buildkitd.toml
+    docker restart "$BUILDER_CONTAINER"
   else
     docker buildx use "$BUILDER_NAME"
   fi
