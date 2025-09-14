@@ -195,17 +195,23 @@ verify_kubelet_cgroup() {
 ensure_ingress_admission_secret() {
   if ! kubectl get secret ingress-nginx-admission -n ingress-nginx &>/dev/null; then
     echo "🔐 Creating ingress-nginx admission webhook TLS secret..."
+
+    # Generate TLS cert with SANs to satisfy Kubernetes 1.33+ webhook requirements
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
       -keyout webhook.key -out webhook.crt \
-      -subj "/CN=ingress-nginx-controller-admission.ingress-nginx.svc"
+      -subj "/CN=ingress-nginx-controller-admission.ingress-nginx.svc" \
+      -addext "subjectAltName=DNS:ingress-nginx-controller-admission.ingress-nginx.svc"
 
+    # Ensure namespace exists
     kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
 
+    # Create the TLS secret
     kubectl create secret generic ingress-nginx-admission \
       --from-file=cert=webhook.crt \
       --from-file=key=webhook.key \
       -n ingress-nginx
 
+    # Clean up local files
     rm -f webhook.crt webhook.key
   else
     echo "✅ Admission webhook TLS secret already exists."
