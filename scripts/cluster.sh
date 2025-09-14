@@ -124,18 +124,22 @@ EOF
     echo "Cleaning up old CNI configs..."
     sudo_if_needed rm -f /etc/cni/net.d/*.conf /etc/cni/net.d/*.conflist
 
-    # 6) Install Flannel CNI
+    # 6) Install CNI plugins required by Flannel
+    echo "Installing CNI plugins required by Flannel..."
+    curl -L https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz | sudo_if_needed tar -C /opt/cni/bin -xz
+
+    # 7) Install Flannel CNI
     echo "Installing Flannel CNI..."
     kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
 
-    # 7) Wait for Flannel to become Ready
+    # 8) Wait for Flannel to become Ready
     echo "Waiting for Flannel pod to become Ready..."
     kubectl wait --for=condition=Ready pod -l app=flannel -n kube-flannel --timeout=180s || true
 
-    # 8) Allow scheduling on control plane (single-node)
+    # 9) Allow scheduling on control plane (single-node)
     kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
 
-    # 9) Wait for node Ready
+    # 10) Wait for node Ready
     echo "Waiting for node to become Ready..."
     kubectl wait --for=condition=Ready node --all --timeout=300s || true
   fi
