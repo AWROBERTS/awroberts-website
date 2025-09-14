@@ -17,13 +17,21 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward = 1
 EOF
 
-  # Comment out invalid sysctl keys in default config (if present)
-  sudo sed -i 's/^\(net\.ipv4\.conf\.all\.accept_source_route\)/# \1/' /usr/lib/sysctl.d/50-default.conf
-  sudo sed -i 's/^\(net\.ipv4\.conf\.all\.promote_secondaries\)/# \1/' /usr/lib/sysctl.d/50-default.conf
+  # Comment out invalid sysctl keys if config file exists
+  SYSCTL_DEFAULT_CONF="/usr/lib/sysctl.d/50-default.conf"
+  if [[ -f "$SYSCTL_DEFAULT_CONF" ]]; then
+    sudo sed -i 's/^\(net\.ipv4\.conf\.all\.accept_source_route\)/# \1/' "$SYSCTL_DEFAULT_CONF"
+    sudo sed -i 's/^\(net\.ipv4\.conf\.all\.promote_secondaries\)/# \1/' "$SYSCTL_DEFAULT_CONF"
+  else
+    echo "⚠️ Default sysctl config not found at $SYSCTL_DEFAULT_CONF. Skipping invalid key suppression."
+  fi
 
   # Reload sysctl settings
-  sudo sysctl --system >/dev/null
+  if sudo sysctl --system >/dev/null; then
+    echo "✅ Kubernetes networking sysctls applied successfully."
+  else
+    echo "❌ Failed to reload sysctl settings. Please check for errors."
+  fi
 
   export SYSCTL_ALREADY_APPLIED=true
-  echo "✅ Kubernetes networking sysctls applied successfully."
 }
