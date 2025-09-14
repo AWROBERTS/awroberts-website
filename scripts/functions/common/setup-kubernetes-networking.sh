@@ -22,11 +22,13 @@ EOF
   # Remove any leftover invalid override file
   sudo rm -f /etc/sysctl.d/99-disable-invalid.conf
 
-  # Comment out invalid sysctl keys if config file exists
+  # Comment out invalid and wildcard sysctl keys if config file exists
   SYSCTL_DEFAULT_CONF="/usr/lib/sysctl.d/50-default.conf"
   if [[ -f "$SYSCTL_DEFAULT_CONF" ]]; then
     sudo sed -i 's/^\(net\.ipv4\.conf\.all\.accept_source_route\)/# \1/' "$SYSCTL_DEFAULT_CONF"
     sudo sed -i 's/^\(net\.ipv4\.conf\.all\.promote_secondaries\)/# \1/' "$SYSCTL_DEFAULT_CONF"
+    sudo sed -i 's/^\(net\.ipv4\.conf\.\*\.accept_source_route\)/# \1/' "$SYSCTL_DEFAULT_CONF"
+    sudo sed -i 's/^\(net\.ipv4\.conf\.\*\.promote_secondaries\)/# \1/' "$SYSCTL_DEFAULT_CONF"
   else
     echo "⚠️ Default sysctl config not found at $SYSCTL_DEFAULT_CONF. Skipping invalid key suppression."
   fi
@@ -40,3 +42,4 @@ EOF
 
   export SYSCTL_ALREADY_APPLIED=true
 }
+
