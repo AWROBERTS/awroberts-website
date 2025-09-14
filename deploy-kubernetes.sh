@@ -20,7 +20,6 @@ for file in "${PROJECT_ROOT}/scripts/functions/common/"*.sh; do
 done
 
 main() {
-  sudo_if_needed
   setup_kubernetes_networking
   image_vars
   ensure_tls_secret
