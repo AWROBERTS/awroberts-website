@@ -37,10 +37,9 @@ fi
 main() {
   setup_kubernetes_networking
   image_vars
+  bootstrap_cluster_if_needed
   ensure_tls_secret
   preflight_core_tools
-
-  bootstrap_cluster_if_needed
 }
 
 main "$@"
