@@ -18,10 +18,11 @@ main() {
   cluster_targeting
   preflight_core_tools
   ensure_k8s_and_containerd_installed
-  bootstrap_cluster_if_needed
-  info_and_validate_context
   ensure_containerd_config
   verify_kubelet_cgroup
+  bootstrap_cluster_if_needed
+  cluster_targeting
+  info_and_validate_context
   ensure_ingress_admission_secret
   ensure_ingress_nginx
   saddleworth_nginx
