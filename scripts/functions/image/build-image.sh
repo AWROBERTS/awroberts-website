@@ -30,10 +30,11 @@ EOF
   if ! docker ps -qf "name=buildkit-container" &>/dev/null; then
     echo "🚀 Starting BuildKit container..."
     docker run -d --privileged \
-      --name buildkit-container \
-      -v /var/lib/buildkit \
-      "$BUILDKIT_IMAGE" \
-      --config /etc/buildkit/buildkitd.toml
+    --name buildkit-container \
+    --network host \
+    -v /var/lib/buildkit \
+    "$BUILDKIT_IMAGE" \
+    --config /etc/buildkit/buildkitd.toml
   fi
 
   # Create builder if it doesn't exist
