@@ -1,5 +1,5 @@
 load_env_file() {
-  local env_file="./awroberts.env"
+  local env_file="${PROJECT_ROOT}/awroberts.env"
   if [[ -f "$env_file" ]]; then
     set -a
     . "$env_file"
