@@ -34,12 +34,30 @@ else
   echo "Warning: bootstrap directory not found at $BOOTSTRAP_DIR"
 fi
 
+# Source cluster functions
+CLUSTER_DIR="${PROJECT_ROOT}/scripts/functions/cluster"
+if [ -d "$CLUSTER_DIR" ]; then
+  for file in "$CLUSTER_DIR"/*.sh; do
+    [ -f "$file" ] && source "$file"
+  done
+else
+  echo "Warning: cluster directory not found at $CLUSTER_DIR"
+fi
+
 main() {
   setup_kubernetes_networking
   image_vars
-  bootstrap_cluster_if_needed
-  ensure_tls_secret
   preflight_core_tools
+  bootstrap_cluster_if_needed
+  ensure_k8s_and_containerd_installed
+  ensure_containerd_config
+  verify_kubelet_cgroup
+  cluster_targeting
+  info_and_validate_context
+  ensure_ingress_admission_secret
+  ensure_ingress_nginx
+  ensure_tls_secret
+
 }
 
 main "$@"
