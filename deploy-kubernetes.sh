@@ -7,29 +7,17 @@ PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
 echo "PROJECT_ROOT: $PROJECT_ROOT"
 
-source "${PROJECT_ROOT}/scripts/lib/common.sh"
-source "${PROJECT_ROOT}/scripts/cluster.sh"
-source "${PROJECT_ROOT}/scripts/image.sh"
-source "${PROJECT_ROOT}/scripts/deploy.sh"
-source "${PROJECT_ROOT}/scripts/saddleworth-nginx.sh"
+for file in "${PROJECT_ROOT}/scripts/functions/common/"*.sh; do
+  source "$file"
+done
 
 main() {
+  sudo_if_needed
+  load_env_file
   setup_kubernetes_networking
-  cluster_targeting
+  image_vars
+  ensure_tls_secret
   preflight_core_tools
-  ensure_k8s_and_containerd_installed
-  ensure_containerd_config
-  verify_kubelet_cgroup
-  bootstrap_cluster_if_needed
-  cluster_targeting
-  info_and_validate_context
-  ensure_ingress_admission_secret
-  ensure_ingress_nginx
-  saddleworth_nginx
-  build_image
-  import_image
-  deploy_with_helm
-  notes_and_status
 }
 
 main "$@"
