@@ -47,16 +47,24 @@ preflight_core_tools() {
   # Docker DNS config
   DOCKER_CONFIG="/etc/docker/daemon.json"
   echo "🔧 Checking Docker DNS configuration..."
-  if ! grep -q '"dns"' "$DOCKER_CONFIG" 2>/dev/null; then
-    echo "🛠️ Adding DNS settings to Docker daemon.json..."
-    sudo_if_needed bash -c "
-      jq '. + {dns: [\"8.8.8.8\", \"1.1.1.1\"]}' \"$DOCKER_CONFIG\" > /tmp/daemon.json &&
-      mv /tmp/daemon.json \"$DOCKER_CONFIG\" &&
-      systemctl restart docker
-    "
-    echo "✅ Docker daemon restarted with updated DNS."
+
+  if ! sudo_if_needed test -f "$DOCKER_CONFIG"; then
+    echo "📄 Docker daemon.json not found. Creating it with DNS settings..."
+    sudo_if_needed bash -c "echo '{\"dns\": [\"8.8.8.8\", \"1.1.1.1\"]}' > \"$DOCKER_CONFIG\""
+    sudo_if_needed systemctl restart docker
+    echo "✅ Docker daemon created and restarted with DNS config."
   else
-    echo "✅ Docker DNS already configured."
+    if ! grep -q '"dns"' "$DOCKER_CONFIG" 2>/dev/null; then
+      echo "🛠️ Adding DNS settings to existing Docker daemon.json..."
+      sudo_if_needed bash -c "
+        jq '. + {dns: [\"8.8.8.8\", \"1.1.1.1\"]}' \"$DOCKER_CONFIG\" > /tmp/daemon.json &&
+        mv /tmp/daemon.json \"$DOCKER_CONFIG\" &&
+        systemctl restart docker
+      "
+      echo "✅ Docker daemon restarted with updated DNS."
+    else
+      echo "✅ Docker DNS already configured."
+    fi
   fi
 
   # Helm check and install
