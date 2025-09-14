@@ -199,6 +199,8 @@ ensure_ingress_admission_secret() {
       -keyout webhook.key -out webhook.crt \
       -subj "/CN=ingress-nginx-controller-admission.ingress-nginx.svc"
 
+    kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+
     kubectl create secret generic ingress-nginx-admission \
       --from-file=cert=webhook.crt \
       --from-file=key=webhook.key \
