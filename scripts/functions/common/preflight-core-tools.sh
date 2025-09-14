@@ -4,10 +4,10 @@ preflight_core_tools() {
   # Docker check and install
   if ! command -v docker &>/dev/null; then
     echo "🐳 Docker not found. Installing Docker..."
-    sudo apt update
-    sudo apt install -y docker.io
-    sudo systemctl enable docker
-    sudo systemctl start docker
+    sudo_if_needed apt update
+    sudo_if_needed apt install -y docker.io
+    sudo_if_needed systemctl enable docker
+    sudo_if_needed systemctl start docker
     echo "✅ Docker installed."
   else
     echo "✅ Docker is already installed."
@@ -16,8 +16,8 @@ preflight_core_tools() {
   # Curl check and install
   if ! command -v curl &>/dev/null; then
     echo "🌐 curl not found. Installing curl..."
-    sudo apt update
-    sudo apt install -y curl
+    sudo_if_needed apt update
+    sudo_if_needed apt install -y curl
     echo "✅ curl installed."
   else
     echo "✅ curl is already installed."
@@ -26,8 +26,8 @@ preflight_core_tools() {
   # jq check and install
   if ! command -v jq &>/dev/null; then
     echo "🔧 jq not found. Installing jq..."
-    sudo apt update
-    sudo apt install -y jq
+    sudo_if_needed apt update
+    sudo_if_needed apt install -y jq
     echo "✅ jq installed."
   else
     echo "✅ jq is already installed."
@@ -46,13 +46,13 @@ preflight_core_tools() {
 
   # Docker DNS config
   DOCKER_CONFIG="/etc/docker/daemon.json"
-  if [[ -w "$DOCKER_CONFIG" ]]; then
+  if sudo_if_needed test -w "$DOCKER_CONFIG"; then
     echo "🔧 Checking Docker DNS configuration..."
     if ! grep -q '"dns"' "$DOCKER_CONFIG"; then
       echo "🛠️ Adding DNS settings to Docker daemon.json..."
-      sudo jq '. + {dns: ["8.8.8.8", "1.1.1.1"]}' "$DOCKER_CONFIG" > tmp_daemon.json && \
-      sudo mv tmp_daemon.json "$DOCKER_CONFIG"
-      sudo systemctl restart docker
+      sudo_if_needed jq '. + {dns: ["8.8.8.8", "1.1.1.1"]}' "$DOCKER_CONFIG" > tmp_daemon.json && \
+      sudo_if_needed mv tmp_daemon.json "$DOCKER_CONFIG"
+      sudo_if_needed systemctl restart docker
       echo "✅ Docker daemon restarted with updated DNS."
     else
       echo "✅ Docker DNS already configured."
@@ -72,3 +72,4 @@ preflight_core_tools() {
     echo "✅ Helm is already installed."
   fi
 }
+
