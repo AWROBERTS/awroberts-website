@@ -28,6 +28,7 @@ import_image() {
 
 deploy_with_helm() {
   echo "🚀 Deploying with Helm using image tag ${IMAGE_TAG}"
+  kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
   helm upgrade --install "${DEPLOYMENT_NAME}" "${HELM_CHART_PATH}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${IMAGE_NAME_BASE}" \
