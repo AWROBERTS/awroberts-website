@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
 build_image() {
-  # Define builder name and paths
   BUILDER_NAME="custom-builder"
   BUILDKIT_DIR="buildkit-custom"
   BUILDKIT_CONFIG="$BUILDKIT_DIR/buildkitd.toml"
   BUILDKIT_IMAGE="buildkit-with-dns"
-  BUILD_CONTEXT="docker/awroberts"  # Updated build context path
+  BUILD_CONTEXT="docker/awroberts"
 
   # Create buildkit-custom directory and config if missing
   if [[ ! -f "$BUILDKIT_CONFIG" ]]; then
@@ -17,7 +16,6 @@ build_image() {
   dns = ["8.8.8.8", "1.1.1.1"]
 EOF
 
-    # Create Dockerfile for custom BuildKit image
     cat <<EOF > "$BUILDKIT_DIR/Dockerfile"
 FROM moby/buildkit:latest
 COPY buildkitd.toml /etc/buildkit/buildkitd.toml
@@ -28,26 +26,33 @@ EOF
   echo "🐳 Building custom BuildKit image with DNS config..."
   docker build -t "$BUILDKIT_IMAGE" "$BUILDKIT_DIR"
 
+  # Start BuildKit container manually
+  if ! docker ps -qf "name=buildkit-container" &>/dev/null; then
+    echo "🚀 Starting BuildKit container..."
+    docker run -d --privileged \
+      --name buildkit-container \
+      -v /var/lib/buildkit \
+      "$BUILDKIT_IMAGE" \
+      --config /etc/buildkit/buildkitd.toml
+  fi
+
   # Create builder if it doesn't exist
   if ! docker buildx inspect "$BUILDER_NAME" &>/dev/null; then
-    echo "🔧 Creating builder '$BUILDER_NAME' using custom BuildKit image..."
+    echo "🔧 Registering builder '$BUILDER_NAME' with BuildKit container..."
     docker buildx create \
       --name "$BUILDER_NAME" \
       --driver docker-container \
       --use \
-      --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
-      --image "$BUILDKIT_IMAGE"
+      buildkit-container
   else
     docker buildx use "$BUILDER_NAME"
   fi
 
   echo "🔨 Building image ${FULL_IMAGE} and tagging as latest for ${PLATFORM}"
-  docker buildx create \
-  --name "$BUILDER_NAME" \
-  --driver docker-container \
-  --use \
-  --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
-  --image "$BUILDKIT_IMAGE" \
-  --network host
-
+  docker buildx build \
+    --platform "${PLATFORM}" \
+    -t "${FULL_IMAGE}" \
+    -t "${LATEST_IMAGE}" \
+    --load \
+    "$BUILD_CONTEXT"
 }
