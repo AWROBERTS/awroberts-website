@@ -42,10 +42,12 @@ EOF
   fi
 
   echo "🔨 Building image ${FULL_IMAGE} and tagging as latest for ${PLATFORM}"
-  docker buildx build \
-    --platform "${PLATFORM}" \
-    -t "${FULL_IMAGE}" \
-    -t "${LATEST_IMAGE}" \
-    --load \
-    "$BUILD_CONTEXT"
+  docker buildx create \
+  --name "$BUILDER_NAME" \
+  --driver docker-container \
+  --use \
+  --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
+  --image "$BUILDKIT_IMAGE" \
+  --network host
+
 }
