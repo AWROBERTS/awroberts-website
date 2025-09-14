@@ -16,20 +16,14 @@ EOF
 
   # Check if builder exists
   if ! docker buildx inspect "$BUILDER_NAME" &>/dev/null; then
-    echo "🔧 Creating builder '$BUILDER_NAME' with DNS config..."
+    echo "🔧 Creating builder '$BUILDER_NAME' with DNS config mounted..."
     docker buildx create \
       --name "$BUILDER_NAME" \
       --driver docker-container \
       --use \
       --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
+      --mount "type=bind,src=$(pwd)/$BUILDKIT_CONFIG,dst=/etc/buildkit/buildkitd.toml" \
       --image moby/buildkit:latest
-
-    # Get builder container ID
-    BUILDER_CONTAINER=$(docker ps -qf "name=$BUILDER_NAME")
-
-    # Copy DNS config into builder container
-    docker cp "$BUILDKIT_CONFIG" "$BUILDER_CONTAINER":/etc/buildkit/buildkitd.toml
-    docker restart "$BUILDER_CONTAINER"
   else
     docker buildx use "$BUILDER_NAME"
   fi
