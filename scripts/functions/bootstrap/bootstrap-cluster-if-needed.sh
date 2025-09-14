@@ -23,7 +23,7 @@ bootstrap_cluster_if_needed() {
     echo "No reachable Kubernetes cluster via kubectl. Bootstrapping control plane with kubeadm (Flannel)..."
     disable_swap_and_configure_sysctls
     configure_containerd
-    initialize_kubeadm
+    initialise_kubeadm
     configure_kubeconfig
     prepare_flannel_host_paths
     cleanup_old_cni_configs
