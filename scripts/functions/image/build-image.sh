@@ -20,11 +20,14 @@ EOF
     docker buildx create \
       --name "$BUILDER_NAME" \
       --driver docker-container \
+      --use \
       --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
-      --use
+      --image moby/buildkit:latest
 
-    # Copy config into builder container
+    # Get builder container ID
     BUILDER_CONTAINER=$(docker ps -qf "name=$BUILDER_NAME")
+
+    # Copy DNS config into builder container
     docker cp "$BUILDKIT_CONFIG" "$BUILDER_CONTAINER":/etc/buildkit/buildkitd.toml
     docker restart "$BUILDER_CONTAINER"
   else
