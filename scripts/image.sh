@@ -73,7 +73,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
   if ! kubectl get deployment ingress-nginx-controller -n ingress-nginx &>/dev/null; then
   echo "🔧 Installing ingress-nginx controller..."
-  kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/baremetal/deploy.yaml
   kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx
   else
