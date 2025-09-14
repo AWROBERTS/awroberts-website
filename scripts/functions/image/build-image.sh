@@ -1,29 +1,42 @@
 #!/usr/bin/env bash
 
 build_image() {
-  # Define builder name and config path
+  # Define builder name and paths
   BUILDER_NAME="custom-builder"
-  BUILDKIT_CONFIG="buildkitd.toml"
+  BUILDKIT_DIR="buildkit-custom"
+  BUILDKIT_CONFIG="$BUILDKIT_DIR/buildkitd.toml"
+  BUILDKIT_IMAGE="buildkit-with-dns"
+  BUILD_CONTEXT="docker/awroberts"  # Updated build context path
 
-  # Create BuildKit config file if it doesn't exist
+  # Create buildkit-custom directory and config if missing
   if [[ ! -f "$BUILDKIT_CONFIG" ]]; then
-    echo "📄 Creating BuildKit config with custom DNS..."
+    echo "📁 Setting up BuildKit config with custom DNS..."
+    mkdir -p "$BUILDKIT_DIR"
     cat <<EOF > "$BUILDKIT_CONFIG"
 [worker.oci]
   dns = ["8.8.8.8", "1.1.1.1"]
 EOF
+
+    # Create Dockerfile for custom BuildKit image
+    cat <<EOF > "$BUILDKIT_DIR/Dockerfile"
+FROM moby/buildkit:latest
+COPY buildkitd.toml /etc/buildkit/buildkitd.toml
+EOF
   fi
 
-  # Check if builder exists
+  # Build the custom BuildKit image
+  echo "🐳 Building custom BuildKit image with DNS config..."
+  docker build -t "$BUILDKIT_IMAGE" "$BUILDKIT_DIR"
+
+  # Create builder if it doesn't exist
   if ! docker buildx inspect "$BUILDER_NAME" &>/dev/null; then
-    echo "🔧 Creating builder '$BUILDER_NAME' with DNS config mounted..."
+    echo "🔧 Creating builder '$BUILDER_NAME' using custom BuildKit image..."
     docker buildx create \
       --name "$BUILDER_NAME" \
       --driver docker-container \
       --use \
       --buildkitd-flags '--config=/etc/buildkit/buildkitd.toml' \
-      --mount "type=bind,src=$(pwd)/$BUILDKIT_CONFIG,dst=/etc/buildkit/buildkitd.toml" \
-      --image moby/buildkit:latest
+      --image "$BUILDKIT_IMAGE"
   else
     docker buildx use "$BUILDER_NAME"
   fi
@@ -34,5 +47,5 @@ EOF
     -t "${FULL_IMAGE}" \
     -t "${LATEST_IMAGE}" \
     --load \
-    "${BUILD_CONTEXT}"
+    "$BUILD_CONTEXT"
 }
