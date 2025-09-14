@@ -13,17 +13,35 @@ for file in "${PROJECT_ROOT}/scripts/functions/env/"*.sh; do
 done
 load_env_file  # Load .env variables before anything else
 
-# Now source all other functions
-for file in "${PROJECT_ROOT}/scripts/functions/common/"*.sh; do
-  [[ "$file" == *load_env_file.sh ]] && continue  # Already sourced
-  source "$file"
-done
+# Source common functions
+COMMON_DIR="${PROJECT_ROOT}/scripts/functions/common"
+if [ -d "$COMMON_DIR" ]; then
+  for file in "$COMMON_DIR"/*.sh; do
+    [[ "$file" == *load_env_file.sh ]] && continue
+    [ -f "$file" ] && source "$file"
+  done
+else
+  echo "Warning: common directory not found at $COMMON_DIR"
+fi
+
+# Source bootstrap functions
+BOOTSTRAP_DIR="${PROJECT_ROOT}/scripts/functions/bootstrap"
+if [ -d "$BOOTSTRAP_DIR" ]; then
+  for file in "$BOOTSTRAP_DIR"/*.sh; do
+    [ -f "$file" ] && source "$file"
+  done
+else
+  echo "Warning: bootstrap directory not found at $BOOTSTRAP_DIR"
+fi
 
 main() {
   setup_kubernetes_networking
   image_vars
   ensure_tls_secret
   preflight_core_tools
+
+  bootstrap_cluster_if_needed
 }
 
 main "$@"
+
