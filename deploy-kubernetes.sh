@@ -64,7 +64,6 @@ main() {
   verify_kubelet_cgroup
   cluster_targeting
   info_and_validate_context
-  ensure_ingress_admission_secret
   ensure_tls_secret
   build_image
   import_image
