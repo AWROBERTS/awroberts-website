@@ -24,11 +24,13 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+          serviceName: awroberts-web-deploy
           servicePort: 80
     - host: www.awroberts.co.uk
       paths:
         - path: /
           pathType: Prefix
+          serviceName: awroberts-web-deploy
           servicePort: 80
 
 volume:
