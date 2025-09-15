@@ -18,13 +18,21 @@ spec:
         {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
-  rules:
-    {{- range .Values.ingress.rules }}
+
+  {{- $validRules := list }}
+  {{- range .Values.ingress.rules }}
     {{- if and .host .paths (gt (len .paths) 0) }}
-    - host: {{ .host }}
+      {{- $validRules = append $validRules . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if gt (len $validRules) 0 }}
+  rules:
+    {{- range $rule := $validRules }}
+    - host: {{ $rule.host }}
       http:
         paths:
-          {{- range $path := .paths }}
+          {{- range $path := $rule.paths }}
           - path: {{ $path.path }}
             pathType: {{ $path.pathType }}
             backend:
@@ -34,5 +42,11 @@ spec:
                   number: {{ $path.servicePort }}
           {{- end }}
     {{- end }}
-    {{- end }}
+  {{- else }}
+  defaultBackend:
+    service:
+      name: {{ include "awroberts-web.fullname" . }}
+      port:
+        number: {{ .Values.service.port }}
+  {{- end }}
 {{- end }}
