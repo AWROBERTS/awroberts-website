@@ -28,7 +28,7 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "awroberts-web.fullname" $ }}
+                name: {{ include "awroberts-web.fullname" . | quote }}
                 port:
                   number: {{ .servicePort }}
           {{- end }}
