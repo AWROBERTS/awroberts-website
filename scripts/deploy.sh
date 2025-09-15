@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Kubernetes app deployment using Helm, with TLS secret setup
 
-source "${PROJECT_ROOT}/scripts/lib/common.sh"
-
 notes_and_status() {
   if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
     echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443"
