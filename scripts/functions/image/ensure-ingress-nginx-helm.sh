@@ -1,16 +1,17 @@
 ensure_ingress_nginx_helm() {
-  if ! helm status ingress-nginx -n ingress-nginx >/dev/null 2>&1; then
-    echo "🧹 Cleaning up any leftover ingress-nginx resources..."
-    kubectl delete namespace ingress-nginx --ignore-not-found
-    kubectl wait --for=delete ns/ingress-nginx --timeout=60s
+  echo "🔧 Ensuring ingress-nginx controller is installed via Helm..."
 
-    echo "🔧 Installing ingress-nginx controller via Helm..."
+  if ! helm status ingress-nginx -n ingress-nginx >/dev/null 2>&1; then
     helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
     helm repo update
+
     helm install ingress-nginx ingress-nginx/ingress-nginx \
       --namespace ingress-nginx --create-namespace \
       --set controller.hostNetwork="${INGRESS_HOSTNETWORK:-false}" \
-      --set controller.dnsPolicy="ClusterFirstWithHostNet"
+      --set controller.dnsPolicy="ClusterFirstWithHostNet" \
+      --set controller.service.type="ClusterIP" \
+      --set controller.service.ports.http=80 \
+      --set controller.service.ports.https=443
   else
     echo "✅ ingress-nginx controller already installed via Helm."
   fi
