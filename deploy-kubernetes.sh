@@ -65,13 +65,12 @@ main() {
   cluster_targeting
   info_and_validate_context
   ensure_ingress_admission_secret
-  ensure_ingress_nginx
   ensure_tls_secret
-
   build_image
   import_image
   restart_kube_proxy
   ensure_ingress_nginx_helm
+  ensure_ingress_nginx_hostnetwork
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
 }
