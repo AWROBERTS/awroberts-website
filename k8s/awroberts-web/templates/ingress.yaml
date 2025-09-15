@@ -23,14 +23,14 @@ spec:
     - host: {{ .host }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          {{- range $path := .paths }}
+          - path: {{ $path.path }}
+            pathType: {{ $path.pathType }}
             backend:
               service:
-                name: {{ include "awroberts-web.fullname" . | quote }}
+                name: {{ include "awroberts-web.fullname" $ }}
                 port:
-                  number: {{ .servicePort }}
+                  number: {{ $path.servicePort }}
           {{- end }}
     {{- end }}
 {{- end }}
