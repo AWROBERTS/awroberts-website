@@ -72,6 +72,7 @@ main() {
   ensure_ingress_nginx_hostnetwork
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
+  notes_and_status
 }
 
 main "$@"
