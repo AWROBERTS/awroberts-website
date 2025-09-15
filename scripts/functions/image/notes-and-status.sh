@@ -9,9 +9,11 @@ notes_and_status() {
   fi
 
   echo "Deployment complete. Quick status:"
-  kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide
-  kubectl -n "$NAMESPACE" get svc "$DEPLOYMENT_NAME" -o wide || true
-  kubectl -n "$NAMESPACE" get ingress "$DEPLOYMENT_NAME" -o wide || true
+  kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide || echo "Deployment $DEPLOYMENT_NAME not found"
+  kubectl -n "$NAMESPACE" get svc -o wide | grep "$DEPLOYMENT_NAME" || echo "Service not found"
+  kubectl -n "$NAMESPACE" get ingress -o wide | grep "$DEPLOYMENT_NAME" || echo "Ingress not found"
+  kubectl -n "$NAMESPACE" get pods -l app="$DEPLOYMENT_NAME" -o wide || echo "Pods not found"
   echo "Node IPs: $(kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')"
-  echo "Public IP: $(curl -s https://api.ipify.org || true)"
+  echo "Public IP: $(curl -s https://api.ipify.org || echo "Unavailable")"
 }
+
