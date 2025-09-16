@@ -26,16 +26,13 @@ EOF
   echo "🐳 Building custom BuildKit image with DNS config..."
   docker build -t "$BUILDKIT_IMAGE" "$BUILDKIT_DIR"
 
-  # Start BuildKit container manually
-  if ! docker ps -qf "name=buildkit-container" &>/dev/null; then
-    echo "🚀 Starting BuildKit container..."
-    docker run -d --privileged \
-    --name buildkit-container \
-    --network host \
-    -v /var/lib/buildkit \
-    "$BUILDKIT_IMAGE" \
-    --config /etc/buildkit/buildkitd.toml
-  fi
+# Start BuildKit container manually
+  docker run -d --privileged \
+  --name buildkit-container \
+  --network host \
+  -v "$(pwd)/$BUILDKIT_CONFIG:/etc/buildkit/buildkitd.toml" \
+  "$BUILDKIT_IMAGE" \
+  --config /etc/buildkit/buildkitd.toml
 
   # Create builder if it doesn't exist
   if ! docker buildx inspect "$BUILDER_NAME" &>/dev/null; then

@@ -56,7 +56,6 @@ fi
 
 main() {
   setup_kubernetes_networking
-  image_vars
   preflight_core_tools
   bootstrap_cluster_if_needed
   ensure_k8s_and_containerd_installed
@@ -65,6 +64,7 @@ main() {
   cluster_targeting
   info_and_validate_context
   ensure_tls_secret
+  image_vars
   build_image
   import_image
   restart_kube_proxy
