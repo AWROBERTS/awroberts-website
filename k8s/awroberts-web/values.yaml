@@ -15,29 +15,23 @@ ingress:
     nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
     nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
   tls:
-    - hosts:
-        - awroberts.co.uk
-        - www.awroberts.co.uk
-      secretName: awroberts-tls
-  hosts:
+    secretName: awroberts-tls
+    hosts:
+      - awroberts.co.uk
+      - www.awroberts.co.uk
+  rules:
     - host: awroberts.co.uk
       paths:
         - path: /
           pathType: Prefix
-          backend:
-            service:
-              name: awroberts-web-deploy
-              port:
-                number: 80
+          serviceName: awroberts-web-deploy
+          servicePort: 80
     - host: www.awroberts.co.uk
       paths:
         - path: /
           pathType: Prefix
-          backend:
-            service:
-              name: awroberts-web-deploy
-              port:
-                number: 80
+          serviceName: awroberts-web-deploy
+          servicePort: 80
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
