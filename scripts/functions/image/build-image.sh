@@ -5,5 +5,7 @@ build_image() {
   docker buildx build \
     --platform "${PLATFORM}" \
     -t "${FULL_IMAGE}" \
-    -t "${LATEST_IMAGE}"
+    -t "${LATEST_IMAGE}" \
+    --load \
+    "${BUILD_CONTEXT}"
 }
