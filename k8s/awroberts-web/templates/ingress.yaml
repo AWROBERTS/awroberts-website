@@ -12,26 +12,28 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls }}
   tls:
+    {{- range .Values.ingress.tls }}
     - hosts:
-        {{- range .Values.ingress.tls.hosts }}
+        {{- range .hosts }}
         - {{ . }}
         {{- end }}
-      secretName: {{ .Values.ingress.tls.secretName }}
+      secretName: {{ .secretName }}
+    {{- end }}
   {{- end }}
   rules:
-    {{- range $rule := .Values.ingress.rules }}
-    - host: {{ $rule.host }}
-      {{- if $rule.paths }}
+    {{- range .Values.ingress.rules }}
+    - host: {{ .host }}
+      {{- if .paths }}
       http:
         paths:
-          {{- range $path := $rule.paths }}
-          - path: {{ $path.path }}
-            pathType: {{ $path.pathType }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ $path.serviceName }}
+                name: {{ .serviceName }}
                 port:
-                  number: {{ $path.servicePort }}
+                  number: {{ .servicePort }}
           {{- end }}
       {{- end }}
     {{- end }}
