@@ -7,21 +7,6 @@ build_image() {
   BUILDKIT_IMAGE="buildkit-with-dns"
   BUILD_CONTEXT="docker/awroberts"
 
-  # Create buildkit-custom directory and config if missing
-  if [[ ! -f "$BUILDKIT_CONFIG" ]]; then
-    echo "📁 Setting up BuildKit config with custom DNS..."
-    mkdir -p "$BUILDKIT_DIR"
-    cat <<EOF > "$BUILDKIT_CONFIG"
-[worker.oci]
-  dns = ["8.8.8.8", "1.1.1.1"]
-EOF
-
-    cat <<EOF > "$BUILDKIT_DIR/Dockerfile"
-FROM moby/buildkit:latest
-COPY buildkitd.toml /etc/buildkit/buildkitd.toml
-EOF
-  fi
-
   # Build the custom BuildKit image
   echo "🐳 Building custom BuildKit image with DNS config..."
   docker build -t "$BUILDKIT_IMAGE" "$BUILDKIT_DIR"
