@@ -1,0 +1,4 @@
+[worker.oci]
+  enabled = true
+  platforms = ["linux/amd64"]
+  dns = ["8.8.8.8", "1.1.1.1"]
