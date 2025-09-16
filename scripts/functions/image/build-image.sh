@@ -30,8 +30,8 @@ EOF
   docker run -d --privileged \
   --name buildkit-container \
   --network host \
-  -v "$(pwd)/$BUILDKIT_CONFIG:/etc/buildkit/buildkitd.toml" \
-  "$BUILDKIT_IMAGE" \
+  -v "$(pwd)/buildkit-custom/buildkitd.toml:/etc/buildkit/buildkitd.toml" \
+  buildkit-with-dns \
   --config /etc/buildkit/buildkitd.toml
 
   # Create builder if it doesn't exist
