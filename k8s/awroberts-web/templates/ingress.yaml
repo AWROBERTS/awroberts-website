@@ -25,14 +25,14 @@ spec:
     - host: {{ .host }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          {{- range $path := .paths }}
+          - path: {{ $path.path }}
+            pathType: {{ $path.pathType }}
             backend:
               service:
-                name: {{ .backend.service.name }}
+                name: {{ $path.backend.service.name }}
                 port:
-                  number: {{ .backend.service.port.number }}
+                  number: {{ $path.backend.service.port.number }}
           {{- end }}
     {{- end }}
 {{- end }}
