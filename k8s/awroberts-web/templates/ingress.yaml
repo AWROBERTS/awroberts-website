@@ -21,11 +21,11 @@ spec:
     {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.rules }}
-    - host: {{ .host }}
+    {{- range $rule := .Values.ingress.rules }}
+    - host: {{ $rule.host }}
       http:
         paths:
-          {{- range $path := .paths }}
+          {{- range $path := $rule.paths }}
           - path: {{ $path.path }}
             pathType: {{ $path.pathType }}
             backend:
