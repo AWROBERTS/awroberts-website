@@ -14,4 +14,8 @@ deploy_with_helm() {
     --set ingress.rules[1].host="${HOST_B}" \
     --set volume.hostPath="${HOST_MEDIA_PATH}" \
     --set volume.mountPath="/usr/share/nginx/html/awroberts-media"
+
+  # Expose ingress-nginx-controller externally
+  kubectl patch svc ingress-nginx-controller -n ingress-nginx \
+    -p '{"spec": {"type": "NodePort"}}'
 }
