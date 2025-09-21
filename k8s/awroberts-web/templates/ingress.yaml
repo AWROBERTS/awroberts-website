@@ -1,36 +1,39 @@
-{{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "awroberts-web.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: awroberts-web-deploy
+  namespace: awroberts
   annotations:
-    {{- range $key, $value := .Values.ingress.annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: nginx
   tls:
-    {{- range .Values.ingress.tls }}
     - hosts:
-        {{- range .hosts }}
-        - {{ . }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
+        - awroberts.co.uk
+        - www.awroberts.co.uk
+      secretName: awroberts-tls
   rules:
-    {{- range $rule := .Values.ingress.rules }}
-    - host: {{ $rule.host }}
+    - host: awroberts.co.uk
       http:
         paths:
-          {{- range $path := $rule.paths }}
-          - path: {{ $path.path }}
-            pathType: {{ $path.pathType }}
+          - path: /
+            pathType: Prefix
             backend:
               service:
-                name: {{ $path.backend.service.name }}
+                name: awroberts-web-deploy
                 port:
-                  number: {{ $path.backend.service.port.number }}
-          {{- end }}
-    {{- end }}
-{{- end }}
+                  number: 80
+    - host: www.awroberts.co.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: awroberts-web-deploy
+                port:
+                  number: 80
