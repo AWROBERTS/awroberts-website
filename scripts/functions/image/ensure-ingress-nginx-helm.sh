@@ -7,11 +7,9 @@ ensure_ingress_nginx_helm() {
 
     helm install ingress-nginx ingress-nginx/ingress-nginx \
       --namespace ingress-nginx --create-namespace \
-      --set controller.hostNetwork=true \
-      --set controller.dnsPolicy=ClusterFirstWithHostNet \
-      --set controller.service.type=ClusterIP \
-      --set controller.service.ports.http=80 \
-      --set controller.service.ports.https=443
+      --set controller.service.type=NodePort \
+      --set controller.service.nodePorts.http=32207 \
+      --set controller.service.nodePorts.https=32047
   else
     echo "✅ ingress-nginx controller already installed via Helm."
   fi
