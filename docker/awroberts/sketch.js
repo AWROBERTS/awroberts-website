@@ -1,11 +1,3 @@
-// Static text in the top half.
-// Each letter ripples "3x crazier" via multiple modulations:
-// - Fast Perlin noise
-// - Sine wave wobble with per-letter phase
-// - Slow Perlin drift
-// - Occasional burst spikes with decay
-// Plus small vertical bob and rotation wobble for extra liveliness.
-
 let Font;
 const textString = 'info@awroberts.co.uk';
 
@@ -22,6 +14,11 @@ function preload() {
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
+  canvas.style('position', 'absolute');
+  canvas.style('top', '0');
+  canvas.style('left', '0');
+  canvas.style('z-index', '1');
+
   pixelDensity(1);
   noStroke();
   textAlign(LEFT, BASELINE);
