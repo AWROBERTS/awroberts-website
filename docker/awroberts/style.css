@@ -24,11 +24,13 @@ html, body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  min-width: 100%;
-  min-height: 100%;
+  min-width: 100vw;
+  min-height: 100vh;
+  width: auto;
+  height: auto;
   object-fit: cover;
   z-index: -1;
-  display: block;
+  background-color: black;
 }
 
 /* Canvas container to overlay text */
