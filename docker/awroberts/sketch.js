@@ -8,5 +8,5 @@ function setup() {
 }
 
 function draw() {
-  background(255, 0, 0); // bright red to confirm canvas is visible
+  background(0, 0, 0);
 }
