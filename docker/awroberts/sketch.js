@@ -49,20 +49,26 @@ function draw() {
   isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
                     mouseY > yStart && mouseY < yStart + textHeight;
 
-  // Draw text in white
+  // Draw white text
   fill(255);
   text(emailText, width / 2, emailY);
 
-  // If hovering, invert pixels in text block
   if (isHoveringEmail) {
     loadPixels();
     for (let y = yStart; y < yStart + textHeight; y++) {
       for (let x = xStart; x < xStart + totalWidth; x++) {
         let index = (int(x) + int(y) * width) * 4;
-        pixels[index]     = 255 - pixels[index];     // R
-        pixels[index + 1] = 255 - pixels[index + 1]; // G
-        pixels[index + 2] = 255 - pixels[index + 2]; // B
-        // Alpha remains unchanged
+        let r = pixels[index];
+        let g = pixels[index + 1];
+        let b = pixels[index + 2];
+        let a = pixels[index + 3];
+
+        // Only invert if pixel is part of the white text (i.e., bright and opaque)
+        if (a > 0 && r > 200 && g > 200 && b > 200) {
+          pixels[index]     = 255 - r;
+          pixels[index + 1] = 255 - g;
+          pixels[index + 2] = 255 - b;
+        }
       }
     }
     updatePixels();
