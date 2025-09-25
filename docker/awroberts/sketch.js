@@ -1,7 +1,7 @@
 let bgVideo;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
-let emailSize = 192;
+let emailSize = 140;
 let emailY = 40;
 let isHoveringEmail = false;
 
@@ -38,27 +38,46 @@ function setup() {
 }
 
 function draw() {
-  // Calculate text bounds
-  let textWidthEstimate = textWidth(emailText);
-  let textHeight = emailSize;
-  let xStart = width / 2 - textWidthEstimate / 2;
-  let xEnd = width / 2 + textWidthEstimate / 2;
-  let yStart = emailY;
-  let yEnd = emailY + textHeight;
+  image(bgVideo, 0, 0, width, height); // draw video to canvas
+  loadPixels(); // load canvas pixels
 
-  // Check hover
-  isHoveringEmail = mouseX > xStart && mouseX < xEnd && mouseY > yStart && mouseY < yEnd;
+  let totalWidth = textWidth(emailText);
+  let xStart = width / 2 - totalWidth / 2;
+  let y = emailY;
 
-  // Set fill color based on hover
-  if (isHoveringEmail) {
-    fill(255, 255, 200); // yellowish white
-    cursor(HAND);
-  } else {
-    fill(255); // pure white
-    cursor(ARROW);
+  let x = xStart;
+  isHoveringEmail = false;
+
+  for (let i = 0; i < emailText.length; i++) {
+    let char = emailText[i];
+    let charWidth = textWidth(char);
+
+    let px = int(x + charWidth / 2);
+    let py = int(y + emailSize / 2);
+    let index = (px + py * width) * 4;
+
+    let r = pixels[index];
+    let g = pixels[index + 1];
+    let b = pixels[index + 2];
+
+    let ir = 255 - r;
+    let ig = 255 - g;
+    let ib = 255 - b;
+
+    // Check if mouse is over this character
+    let isHoveringChar = mouseX > x && mouseX < x + charWidth && mouseY > y && mouseY < y + emailSize;
+    if (isHoveringChar) {
+      fill(ir, ig, ib); // inverted pixel color
+      isHoveringEmail = true;
+    } else {
+      fill(255); // pure white
+    }
+
+    text(char, x + charWidth / 2, y);
+    x += charWidth;
   }
 
-  text(emailText, width / 2, emailY);
+  cursor(isHoveringEmail ? HAND : ARROW);
 }
 
 function mousePressed() {
@@ -66,5 +85,3 @@ function mousePressed() {
     window.location.href = 'mailto:info@awroberts.co.uk';
   }
 }
-
-
