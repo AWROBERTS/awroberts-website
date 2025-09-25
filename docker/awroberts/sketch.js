@@ -3,7 +3,6 @@ let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize = 140;
 let emailY = 40;
-let textBuffer;
 let isHoveringEmail = false;
 
 function preload() {
@@ -36,13 +35,6 @@ function setup() {
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
-
-  // Create buffer for text rendering
-  textBuffer = createGraphics(width, height);
-  textBuffer.textFont(curwenFont);
-  textBuffer.textSize(emailSize);
-  textBuffer.textAlign(CENTER, TOP);
-  textBuffer.clear();
 }
 
 function draw() {
@@ -57,37 +49,11 @@ function draw() {
   isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
                     mouseY > yStart && mouseY < yStart + textHeight;
 
-  // Clear and draw white text to buffer
-  textBuffer.clear();
-  textBuffer.fill(255);
-  textBuffer.text(emailText, width / 2, emailY);
+  // Draw white text
+  fill(255);
+  text(emailText, width / 2, emailY);
 
-  if (isHoveringEmail) {
-    textBuffer.loadPixels();
-    for (let y = yStart; y < yStart + textHeight; y++) {
-      for (let x = xStart; x < xStart + totalWidth; x++) {
-        let index = (int(x) + int(y) * width) * 4;
-        let r = textBuffer.pixels[index];
-        let g = textBuffer.pixels[index + 1];
-        let b = textBuffer.pixels[index + 2];
-        let a = textBuffer.pixels[index + 3];
-
-        // Invert only visible text pixels
-        if (a > 0) {
-          textBuffer.pixels[index]     = 255 - r;
-          textBuffer.pixels[index + 1] = 255 - g;
-          textBuffer.pixels[index + 2] = 255 - b;
-        }
-      }
-    }
-    textBuffer.updatePixels();
-    cursor(HAND);
-  } else {
-    cursor(ARROW);
-  }
-
-  // Draw buffer to main canvas
-  image(textBuffer, 0, 0);
+  cursor(isHoveringEmail ? HAND : ARROW);
 }
 
 function mousePressed() {
