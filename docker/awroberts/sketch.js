@@ -38,46 +38,38 @@ function setup() {
 }
 
 function draw() {
-  image(bgVideo, 0, 0, width, height); // draw video to canvas
-  loadPixels(); // load canvas pixels
+  image(bgVideo, 0, 0, width, height);
 
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
-  let y = emailY;
+  let yStart = emailY;
+  let textHeight = emailSize;
 
-  let x = xStart;
-  isHoveringEmail = false;
+  // Check hover
+  isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
+                    mouseY > yStart && mouseY < yStart + textHeight;
 
-  for (let i = 0; i < emailText.length; i++) {
-    let char = emailText[i];
-    let charWidth = textWidth(char);
+  // Draw text in white
+  fill(255);
+  text(emailText, width / 2, emailY);
 
-    let px = int(x + charWidth / 2);
-    let py = int(y + emailSize / 2);
-    let index = (px + py * width) * 4;
-
-    let r = pixels[index];
-    let g = pixels[index + 1];
-    let b = pixels[index + 2];
-
-    let ir = 255 - r;
-    let ig = 255 - g;
-    let ib = 255 - b;
-
-    // Check if mouse is over this character
-    let isHoveringChar = mouseX > x && mouseX < x + charWidth && mouseY > y && mouseY < y + emailSize;
-    if (isHoveringChar) {
-      fill(ir, ig, ib); // inverted pixel color
-      isHoveringEmail = true;
-    } else {
-      fill(255); // pure white
+  // If hovering, invert pixels in text block
+  if (isHoveringEmail) {
+    loadPixels();
+    for (let y = yStart; y < yStart + textHeight; y++) {
+      for (let x = xStart; x < xStart + totalWidth; x++) {
+        let index = (int(x) + int(y) * width) * 4;
+        pixels[index]     = 255 - pixels[index];     // R
+        pixels[index + 1] = 255 - pixels[index + 1]; // G
+        pixels[index + 2] = 255 - pixels[index + 2]; // B
+        // Alpha remains unchanged
+      }
     }
-
-    text(char, x + charWidth / 2, y);
-    x += charWidth;
+    updatePixels();
+    cursor(HAND);
+  } else {
+    cursor(ARROW);
   }
-
-  cursor(isHoveringEmail ? HAND : ARROW);
 }
 
 function mousePressed() {
