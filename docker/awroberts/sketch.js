@@ -8,7 +8,13 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  bgVideo = createVideo('/awroberts-media/background.mp4');
+  bgVideo = createVideo('/awroberts-media/background.mp4', () => {
+    bgVideo.volume(0);
+    bgVideo.attribute('muted', '');
+    bgVideo.loop();
+    bgVideo.play();
+  });
+
   bgVideo.parent('canvas-container');
   bgVideo.size(windowWidth, windowHeight);
   bgVideo.style('position', 'absolute');
@@ -16,9 +22,8 @@ function setup() {
   bgVideo.style('left', '0');
   bgVideo.style('z-index', '0');
   bgVideo.style('object-fit', 'cover');
-  bgVideo.attribute('muted', '');
-  bgVideo.loop();
 }
 
 function draw() {
 }
+
