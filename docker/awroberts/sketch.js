@@ -1,3 +1,4 @@
+let rippleShader;
 let bgVideo;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -6,50 +7,44 @@ let emailY = 40;
 let isHoveringEmail = false;
 
 function preload() {
+  rippleShader = loadShader('shaders/ripple.vert', 'shaders/ripple.frag');
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
+  bgVideo = createVideo('/awroberts-media/background.mp4');
+  bgVideo.hide(); // Hide default DOM rendering
 }
 
 function setup() {
-  const canvas = createCanvas(windowWidth, windowHeight);
-  canvas.parent('canvas-container');
-  canvas.style('position', 'absolute');
-  canvas.style('top', '0');
-  canvas.style('left', '0');
-  canvas.style('z-index', '1');
-
-  bgVideo = createVideo('/awroberts-media/background.mp4', () => {
-    bgVideo.volume(0);
-    bgVideo.attribute('muted', '');
-    bgVideo.loop();
-    bgVideo.play();
-  });
-
-  bgVideo.parent('canvas-container');
-  bgVideo.size(windowWidth, windowHeight);
-  bgVideo.style('position', 'absolute');
-  bgVideo.style('top', '0');
-  bgVideo.style('left', '0');
-  bgVideo.style('z-index', '0');
-  bgVideo.style('object-fit', 'cover');
+  createCanvas(windowWidth, windowHeight, WEBGL);
+  bgVideo.loop();
+  bgVideo.volume(0);
+  bgVideo.attribute('muted', '');
+  bgVideo.play();
 
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
+  noStroke();
 }
 
 function draw() {
-  let s = second();
-  let angle = radians(s * 6); // 6 degrees per second
-  let scaleFactor = sqrt(2);  // ~1.414 to cover corners
+  // Apply ripple shader
+  shader(rippleShader);
+  rippleShader.setUniform('tex', bgVideo);
+  rippleShader.setUniform('resolution', [width, height]);
+  rippleShader.setUniform('mouse', [mouseX, height - mouseY]); // Flip Y for WebGL
+  rippleShader.setUniform('time', millis() / 1000.0);
 
-  push();
-  translate(width / 2, height / 2); // Move origin to center
-  rotate(angle);                    // Rotate canvas
-  imageMode(CENTER);
-  image(bgVideo, 0, 0, width * scaleFactor, height * scaleFactor); // Scaled video
-  pop();
+  // Draw fullscreen quad with shader
+  rect(-width / 2, -height / 2, width, height);
 
-  // Static email text
+  // Overlay static email text
+  resetMatrix(); // Reset WebGL transform to draw in screen space
+  setAttributes('alpha', true); // Allow blending
+  textFont(curwenFont);
+  textSize(emailSize);
+  textAlign(CENTER, TOP);
+  fill(255);
+
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
@@ -58,7 +53,6 @@ function draw() {
   isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
                     mouseY > yStart && mouseY < yStart + textHeight;
 
-  fill(255);
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
 }
