@@ -1,7 +1,7 @@
 let bgVideo;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
-let emailSize = 48;
+let emailSize = 192;
 let emailY = 40;
 let isHoveringEmail = false;
 
