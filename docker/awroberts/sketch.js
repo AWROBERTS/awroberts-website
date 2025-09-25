@@ -1,5 +1,9 @@
 let bgVideo;
 let curwenFont;
+let emailText = 'info@awroberts.co.uk';
+let emailSize = 48;
+let emailY = 40;
+let isHoveringEmail = false;
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -27,29 +31,40 @@ function setup() {
   bgVideo.style('left', '0');
   bgVideo.style('z-index', '0');
   bgVideo.style('object-fit', 'cover');
+
+  textFont(curwenFont);
+  textSize(emailSize);
+  textAlign(CENTER, TOP);
 }
 
 function draw() {
-  background(0, 0); // optional: clear canvas
+  // Calculate text bounds
+  let textWidthEstimate = textWidth(emailText);
+  let textHeight = emailSize;
+  let xStart = width / 2 - textWidthEstimate / 2;
+  let xEnd = width / 2 + textWidthEstimate / 2;
+  let yStart = emailY;
+  let yEnd = emailY + textHeight;
 
-  textFont(curwenFont);
-  textSize(100);
-  fill(255);
-  textAlign(CENTER, TOP);
-  text('info@awroberts.co.uk', width / 2, 40);
+  // Check hover
+  isHoveringEmail = mouseX > xStart && mouseX < xEnd && mouseY > yStart && mouseY < yEnd;
+
+  // Set fill color based on hover
+  if (isHoveringEmail) {
+    fill(255, 255, 200); // yellowish white
+    cursor(HAND);
+  } else {
+    fill(255); // pure white
+    cursor(ARROW);
+  }
+
+  text(emailText, width / 2, emailY);
 }
 
 function mousePressed() {
-  let textWidthEstimate = textWidth('info@awroberts.co.uk');
-  let textHeight = 48;
-
-  let xStart = width / 2 - textWidthEstimate / 2;
-  let xEnd = width / 2 + textWidthEstimate / 2;
-  let yStart = 40;
-  let yEnd = 40 + textHeight;
-
-  if (mouseX > xStart && mouseX < xEnd && mouseY > yStart && mouseY < yEnd) {
+  if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
   }
 }
+
 
