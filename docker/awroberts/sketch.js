@@ -3,6 +3,7 @@ let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize = 140;
 let emailY = 40;
+let textBuffer;
 let isHoveringEmail = false;
 
 function preload() {
@@ -35,6 +36,13 @@ function setup() {
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
+
+  // Create buffer for text rendering
+  textBuffer = createGraphics(width, height);
+  textBuffer.textFont(curwenFont);
+  textBuffer.textSize(emailSize);
+  textBuffer.textAlign(CENTER, TOP);
+  textBuffer.clear();
 }
 
 function draw() {
@@ -49,33 +57,37 @@ function draw() {
   isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
                     mouseY > yStart && mouseY < yStart + textHeight;
 
-  // Draw white text
-  fill(255);
-  text(emailText, width / 2, emailY);
+  // Clear and draw white text to buffer
+  textBuffer.clear();
+  textBuffer.fill(255);
+  textBuffer.text(emailText, width / 2, emailY);
 
   if (isHoveringEmail) {
-    loadPixels();
+    textBuffer.loadPixels();
     for (let y = yStart; y < yStart + textHeight; y++) {
       for (let x = xStart; x < xStart + totalWidth; x++) {
         let index = (int(x) + int(y) * width) * 4;
-        let r = pixels[index];
-        let g = pixels[index + 1];
-        let b = pixels[index + 2];
-        let a = pixels[index + 3];
+        let r = textBuffer.pixels[index];
+        let g = textBuffer.pixels[index + 1];
+        let b = textBuffer.pixels[index + 2];
+        let a = textBuffer.pixels[index + 3];
 
-        // Only invert if pixel is part of the white text (i.e., bright and opaque)
-        if (a > 0 && r > 200 && g > 200 && b > 200) {
-          pixels[index]     = 255 - r;
-          pixels[index + 1] = 255 - g;
-          pixels[index + 2] = 255 - b;
+        // Invert only visible text pixels
+        if (a > 0) {
+          textBuffer.pixels[index]     = 255 - r;
+          textBuffer.pixels[index + 1] = 255 - g;
+          textBuffer.pixels[index + 2] = 255 - b;
         }
       }
     }
-    updatePixels();
+    textBuffer.updatePixels();
     cursor(HAND);
   } else {
     cursor(ARROW);
   }
+
+  // Draw buffer to main canvas
+  image(textBuffer, 0, 0);
 }
 
 function mousePressed() {
