@@ -38,21 +38,28 @@ function setup() {
 }
 
 function draw() {
-  image(bgVideo, 0, 0, width, height);
+  let s = second();
+  let angle = radians(s * 6); // 6 degrees per second
+  let scaleFactor = sqrt(2);  // ~1.414 to cover corners
 
+  push();
+  translate(width / 2, height / 2); // Move origin to center
+  rotate(angle);                    // Rotate canvas
+  imageMode(CENTER);
+  image(bgVideo, 0, 0, width * scaleFactor, height * scaleFactor); // Scaled video
+  pop();
+
+  // Static email text
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
   let textHeight = emailSize;
 
-  // Check hover
   isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
                     mouseY > yStart && mouseY < yStart + textHeight;
 
-  // Draw white text
   fill(255);
   text(emailText, width / 2, emailY);
-
   cursor(isHoveringEmail ? HAND : ARROW);
 }
 
