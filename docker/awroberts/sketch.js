@@ -18,7 +18,6 @@ function setup() {
   bgVideo.style('object-fit', 'cover');
   bgVideo.attribute('muted', '');
   bgVideo.loop();
-  bgVideo.hide();
 }
 
 function draw() {
