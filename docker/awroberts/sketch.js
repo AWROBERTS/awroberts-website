@@ -4,7 +4,6 @@ let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
-let rippleOrigin = null;
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -57,32 +56,27 @@ function draw() {
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
 
-  if (rippleOrigin) {
+  let centerX = mouseIsPressed ? mouseX : (touches.length > 0 ? touches[0].x : -1);
+  let centerY = mouseIsPressed ? mouseY : (touches.length > 0 ? touches[0].y : -1);
+
+  if ((mouseIsPressed || touches.length > 0) && centerX >= 0 && centerY >= 0) {
     loadPixels();
     let d = pixelDensity();
-    let waveStrength = 10;
-    let waveFrequency = 0.05;
-    let time = frameCount * 0.1;
+    let radius = 100;
 
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        let dx = x - rippleOrigin.x;
-        let dy = y - rippleOrigin.y;
-        let dist = sqrt(dx * dx + dy * dy);
-        let offset = sin(dist * waveFrequency - time) * waveStrength;
-
-        let srcX = constrain(x + offset, 0, width - 1);
-        let srcY = constrain(y + offset, 0, height - 1);
-
-        for (let i = 0; i < d; i++) {
-          for (let j = 0; j < d; j++) {
-            let srcIndex = 4 * ((srcY * d + j) * width * d + (srcX * d + i));
-            let dstIndex = 4 * ((y * d + j) * width * d + (x * d + i));
-
-            pixels[dstIndex] = pixels[srcIndex];
-            pixels[dstIndex + 1] = pixels[srcIndex + 1];
-            pixels[dstIndex + 2] = pixels[srcIndex + 2];
-            pixels[dstIndex + 3] = pixels[srcIndex + 3];
+    for (let x = -radius; x <= radius; x++) {
+      for (let y = -radius; y <= radius; y++) {
+        let dx = centerX + x;
+        let dy = centerY + y;
+        if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
+          for (let i = 0; i < d; i++) {
+            for (let j = 0; j < d; j++) {
+              let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
+              pixels[index] = 255 - pixels[index];         // Red
+              pixels[index + 1] = 255 - pixels[index + 1]; // Green
+              pixels[index + 2] = 255 - pixels[index + 2]; // Blue
+              // Alpha remains unchanged
+            }
           }
         }
       }
@@ -94,33 +88,10 @@ function draw() {
 function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
-  } else {
-    rippleOrigin = { x: mouseX, y: mouseY };
   }
 }
 
 function touchStarted() {
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
-  let yStart = emailY;
-  let textHeight = emailSize;
-
-  if (touchX > xStart && touchX < xStart + totalWidth &&
-      touchY > yStart && touchY < yStart + textHeight) {
-    window.location.href = 'mailto:info@awroberts.co.uk';
-  } else {
-    rippleOrigin = { x: touches[0].x, y: touches[0].y };
-  }
-  return false;
-}
-
-function touchMoved() {
-  return false;
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  bgVideo.size(windowWidth, windowHeight);
-  emailSize = constrain(windowWidth * 0.1, 24, 140);
-  textSize(emailSize);
-}
+  let yStart
