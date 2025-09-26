@@ -56,14 +56,15 @@ function draw() {
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
 
-  // Invert pixels in a 50-pixel circle around mouse/touch
-  loadPixels();
-  let d = pixelDensity();
-  let radius = 50;
+  // Invert pixels in a 50-pixel circle around mouse or touch
   let centerX = mouseIsPressed ? mouseX : (touches.length > 0 ? touches[0].x : -1);
   let centerY = mouseIsPressed ? mouseY : (touches.length > 0 ? touches[0].y : -1);
 
-  if (centerX >= 0 && centerY >= 0) {
+  if ((mouseIsPressed || touches.length > 0) && centerX >= 0 && centerY >= 0) {
+    loadPixels();
+    let d = pixelDensity();
+    let radius = 50;
+
     for (let x = -radius; x <= radius; x++) {
       for (let y = -radius; y <= radius; y++) {
         let dx = centerX + x;
@@ -102,6 +103,10 @@ function touchStarted() {
     window.location.href = 'mailto:info@awroberts.co.uk';
   }
   return false; // prevent default scrolling
+}
+
+function touchMoved() {
+  return false; // prevent default scrolling during touch drag
 }
 
 function windowResized() {
