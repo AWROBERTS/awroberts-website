@@ -56,33 +56,31 @@ function draw() {
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
 
-  let centerX = mouseIsPressed ? mouseX : (touches.length > 0 ? touches[0].x : -1);
-  let centerY = mouseIsPressed ? mouseY : (touches.length > 0 ? touches[0].y : -1);
+  let centerX = (touches.length > 0) ? touches[0].x : mouseX;
+  let centerY = (touches.length > 0) ? touches[0].y : mouseY;
 
-  if ((mouseIsPressed || touches.length > 0) && centerX >= 0 && centerY >= 0) {
-    loadPixels();
-    let d = pixelDensity();
-    let radius = 100;
+  loadPixels();
+  let d = pixelDensity();
+  let radius = 75; // 150-pixel wide circle
 
-    for (let x = -radius; x <= radius; x++) {
-      for (let y = -radius; y <= radius; y++) {
-        let dx = centerX + x;
-        let dy = centerY + y;
-        if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
-          for (let i = 0; i < d; i++) {
-            for (let j = 0; j < d; j++) {
-              let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
-              pixels[index] = 255 - pixels[index];         // Red
-              pixels[index + 1] = 255 - pixels[index + 1]; // Green
-              pixels[index + 2] = 255 - pixels[index + 2]; // Blue
-              // Alpha remains unchanged
-            }
+  for (let x = -radius; x <= radius; x++) {
+    for (let y = -radius; y <= radius; y++) {
+      let dx = centerX + x;
+      let dy = centerY + y;
+      if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
+        for (let i = 0; i < d; i++) {
+          for (let j = 0; j < d; j++) {
+            let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
+            pixels[index] = 255 - pixels[index];         // Red
+            pixels[index + 1] = 255 - pixels[index + 1]; // Green
+            pixels[index + 2] = 255 - pixels[index + 2]; // Blue
+            // Alpha remains unchanged
           }
         }
       }
     }
-    updatePixels();
   }
+  updatePixels();
 }
 
 function mousePressed() {
