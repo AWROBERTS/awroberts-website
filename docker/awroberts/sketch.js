@@ -94,4 +94,23 @@ function mousePressed() {
 function touchStarted() {
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
-  let yStart
+  let yStart = emailY;
+  let textHeight = emailSize;
+
+  if (touchX > xStart && touchX < xStart + totalWidth &&
+      touchY > yStart && touchY < yStart + textHeight) {
+    window.location.href = 'mailto:info@awroberts.co.uk';
+  }
+  return false;
+}
+
+function touchMoved() {
+  return false;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  bgVideo.size(windowWidth, windowHeight);
+  emailSize = constrain(windowWidth * 0.1, 24, 140);
+  textSize(emailSize);
+}
