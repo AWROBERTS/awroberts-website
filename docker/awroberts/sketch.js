@@ -1,7 +1,7 @@
 let bgVideo;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
-let emailSize = 140;
+let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
@@ -10,6 +10,7 @@ function preload() {
 }
 
 function setup() {
+  pixelDensity(1); // improves performance on high-DPI screens
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
   canvas.style('position', 'absolute');
@@ -20,6 +21,8 @@ function setup() {
   bgVideo = createVideo('/awroberts-media/background.mp4', () => {
     bgVideo.volume(0);
     bgVideo.attribute('muted', '');
+    bgVideo.attribute('playsinline', '');
+    bgVideo.attribute('autoplay', '');
     bgVideo.loop();
     bgVideo.play();
   });
@@ -32,6 +35,7 @@ function setup() {
   bgVideo.style('z-index', '0');
   bgVideo.style('object-fit', 'cover');
 
+  emailSize = constrain(windowWidth * 0.1, 24, 140); // responsive font size
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
@@ -57,4 +61,24 @@ function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
   }
+}
+
+function touchStarted() {
+  let totalWidth = textWidth(emailText);
+  let xStart = width / 2 - totalWidth / 2;
+  let yStart = emailY;
+  let textHeight = emailSize;
+
+  if (touchX > xStart && touchX < xStart + totalWidth &&
+      touchY > yStart && touchY < yStart + textHeight) {
+    window.location.href = 'mailto:info@awroberts.co.uk';
+  }
+  return false; // prevent default scrolling
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  bgVideo.size(windowWidth, windowHeight);
+  emailSize = constrain(windowWidth * 0.1, 24, 140);
+  textSize(emailSize);
 }
