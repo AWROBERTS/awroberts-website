@@ -55,6 +55,34 @@ function draw() {
   fill(255);
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
+
+  // Invert pixels in a 50-pixel circle around mouse/touch
+  loadPixels();
+  let d = pixelDensity();
+  let radius = 50;
+  let centerX = mouseIsPressed ? mouseX : (touches.length > 0 ? touches[0].x : -1);
+  let centerY = mouseIsPressed ? mouseY : (touches.length > 0 ? touches[0].y : -1);
+
+  if (centerX >= 0 && centerY >= 0) {
+    for (let x = -radius; x <= radius; x++) {
+      for (let y = -radius; y <= radius; y++) {
+        let dx = centerX + x;
+        let dy = centerY + y;
+        if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
+          for (let i = 0; i < d; i++) {
+            for (let j = 0; j < d; j++) {
+              let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
+              pixels[index] = 255 - pixels[index];         // Red
+              pixels[index + 1] = 255 - pixels[index + 1]; // Green
+              pixels[index + 2] = 255 - pixels[index + 2]; // Blue
+              // Alpha remains unchanged
+            }
+          }
+        }
+      }
+    }
+    updatePixels();
+  }
 }
 
 function mousePressed() {
