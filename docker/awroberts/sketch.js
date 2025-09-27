@@ -4,7 +4,6 @@ let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
-let rippleRadius = 0;
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -43,47 +42,8 @@ function setup() {
 }
 
 function draw() {
-  // Capture the current video frame
-  let frame = bgVideo.get();
+  image(bgVideo, 0, 0, width, height);
 
-  let centerX = (touches.length > 0) ? touches[0].x : mouseX;
-  let centerY = (touches.length > 0) ? touches[0].y : mouseY;
-  let radius = 75;
-
-  // Create a distorted version of the video frame
-  frame.loadPixels();
-  loadPixels();
-  let d = pixelDensity();
-
-  for (let x = -radius; x <= radius; x++) {
-    for (let y = -radius; y <= radius; y++) {
-      let dx = centerX + x;
-      let dy = centerY + y;
-      if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
-        let distFactor = sqrt(x * x + y * y);
-        let wave = sin(distFactor * 0.3 - frameCount * 0.2) * 5;
-
-        let sx = constrain(dx + wave, 0, width - 1);
-        let sy = constrain(dy + wave, 0, height - 1);
-
-        for (let i = 0; i < d; i++) {
-          for (let j = 0; j < d; j++) {
-            let srcIndex = 4 * ((sy * d + j) * width * d + (sx * d + i));
-            let dstIndex = 4 * ((dy * d + j) * width * d + (dx * d + i));
-
-            pixels[dstIndex] = frame.pixels[srcIndex];
-            pixels[dstIndex + 1] = frame.pixels[srcIndex + 1];
-            pixels[dstIndex + 2] = frame.pixels[srcIndex + 2];
-            pixels[dstIndex + 3] = frame.pixels[srcIndex + 3];
-          }
-        }
-      }
-    }
-  }
-
-  updatePixels();
-
-  // Draw email text on top
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
@@ -95,6 +55,32 @@ function draw() {
   fill(255);
   text(emailText, width / 2, emailY);
   cursor(isHoveringEmail ? HAND : ARROW);
+
+  let centerX = (touches.length > 0) ? touches[0].x : mouseX;
+  let centerY = (touches.length > 0) ? touches[0].y : mouseY;
+
+  loadPixels();
+  let d = pixelDensity();
+  let radius = 75;
+
+  for (let x = -radius; x <= radius; x++) {
+    for (let y = -radius; y <= radius; y++) {
+      let dx = centerX + x;
+      let dy = centerY + y;
+      if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
+        for (let i = 0; i < d; i++) {
+          for (let j = 0; j < d; j++) {
+            let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
+            pixels[index] = 255 - pixels[index];         // Red
+            pixels[index + 1] = 255 - pixels[index + 1]; // Green
+            pixels[index + 2] = 255 - pixels[index + 2]; // Blue
+            // Alpha remains unchanged
+          }
+        }
+      }
+    }
+  }
+  updatePixels();
 }
 
 function mousePressed() {
