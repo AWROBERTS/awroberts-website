@@ -60,17 +60,6 @@ function draw() {
   let centerX = (touches.length > 0) ? touches[0].x : mouseX;
   let centerY = (touches.length > 0) ? touches[0].y : mouseY;
 
-  // Ripple effect
-  noFill();
-  stroke(255, 150);
-  strokeWeight(2);
-  for (let i = 0; i < 5; i++) {
-    ellipse(centerX, centerY, rippleRadius + i * 20);
-  }
-  rippleRadius += 2;
-  if (rippleRadius > 100) rippleRadius = 0;
-
-  // Pixel inversion effect
   loadPixels();
   let d = pixelDensity();
   let radius = 75;
@@ -80,17 +69,25 @@ function draw() {
       let dx = centerX + x;
       let dy = centerY + y;
       if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
+        let wave = sin((x * x + y * y) * 0.01 + frameCount * 0.1) * 10;
+        let sx = constrain(dx + wave, 0, width - 1);
+        let sy = constrain(dy + wave, 0, height - 1);
+
         for (let i = 0; i < d; i++) {
           for (let j = 0; j < d; j++) {
-            let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
-            pixels[index] = 255 - pixels[index];
-            pixels[index + 1] = 255 - pixels[index + 1];
-            pixels[index + 2] = 255 - pixels[index + 2];
+            let srcIndex = 4 * ((sy * d + j) * width * d + (sx * d + i));
+            let dstIndex = 4 * ((dy * d + j) * width * d + (dx * d + i));
+
+            pixels[dstIndex] = pixels[srcIndex];
+            pixels[dstIndex + 1] = pixels[srcIndex + 1];
+            pixels[dstIndex + 2] = pixels[srcIndex + 2];
+            // Alpha remains unchanged
           }
         }
       }
     }
   }
+
   updatePixels();
 }
 
