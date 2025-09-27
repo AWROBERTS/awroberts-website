@@ -4,6 +4,7 @@ let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
+let rippleRadius = 0;
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -59,9 +60,20 @@ function draw() {
   let centerX = (touches.length > 0) ? touches[0].x : mouseX;
   let centerY = (touches.length > 0) ? touches[0].y : mouseY;
 
+  // Ripple effect
+  noFill();
+  stroke(255, 150);
+  strokeWeight(2);
+  for (let i = 0; i < 5; i++) {
+    ellipse(centerX, centerY, rippleRadius + i * 20);
+  }
+  rippleRadius += 2;
+  if (rippleRadius > 100) rippleRadius = 0;
+
+  // Pixel inversion effect
   loadPixels();
   let d = pixelDensity();
-  let radius = 75; // 150-pixel wide circle
+  let radius = 75;
 
   for (let x = -radius; x <= radius; x++) {
     for (let y = -radius; y <= radius; y++) {
@@ -71,10 +83,9 @@ function draw() {
         for (let i = 0; i < d; i++) {
           for (let j = 0; j < d; j++) {
             let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
-            pixels[index] = 255 - pixels[index];         // Red
-            pixels[index + 1] = 255 - pixels[index + 1]; // Green
-            pixels[index + 2] = 255 - pixels[index + 2]; // Blue
-            // Alpha remains unchanged
+            pixels[index] = 255 - pixels[index];
+            pixels[index + 1] = 255 - pixels[index + 1];
+            pixels[index + 2] = 255 - pixels[index + 2];
           }
         }
       }
