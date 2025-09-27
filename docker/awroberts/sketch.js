@@ -69,19 +69,19 @@ function draw() {
       let dx = centerX + x;
       let dy = centerY + y;
       if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
-        let wave = sin((x * x + y * y) * 0.01 + frameCount * 0.1) * 10;
-        let sx = constrain(dx + wave, 0, width - 1);
-        let sy = constrain(dy + wave, 0, height - 1);
+        let wave = sin(sqrt(x * x + y * y) * 0.3 - frameCount * 0.2) * 10;
 
         for (let i = 0; i < d; i++) {
           for (let j = 0; j < d; j++) {
-            let srcIndex = 4 * ((sy * d + j) * width * d + (sx * d + i));
+            let srcX = constrain(dx + wave, 0, width - 1);
+            let srcY = constrain(dy + wave, 0, height - 1);
+            let srcIndex = 4 * ((srcY * d + j) * width * d + (srcX * d + i));
             let dstIndex = 4 * ((dy * d + j) * width * d + (dx * d + i));
 
-            pixels[dstIndex] = pixels[srcIndex];
-            pixels[dstIndex + 1] = pixels[srcIndex + 1];
-            pixels[dstIndex + 2] = pixels[srcIndex + 2];
-            // Alpha remains unchanged
+            // Blend distorted pixel with original
+            pixels[dstIndex] = (pixels[dstIndex] + pixels[srcIndex]) / 2;
+            pixels[dstIndex + 1] = (pixels[dstIndex + 1] + pixels[srcIndex + 1]) / 2;
+            pixels[dstIndex + 2] = (pixels[dstIndex + 2] + pixels[srcIndex + 2]) / 2;
           }
         }
       }
