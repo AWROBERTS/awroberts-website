@@ -1,8 +1,9 @@
+{{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: awroberts-web-deploy
-  namespace: awroberts
+  name: {{ include "awroberts-web.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
@@ -10,7 +11,7 @@ metadata:
     nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
     nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
 spec:
-  ingressClassName: nginx
+  ingressClassName: {{ .Values.ingress.className }}
   tls:
     - hosts:
         - awroberts.co.uk
@@ -24,9 +25,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: awroberts-web-deploy
+                name: {{ include "awroberts-web.fullname" . }}
                 port:
-                  number: 80
+                  number: {{ .Values.service.port }}
     - host: www.awroberts.co.uk
       http:
         paths:
@@ -34,6 +35,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: awroberts-web-deploy
+                name: {{ include "awroberts-web.fullname" . }}
                 port:
-                  number: 80
+                  number: {{ .Values.service.port }}
+{{- end }}
