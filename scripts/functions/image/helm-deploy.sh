@@ -7,15 +7,11 @@ deploy_with_helm() {
     --set image.repository="${IMAGE_NAME_BASE}" \
     --set image.tag="${IMAGE_TAG}" \
     --set image.pullPolicy="Never" \
-    --set ingress.tls[0].secretName="${SECRET_NAME}" \
-    --set ingress.tls[0].hosts[0]="${HOST_A}" \
-    --set ingress.tls[0].hosts[1]="${HOST_B}" \
-    --set ingress.rules[0].host="${HOST_A}" \
-    --set ingress.rules[1].host="${HOST_B}" \
+    --set ingress.enabled="false" \
+    --set traefik.enabled="true" \
+    --set traefik.tls.secretName="${SECRET_NAME}" \
+    --set traefik.hostnames[0]="${HOST_A}" \
+    --set traefik.hostnames[1]="${HOST_B}" \
     --set volume.hostPath="${HOST_MEDIA_PATH}" \
     --set volume.mountPath="/usr/share/nginx/html/awroberts-media"
-
-  # Expose ingress-nginx-controller externally
-  kubectl patch svc ingress-nginx-controller -n ingress-nginx \
-    -p '{"spec": {"type": "NodePort"}}'
 }
