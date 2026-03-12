@@ -1,0 +1,22 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "awroberts-web.fullname" . }}-https
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+{{- range .Values.traefik.hostnames }}
+    - match: Host(`{{ . }}`) && PathPrefix(`/`)
+      kind: Rule
+      middlewares:
+        - name: {{ include "awroberts-web.fullname" $ }}-security-headers
+      services:
+        - name: {{ include "awroberts-web.fullname" $ }}
+          port: {{ $.Values.service.port }}
+{{- end }}
+  tls:
+    secretName: {{ .Values.traefik.tls.secretName }}
+{{- end }}
