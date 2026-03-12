@@ -6,7 +6,7 @@ image:
   pullPolicy: Never
 
 ingress:
-  enabled: true
+  enabled: false
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -38,6 +38,18 @@ ingress:
               name: awroberts-web-deploy
               port:
                 number: 80
+
+traefik:
+  enabled: true
+  hostnames:
+    - awroberts.co.uk
+    - www.awroberts.co.uk
+  tls:
+    secretName: awroberts-tls
+  hsts:
+    enabled: true
+    maxAge: 31536000
+    includeSubdomains: true
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
