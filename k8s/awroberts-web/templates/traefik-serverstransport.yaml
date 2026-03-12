@@ -1,0 +1,12 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ include "awroberts-web.fullname" . }}-transport
+  namespace: {{ .Release.Namespace }}
+spec:
+  forwardingTimeouts:
+    dialTimeout: 30s
+    responseHeaderTimeout: 300s
+    idleConnTimeout: 300s
+{{- end }}
