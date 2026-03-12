@@ -13,8 +13,10 @@ spec:
       kind: Rule
       middlewares:
         - name: {{ include "awroberts-web.fullname" $ }}-redirect-https
+          namespace: {{ $.Release.Namespace }}
       services:
         - name: {{ include "awroberts-web.fullname" $ }}
           port: {{ $.Values.service.port }}
+          serversTransport: {{ include "awroberts-web.fullname" $ }}-transport
 {{- end }}
 {{- end }}
