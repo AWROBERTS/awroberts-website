@@ -13,9 +13,11 @@ spec:
       kind: Rule
       middlewares:
         - name: {{ include "awroberts-web.fullname" $ }}-security-headers
+          namespace: {{ $.Release.Namespace }}
       services:
         - name: {{ include "awroberts-web.fullname" $ }}
           port: {{ $.Values.service.port }}
+          serversTransport: {{ include "awroberts-web.fullname" $ }}-transport
 {{- end }}
   tls:
     secretName: {{ .Values.traefik.tls.secretName }}
