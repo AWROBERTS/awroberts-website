@@ -5,49 +5,13 @@ image:
   tag: latest
   pullPolicy: Never
 
-ingress:
-  enabled: false
-  className: nginx
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/hsts: "true"
-    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
-    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
-  tls:
-    - secretName: awroberts-tls
-      hosts:
-        - awroberts.co.uk
-        - www.awroberts.co.uk
-  rules:
-    - host: awroberts.co.uk
-      paths:
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: awroberts-web-deploy
-              port:
-                number: 80
-    - host: www.awroberts.co.uk
-      paths:
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: awroberts-web-deploy
-              port:
-                number: 80
-
 traefik:
-  enabled: true
   hostnames:
     - awroberts.co.uk
     - www.awroberts.co.uk
   tls:
     secretName: awroberts-tls
   hsts:
-    enabled: true
     maxAge: 31536000
     includeSubdomains: true
 
