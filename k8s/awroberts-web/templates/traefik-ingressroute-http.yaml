@@ -1,4 +1,3 @@
-{{- if .Values.traefik.enabled }}
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -18,5 +17,4 @@ spec:
         - name: {{ include "awroberts-web.fullname" $ }}
           port: {{ $.Values.service.port }}
           serversTransport: {{ include "awroberts-web.fullname" $ }}-transport
-{{- end }}
 {{- end }}

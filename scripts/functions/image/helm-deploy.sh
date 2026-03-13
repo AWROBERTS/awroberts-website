@@ -7,8 +7,6 @@ deploy_with_helm() {
     --set image.repository="${IMAGE_NAME_BASE}" \
     --set image.tag="${IMAGE_TAG}" \
     --set image.pullPolicy="Never" \
-    --set ingress.enabled="false" \
-    --set traefik.enabled="true" \
     --set traefik.tls.secretName="${SECRET_NAME}" \
     --set traefik.hostnames[0]="${HOST_A}" \
     --set traefik.hostnames[1]="${HOST_B}" \
