@@ -45,13 +45,16 @@ function setup() {
   textSize(emailSize);
   textAlign(CENTER, TOP);
 
-  //  Responsive radius (smaller circle)
-  radius = min(windowWidth, windowHeight) * 0.03;
+  // Initial radius based on canvas size
+  radius = min(width, height) * 0.03;
 }
 
 function draw() {
-  clear(); //  Ensures radius changes are visible immediately
+  clear();
   image(bgVideo, 0, 0, width, height);
+
+  // Radius updates dynamically based on canvas size
+  radius = min(width, height) * 0.03;
 
   drawEmail();
 
@@ -69,7 +72,6 @@ function drawEmail() {
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
-  let textHeight = emailSize;
 
   let buffer = 20;
 
@@ -77,7 +79,7 @@ function drawEmail() {
     mouseX > xStart - buffer &&
     mouseX < xStart + totalWidth + buffer &&
     mouseY > yStart - buffer &&
-    mouseY < yStart + textHeight + buffer;
+    mouseY < yStart + emailSize + buffer;
 
   if (isHoveringEmail) {
     fill(255, 220, 180);
@@ -133,10 +135,9 @@ function touchStarted() {
     let totalWidth = textWidth(emailText);
     let xStart = width / 2 - totalWidth / 2;
     let yStart = emailY;
-    let textHeight = emailSize;
 
     if (tx > xStart && tx < xStart + totalWidth &&
-        ty > yStart && ty < yStart + textHeight) {
+        ty > yStart && ty < yStart + emailSize) {
       window.location.href = 'mailto:info@awroberts.co.uk';
     }
   }
@@ -153,7 +154,7 @@ function windowResized() {
   textSize(emailSize);
 
   // Recalculate radius on resize
-  radius = min(windowWidth, windowHeight) * 0.03;
+  radius = min(width, height) * 0.03;
 
   // Reset so the next movement draws a fresh circle
   lastX = -1;
