@@ -26,11 +26,6 @@ spec:
           extensionRef:
             group: traefik.io
             kind: Middleware
-            name: hsts
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
             name: static-cache
         - type: ExtensionRef
           extensionRef:
