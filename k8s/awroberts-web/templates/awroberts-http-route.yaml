@@ -8,10 +8,14 @@ spec:
     - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: https
     - name: {{ include "awroberts.fullname" . }}-gateway
+      sectionName: https-www
+    - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: http
+
   hostnames:
     - {{ index .Values.traefik.hostnames 0 }}   # awroberts.co.uk
     - {{ index .Values.traefik.hostnames 1 }}   # www.awroberts.co.uk
+
   rules:
     - matches:
         - path:
