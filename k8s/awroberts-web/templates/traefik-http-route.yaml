@@ -7,6 +7,10 @@ spec:
   parentRefs:
     - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: https
+    - name: {{ include "awroberts.fullname" . }}-gateway
+      sectionName: https-www
+    - name: {{ include "awroberts.fullname" . }}-gateway
+      sectionName: http
   hostnames:
     {{- range .Values.traefik.hostnames }}
     - {{ . }}
