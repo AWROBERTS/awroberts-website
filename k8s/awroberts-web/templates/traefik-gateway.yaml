@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: awroberts-gateway
+  namespace: awroberts
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: awroberts.co.uk
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: awroberts-tls
+    - name: https-www
+      protocol: HTTPS
+      port: 443
+      hostname: www.awroberts.co.uk
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: awroberts-tls
+    - name: http
+      protocol: HTTP
+      port: 80
