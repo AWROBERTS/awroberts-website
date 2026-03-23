@@ -21,9 +21,8 @@ providers:
   kubernetesGateway:
     enabled: true
 
-experimental:
-  kubernetesGateway:
-    enabled: false
+gateway:
+  enabled: false
 
 service:
   type: NodePort
@@ -31,4 +30,3 @@ service:
 additionalArguments:
   - "--entryPoints.web.address=:80"
   - "--entryPoints.websecure.address=:443"
-
