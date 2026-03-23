@@ -14,6 +14,7 @@ function preload() {
 
 function setup() {
   pixelDensity(1);
+
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
   canvas.style('position', 'absolute');
@@ -44,10 +45,12 @@ function setup() {
   textSize(emailSize);
   textAlign(CENTER, TOP);
 
-  radius = min(windowWidth, windowHeight) * 0.035;
+  //  Responsive radius (smaller circle)
+  radius = min(windowWidth, windowHeight) * 0.03;
 }
 
 function draw() {
+  clear(); //  Ensures radius changes are visible immediately
   image(bgVideo, 0, 0, width, height);
 
   drawEmail();
@@ -55,7 +58,6 @@ function draw() {
   let cx = touches.length ? touches[0].x : mouseX;
   let cy = touches.length ? touches[0].y : mouseY;
 
-  // Only update pixels when the pointer moves
   if (dist(cx, cy, lastX, lastY) > 2) {
     applyInvert(cx, cy);
     lastX = cx;
@@ -69,7 +71,8 @@ function drawEmail() {
   let yStart = emailY;
   let textHeight = emailSize;
 
-  let buffer = 20; // easier to tap on mobile
+  let buffer = 20;
+
   isHoveringEmail =
     mouseX > xStart - buffer &&
     mouseX < xStart + totalWidth + buffer &&
@@ -142,11 +145,17 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+
   bgVideo.style('width', '100vw');
   bgVideo.style('height', '100vh');
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textSize(emailSize);
 
-  radius = windowWidth < 600 ? 40 : 75;
+  // Recalculate radius on resize
+  radius = min(windowWidth, windowHeight) * 0.03;
+
+  // Reset so the next movement draws a fresh circle
+  lastX = -1;
+  lastY = -1;
 }
