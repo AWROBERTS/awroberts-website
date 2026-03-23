@@ -63,13 +63,13 @@ main() {
   verify_kubelet_cgroup
   cluster_targeting
   info_and_validate_context
-  ensure_tls_secret
   image_vars
   build_image
   import_image
   restart_kube_proxy
   ensure_traefik_helm
   ensure_traefik_hostnetwork
+  ensure_tls_secret
   deploy_with_helm
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
   notes_and_status
