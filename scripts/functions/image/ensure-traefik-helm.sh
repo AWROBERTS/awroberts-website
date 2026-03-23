@@ -5,6 +5,7 @@ ensure_traefik_helm() {
   helm repo update >/dev/null 2>&1
 
   helm upgrade --install traefik traefik/traefik \
+    --version "^33" \
     --namespace traefik --create-namespace \
     --set providers.kubernetesCRD.enabled=false \
     --set providers.kubernetesIngress.enabled=false \
