@@ -1,20 +1,92 @@
 #!/usr/bin/env bash
 notes_and_status() {
+
+  echo "=============================="
+  echo "🌐 Network / NAT Information"
+  echo "=============================="
+
   if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
     echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443"
   else
     echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}"
   fi
 
+  echo
+  echo "=============================="
+  echo "🚀 Application Deployment Status"
+  echo "=============================="
+
   DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -o jsonpath='{.items[0].metadata.name}')
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
-  echo "Deployment complete. Quick status:"
-  kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide || echo "Deployment $DEPLOYMENT_NAME not found"
-  kubectl -n "$NAMESPACE" get svc -o wide | grep "$DEPLOYMENT_NAME" || echo "Service not found"
-  kubectl -n "$NAMESPACE" get ingressroute -o wide 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "IngressRoute not found"
-  kubectl -n "$NAMESPACE" get middleware 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "Middleware not found"
-  echo "Node IPs: $(kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')"
-  echo "Public IP: $(curl -s https://api.ipify.org || echo "Unavailable")"
+  if [[ -z "$DEPLOYMENT_NAME" ]]; then
+    echo "⚠️  No Deployment found for Helm release '$HELM_RELEASE' in namespace '$NAMESPACE'"
+  else
+    echo "Deployment:"
+    kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide
+
+    echo
+    echo "Service:"
+    kubectl -n "$NAMESPACE" get svc -o wide | grep "$DEPLOYMENT_NAME" || echo "Service not found"
+
+    echo
+    echo "HTTPRoutes:"
+    kubectl -n "$NAMESPACE" get httproute 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "HTTPRoute not found"
+
+    echo
+    echo "Middleware:"
+    kubectl -n "$NAMESPACE" get middleware 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "Middleware not found"
+  fi
+
+  echo
+  echo "=============================="
+  echo "🔍 Traefik Diagnostics"
+  echo "=============================="
+
+  echo "Traefik Deployment:"
+  kubectl -n traefik get deploy traefik -o wide 2>/dev/null || echo "Traefik deployment not found"
+
+  echo
+  echo "Traefik Service:"
+  kubectl -n traefik get svc traefik -o wide 2>/dev/null || echo "Traefik service not found"
+
+  echo
+  echo "Traefik NodePorts:"
+  kubectl -n traefik get svc traefik -o jsonpath='{.spec.ports[*].nodePort}' 2>/dev/null \
+    && echo "" \
+    || echo "No NodePorts found"
+
+  echo
+  echo "Gateways:"
+  kubectl -n "$NAMESPACE" get gateway 2>/dev/null || echo "No Gateways found in $NAMESPACE"
+  kubectl -n traefik get gateway 2>/dev/null || echo "No Gateways found in traefik"
+
+  echo
+  echo "HTTPRoutes:"
+  kubectl -n "$NAMESPACE" get httproute 2>/dev/null || echo "No HTTPRoutes found in $NAMESPACE"
+  kubectl -n traefik get httproute 2>/dev/null || echo "No HTTPRoutes found in traefik"
+
+  echo
+  echo "Middlewares:"
+  kubectl -n "$NAMESPACE" get middleware 2>/dev/null || echo "No middlewares found in $NAMESPACE"
+  kubectl -n traefik get middleware 2>/dev/null || echo "No middlewares found in traefik"
+
+  echo
+  echo "TLS Secrets:"
+  kubectl -n "$NAMESPACE" get secret | grep tls 2>/dev/null || echo "No TLS secrets found in $NAMESPACE"
+  kubectl -n traefik get secret | grep tls 2>/dev/null || echo "No TLS secrets found in traefik"
+
+  echo
+  echo "=============================="
+  echo "🖥️ Node & Network Info"
+  echo "=============================="
+
+  echo "Node IPs:"
+  kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+  echo
+
+  echo "Public IP:"
+  curl -s https://api.ipify.org || echo "Unavailable"
+  echo
 }
