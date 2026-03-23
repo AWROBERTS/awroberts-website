@@ -6,9 +6,9 @@ ensure_traefik_helm() {
 
   helm upgrade --install traefik traefik/traefik \
     --namespace traefik --create-namespace \
-    --set ingressRoute.dashboard.enabled=false \
-    --set providers.kubernetesCRD.enabled=true \
+    --set providers.kubernetesCRD.enabled=false \
     --set providers.kubernetesIngress.enabled=false \
+    --set providers.gatewayAPI.enabled=true \
     --set service.type=NodePort \
     --set ports.web.nodePort=31509 \
     --set ports.websecure.nodePort=32545

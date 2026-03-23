@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "awroberts.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ index .Values.traefik.hostnames 0 }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.traefik.tls.secretName }}
+    - name: https-www
+      protocol: HTTPS
+      port: 443
+      hostname: {{ index .Values.traefik.hostnames 1 }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.traefik.tls.secretName }}
+    - name: http
+      protocol: HTTP
+      port: 80
