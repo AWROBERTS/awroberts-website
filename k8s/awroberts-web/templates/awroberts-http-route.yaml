@@ -21,12 +21,7 @@ spec:
         - path:
             type: PathPrefix
             value: /
-      filters:
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
-            name: security-headers
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}
           port: {{ .Values.service.port }}
+
