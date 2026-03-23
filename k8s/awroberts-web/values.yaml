@@ -25,17 +25,17 @@ resources: {}
 
 livenessProbe:
   httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 15
-  periodSeconds: 20
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10
 
 readinessProbe:
   httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 10
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 2
+  periodSeconds: 5
 
 service:
   type: ClusterIP
