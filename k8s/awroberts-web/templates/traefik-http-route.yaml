@@ -1,15 +1,16 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: awroberts-route
-  namespace: awroberts
+  name: {{ include "awroberts.fullname" . }}-route
+  namespace: {{ .Release.Namespace }}
 spec:
   parentRefs:
-    - name: awroberts-gateway
+    - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: https
   hostnames:
-    - awroberts.co.uk
-    - www.awroberts.co.uk
+    {{- range .Values.traefik.hostnames }}
+    - {{ . }}
+    {{- end }}
   rules:
     - matches:
         - path:
@@ -20,7 +21,7 @@ spec:
           requestHeaderModifier:
             add:
               - name: strict-transport-security
-                value: "max-age=31536000; includeSubDomains"
+                value: "max-age={{ .Values.traefik.hsts.maxAge }}{{ if .Values.traefik.hsts.includeSubdomains }}; includeSubDomains{{ end }}"
               - name: x-frame-options
                 value: "DENY"
               - name: x-content-type-options
@@ -28,5 +29,5 @@ spec:
               - name: x-xss-protection
                 value: "1; mode=block"
       backendRefs:
-        - name: awroberts-web-deploy
-          port: 80
+        - name: {{ include "awroberts.fullname" . }}
+          port: {{ .Values.service.port }}
