@@ -7,6 +7,7 @@ ensure_traefik_helm() {
   helm upgrade --install traefik traefik/traefik \
     --version "39.0.6" \
     --namespace traefik --create-namespace \
+    -f traefik/traefik-values.yaml \
     --set providers.kubernetesCRD.enabled=false \
     --set providers.kubernetesIngress.enabled=false \
     --set providers.kubernetesGateway.enabled=true \
@@ -16,3 +17,4 @@ ensure_traefik_helm() {
 
   echo "✅ Traefik installed or updated."
 }
+
