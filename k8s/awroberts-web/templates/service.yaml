@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "awroberts-web.fullname" . }}
+  name: {{ include "awroberts.fullname" . }}
   labels:
-    {{- include "awroberts-web.labels" . | nindent 4 }}
+    {{- include "awroberts.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "awroberts-web.selectorLabels" . | nindent 4 }}
+    {{- include "awroberts.selectorLabels" . | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.service.port }}
