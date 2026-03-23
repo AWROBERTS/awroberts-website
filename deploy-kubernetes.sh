@@ -69,8 +69,8 @@ main() {
   restart_kube_proxy
   ensure_traefik_helm
   ensure_traefik_hostnetwork
-  ensure_tls_secret
   deploy_with_helm
+  ensure_tls_secret
   cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
   notes_and_status
 }
