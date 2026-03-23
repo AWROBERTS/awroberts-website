@@ -1,0 +1,14 @@
+ports:
+  web:
+    port: 80
+    expose: true
+    protocol: TCP
+
+  websecure:
+    port: 443
+    expose: true
+    protocol: TCP
+
+additionalArguments:
+  - "--entryPoints.web.address=:80"
+  - "--entryPoints.websecure.address=:443"
