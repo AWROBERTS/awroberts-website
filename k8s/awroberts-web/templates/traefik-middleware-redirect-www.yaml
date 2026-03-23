@@ -1,0 +1,10 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-www
+  namespace: {{ .Release.Namespace }}
+spec:
+  redirectRegex:
+    regex: "^https?://www\\.awroberts\\.co\\.uk(.*)"
+    replacement: "https://awroberts.co.uk$1"
+    permanent: true
