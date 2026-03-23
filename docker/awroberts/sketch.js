@@ -44,7 +44,7 @@ function setup() {
   textSize(emailSize);
   textAlign(CENTER, TOP);
 
-  radius = windowWidth < 600 ? 40 : 75; // mobile optimisation
+  radius = min(windowWidth, windowHeight) * 0.035;
 }
 
 function draw() {
