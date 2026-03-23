@@ -21,6 +21,10 @@ providers:
   kubernetesGateway:
     enabled: true
 
+experimental:
+  kubernetesGateway:
+    enabled: false
+
 service:
   type: NodePort
 
