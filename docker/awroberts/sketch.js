@@ -45,13 +45,16 @@ function setup() {
   textSize(emailSize);
   textAlign(CENTER, TOP);
 
-  //  Responsive radius (smaller circle)
-  radius = min(windowWidth, windowHeight) * 0.03;
+  // Initial radius based on canvas size
+  radius = min(width, height) * 0.03;
 }
 
 function draw() {
-  clear(); //  Ensures radius changes are visible immediately
+  clear();
   image(bgVideo, 0, 0, width, height);
+
+  // Radius now updates dynamically based on actual canvas size
+  radius = min(width, height) * 0.03;
 
   drawEmail();
 
@@ -153,7 +156,7 @@ function windowResized() {
   textSize(emailSize);
 
   // Recalculate radius on resize
-  radius = min(windowWidth, windowHeight) * 0.03;
+  radius = min(width, height) * 0.03;
 
   // Reset so the next movement draws a fresh circle
   lastX = -1;
