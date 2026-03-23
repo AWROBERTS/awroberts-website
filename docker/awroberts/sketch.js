@@ -5,6 +5,9 @@ let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
+let lastX = -1, lastY = -1;
+let radius;
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
@@ -28,58 +31,88 @@ function setup() {
   });
 
   bgVideo.parent('canvas-container');
-  bgVideo.size(windowWidth, windowHeight);
   bgVideo.style('position', 'absolute');
   bgVideo.style('top', '0');
   bgVideo.style('left', '0');
-  bgVideo.style('z-index', '0');
+  bgVideo.style('width', '100vw');
+  bgVideo.style('height', '100vh');
   bgVideo.style('object-fit', 'cover');
+  bgVideo.style('z-index', '0');
 
-  emailSize = constrain(windowWidth * 0.1, 24, 140);
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
+
+  radius = windowWidth < 600 ? 40 : 75; // mobile optimisation
 }
 
 function draw() {
   image(bgVideo, 0, 0, width, height);
 
+  drawEmail();
+
+  let cx = touches.length ? touches[0].x : mouseX;
+  let cy = touches.length ? touches[0].y : mouseY;
+
+  // Only update pixels when the pointer moves
+  if (dist(cx, cy, lastX, lastY) > 2) {
+    applyInvert(cx, cy);
+    lastX = cx;
+    lastY = cy;
+  }
+}
+
+function drawEmail() {
   let totalWidth = textWidth(emailText);
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
   let textHeight = emailSize;
 
-  isHoveringEmail = mouseX > xStart && mouseX < xStart + totalWidth &&
-                    mouseY > yStart && mouseY < yStart + textHeight;
+  let buffer = 20; // easier to tap on mobile
+  isHoveringEmail =
+    mouseX > xStart - buffer &&
+    mouseX < xStart + totalWidth + buffer &&
+    mouseY > yStart - buffer &&
+    mouseY < yStart + textHeight + buffer;
 
-  fill(255);
+  if (isHoveringEmail) {
+    fill(255, 220, 180);
+    textSize(emailSize * 1.05);
+    cursor(HAND);
+  } else {
+    fill(255);
+    textSize(emailSize);
+    cursor(ARROW);
+  }
+
   text(emailText, width / 2, emailY);
-  cursor(isHoveringEmail ? HAND : ARROW);
+}
 
-  let centerX = (touches.length > 0) ? touches[0].x : mouseX;
-  let centerY = (touches.length > 0) ? touches[0].y : mouseY;
-
+function applyInvert(cx, cy) {
   loadPixels();
   let d = pixelDensity();
-  let radius = 75;
 
   for (let x = -radius; x <= radius; x++) {
     for (let y = -radius; y <= radius; y++) {
-      let dx = centerX + x;
-      let dy = centerY + y;
-      if (dx >= 0 && dx < width && dy >= 0 && dy < height && x * x + y * y <= radius * radius) {
-        for (let i = 0; i < d; i++) {
-          for (let j = 0; j < d; j++) {
-            let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
-            pixels[index] = 255 - pixels[index];         // Red
-            pixels[index + 1] = 255 - pixels[index + 1]; // Green
-            pixels[index + 2] = 255 - pixels[index + 2]; // Blue
-            // Alpha remains unchanged
-          }
+      if (x * x + y * y > radius * radius) continue;
+
+      let dx = cx + x;
+      let dy = cy + y;
+
+      if (dx < 0 || dx >= width || dy < 0 || dy >= height) continue;
+
+      for (let i = 0; i < d; i++) {
+        for (let j = 0; j < d; j++) {
+          let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
+          pixels[index] = 255 - pixels[index];
+          pixels[index + 1] = 255 - pixels[index + 1];
+          pixels[index + 2] = 255 - pixels[index + 2];
         }
       }
     }
   }
+
   updatePixels();
 }
 
@@ -90,25 +123,30 @@ function mousePressed() {
 }
 
 function touchStarted() {
-  let totalWidth = textWidth(emailText);
-  let xStart = width / 2 - totalWidth / 2;
-  let yStart = emailY;
-  let textHeight = emailSize;
+  if (touches.length > 0) {
+    let tx = touches[0].x;
+    let ty = touches[0].y;
 
-  if (touchX > xStart && touchX < xStart + totalWidth &&
-      touchY > yStart && touchY < yStart + textHeight) {
-    window.location.href = 'mailto:info@awroberts.co.uk';
+    let totalWidth = textWidth(emailText);
+    let xStart = width / 2 - totalWidth / 2;
+    let yStart = emailY;
+    let textHeight = emailSize;
+
+    if (tx > xStart && tx < xStart + totalWidth &&
+        ty > yStart && ty < yStart + textHeight) {
+      window.location.href = 'mailto:info@awroberts.co.uk';
+    }
   }
-  return false;
-}
-
-function touchMoved() {
   return false;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  bgVideo.size(windowWidth, windowHeight);
-  emailSize = constrain(windowWidth * 0.1, 24, 140);
+  bgVideo.style('width', '100vw');
+  bgVideo.style('height', '100vh');
+
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textSize(emailSize);
+
+  radius = windowWidth < 600 ? 40 : 75;
 }
