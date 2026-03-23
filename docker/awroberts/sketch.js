@@ -32,12 +32,10 @@ function setup() {
   });
 
   bgVideo.parent('canvas-container');
+  bgVideo.size(width, height);   // p5 controls video size
   bgVideo.style('position', 'absolute');
   bgVideo.style('top', '0');
   bgVideo.style('left', '0');
-  bgVideo.style('width', '100vw');
-  bgVideo.style('height', '100vh');
-  bgVideo.style('object-fit', 'cover');
   bgVideo.style('z-index', '0');
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
@@ -45,7 +43,6 @@ function setup() {
   textSize(emailSize);
   textAlign(CENTER, TOP);
 
-  // Initial radius based on canvas size
   radius = min(width, height) * 0.03;
 }
 
@@ -53,7 +50,6 @@ function draw() {
   clear();
   image(bgVideo, 0, 0, width, height);
 
-  // Radius updates dynamically based on canvas size
   radius = min(width, height) * 0.03;
 
   drawEmail();
@@ -147,16 +143,13 @@ function touchStarted() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
-  bgVideo.style('width', '100vw');
-  bgVideo.style('height', '100vh');
+  bgVideo.size(width, height);   // keep video aligned with canvas
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textSize(emailSize);
 
-  // Recalculate radius on resize
   radius = min(width, height) * 0.03;
 
-  // Reset so the next movement draws a fresh circle
   lastX = -1;
   lastY = -1;
 }
