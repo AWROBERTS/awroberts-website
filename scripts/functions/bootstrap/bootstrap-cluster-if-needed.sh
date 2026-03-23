@@ -32,5 +32,6 @@ bootstrap_cluster_if_needed() {
     wait_for_flannel_ready
     allow_control_plane_scheduling
     wait_for_node_ready
+    cleanup_gateway_api_resources
   fi
 }
