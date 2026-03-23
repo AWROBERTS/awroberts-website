@@ -14,6 +14,8 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+            namespace: {{ .Release.Namespace }}
+
     - name: https-www
       protocol: HTTPS
       port: 443
@@ -22,6 +24,8 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+            namespace: {{ .Release.Namespace }}
+
     - name: http
       protocol: HTTP
       port: 80
