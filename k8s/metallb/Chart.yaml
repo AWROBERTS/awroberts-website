@@ -1,0 +1,5 @@
+apiVersion: v2
+name: metallb-config
+description: MetalLB IP pool + L2 advertisement
+type: application
+version: 0.1.0
