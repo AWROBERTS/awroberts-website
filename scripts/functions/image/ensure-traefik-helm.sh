@@ -7,7 +7,7 @@ ensure_traefik_helm() {
   helm upgrade --install traefik traefik/traefik \
     --version "39.0.6" \
     --namespace traefik --create-namespace \
-    -f "${PROJECT_ROOT}/k8s/traefik/traefik-values.yaml"
+    -f "${PROJECT_ROOT}/traefik/traefik-values.yaml"
 
   echo "✅ Traefik installed or updated."
 }
