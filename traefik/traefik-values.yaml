@@ -1,28 +1,26 @@
-ports:
-  web:
-    port: 8000
-    expose:
-      default: true
-    protocol: TCP
-    nodePort: 31509
-
-  websecure:
-    port: 8443
-    expose:
-      default: true
-    protocol: TCP
-    nodePort: 32545
+logs:
+  access:
+    enabled: true
+    format: json
 
 providers:
-  kubernetesCRD:
-    enabled: false
-  kubernetesIngress:
-    enabled: false
   kubernetesGateway:
     enabled: true
 
-gateway:
-  enabled: false
+ports:
+  web:
+    expose:
+      default: true
+    nodePort: 31509
+    port: 8000
+    protocol: TCP
+
+  websecure:
+    expose:
+      default: true
+    nodePort: 32545
+    port: 8443
+    protocol: TCP
 
 service:
   type: NodePort
