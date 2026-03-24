@@ -1,0 +1,9 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: {{ .Values.namePrefix }}-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - {{ .Values.ipRange.start }}-{{ .Values.ipRange.end }}
+

@@ -1,16 +1,8 @@
 deploy_with_helm() {
   echo "🚀 Deploying with Helm using image tag ${IMAGE_TAG}"
 
-  echo "🧼 Cleaning namespace ${NAMESPACE}..."
-  kubectl delete namespace "${NAMESPACE}" --ignore-not-found
-
-  echo "⏳ Waiting for namespace deletion..."
-  while kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; do
-    sleep 1
-  done
-
-  echo "📦 Recreating namespace ${NAMESPACE}..."
-  kubectl create namespace "${NAMESPACE}"
+  echo "📦 Ensuring namespace ${NAMESPACE} exists..."
+  kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
   helm upgrade --install "${DEPLOYMENT_NAME}" "${HELM_CHART_PATH}" \
     --namespace "${NAMESPACE}" \
@@ -23,3 +15,4 @@ deploy_with_helm() {
     --set volume.hostPath="${HOST_MEDIA_PATH}" \
     --set volume.mountPath="/usr/share/nginx/html/awroberts-media"
 }
+
