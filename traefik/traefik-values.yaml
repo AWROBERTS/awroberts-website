@@ -5,13 +5,13 @@ logs:
     enabled: true
     format: json
 
+additionalArguments:
+  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
+  - "--entryPoints.web.forwardedHeaders.insecure=true"
+
 providers:
   kubernetesGateway:
     enabled: true
-
-globalArguments:
-  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
-  - "--entryPoints.web.forwardedHeaders.insecure=true"
 
 ports:
   web:
