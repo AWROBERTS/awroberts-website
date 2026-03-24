@@ -9,6 +9,10 @@ providers:
   kubernetesGateway:
     enabled: true
 
+globalArguments:
+  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
+  - "--entryPoints.web.forwardedHeaders.insecure=true"
+
 ports:
   web:
     expose:
@@ -23,8 +27,6 @@ ports:
     nodePort: 32545
     port: 8443
     protocol: TCP
-    forwardedHeaders:
-      insecure: true
 
 service:
   type: NodePort
