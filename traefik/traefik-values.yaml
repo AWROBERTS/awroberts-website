@@ -30,5 +30,6 @@ ports:
 
 service:
   type: LoadBalancer
-  spec:
-    loadBalancerIP: 192.168.1.240
+  annotations:
+    metallb.io/address-pool: awroberts-pool
+    metallb.io/loadBalancerIP: 192.168.1.150
