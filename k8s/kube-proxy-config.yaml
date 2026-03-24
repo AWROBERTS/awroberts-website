@@ -37,7 +37,7 @@ data:
       excludeCIDRs: []
       minSyncPeriod: 0s
       scheduler: ""
-      strictARP: false
+      strictARP: true
       syncPeriod: 0s
       tcpFinTimeout: 0s
       tcpTimeout: 0s
