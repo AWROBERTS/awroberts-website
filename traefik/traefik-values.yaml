@@ -5,6 +5,11 @@ logs:
     enabled: true
     format: json
 
+entryPoints:
+  websecure:
+    forwardedHeaders:
+      insecure: true
+
 providers:
   kubernetesGateway:
     enabled: true
