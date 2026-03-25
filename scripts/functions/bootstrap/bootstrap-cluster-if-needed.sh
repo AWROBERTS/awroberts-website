@@ -25,6 +25,12 @@ bootstrap_cluster_if_needed() {
     configure_containerd
     initialise_kubeadm
     configure_kubeconfig
+
+    echo "Waiting for Kubernetes API to become ready..."
+    until kubectl get nodes >/dev/null 2>&1; do
+      sleep 2
+    done
+
     prepare_flannel_host_paths
     cleanup_old_cni_configs
     install_cni_plugins
