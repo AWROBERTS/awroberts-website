@@ -5,4 +5,5 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - {{ .Values.ipRange.start }}-{{ .Values.ipRange.end }}
+    - "{{ .Values.ipRange.start }}-{{ .Values.ipRange.end }}"
+
