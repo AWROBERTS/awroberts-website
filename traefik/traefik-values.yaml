@@ -6,6 +6,8 @@ logs:
     format: json
 
 additionalArguments:
+  - "--entrypoints.web.address=:80"
+  - "--entrypoints.websecure.address=:443"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
 
@@ -13,6 +15,19 @@ providers:
   kubernetesGateway:
     enabled: true
 
+ports:
+  web:
+    port: 80
+    expose: true
+    exposedPort: 80
+    protocol: TCP
+
+  websecure:
+    port: 443
+    expose: true
+    exposedPort: 443
+    protocol: TCP
+
 service:
-  type: ClusterIP
+  type: LoadBalancer
 
