@@ -37,6 +37,7 @@ service:
   type: LoadBalancer
 
 deployment:
+  enabled: true
   podSecurityContext:
     runAsUser: 0
   securityContext:
