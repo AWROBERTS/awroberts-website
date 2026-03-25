@@ -40,6 +40,8 @@ readinessProbe:
 service:
   type: LoadBalancer
   port: 80
+  portName: http
+  protocol: TCP
   annotations:
     metallb.io/address-pool: awroberts-pool
 
