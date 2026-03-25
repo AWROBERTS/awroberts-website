@@ -16,17 +16,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: {{ index .Values.traefik.hostnames 0 }}
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.traefik.tls.secretName }}
-            namespace: {{ .Release.Namespace }}
-
-    - name: https-www
-      protocol: HTTPS
-      port: 443
-      hostname: {{ index .Values.traefik.hostnames 1 }}
+      hostname: "*.awroberts.co.uk"
       tls:
         mode: Terminate
         certificateRefs:
