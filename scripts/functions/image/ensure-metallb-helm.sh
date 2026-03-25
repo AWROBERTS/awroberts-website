@@ -5,6 +5,8 @@ ensure_metallb_helm() {
 
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
-    --create-namespace \
-    --set crds.enabled=false
+    --create-namespace
+
+  echo "Waiting for MetalLB webhook to become ready..."
+  kubectl wait --for=condition=ready pod -n metallb-system --all --timeout=60s
 }
