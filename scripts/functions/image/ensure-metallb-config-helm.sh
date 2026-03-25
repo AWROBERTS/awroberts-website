@@ -1,5 +1,6 @@
 ensure_metallb_config_helm() {
-  echo "Deploying MetalLB configuration..."
-  helm upgrade --install metallb-config "${PROJECT_ROOT}/k8s/metallb" \
-    --namespace metallb-system
+  echo "Applying MetalLB configuration..."
+  kubectl apply -f "${PROJECT_ROOT}/k8s/metallb/ipaddresspool.yaml"
+  kubectl apply -f "${PROJECT_ROOT}/k8s/metallb/l2advertisement.yaml"
 }
+
