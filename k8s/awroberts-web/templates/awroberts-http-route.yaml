@@ -8,8 +8,6 @@ spec:
     - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: https
     - name: {{ include "awroberts.fullname" . }}-gateway
-      sectionName: https-www
-    - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: http
 
   hostnames:
@@ -24,4 +22,3 @@ spec:
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}
           port: {{ .Values.service.port }}
-
