@@ -5,8 +5,12 @@ frr:
 
 speaker:
   enabled: true
+  frr:
+    enabled: false
+
+frrk8s:
+  enabled: false
 
 ipRange:
   start: "192.168.1.150"
   end: "192.168.1.150"
-
