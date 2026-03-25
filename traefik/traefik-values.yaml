@@ -12,10 +12,6 @@ providers:
 gateway:
   enabled: false
 
-entryPoints:
-  web: {}
-  websecure: {}
-
 additionalArguments:
   - "--entrypoints.web.address=:80"
   - "--entrypoints.websecure.address=:443"
