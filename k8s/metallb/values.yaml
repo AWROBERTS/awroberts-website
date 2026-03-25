@@ -7,7 +7,8 @@ frr:
 
 speaker:
   enabled: true
-  hostNetwork: false
+  daemonset:
+    hostNetwork: false
   securityContext:
     capabilities:
       add:
