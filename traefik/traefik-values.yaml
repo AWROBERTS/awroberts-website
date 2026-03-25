@@ -35,3 +35,8 @@ ports:
 
 service:
   type: LoadBalancer
+
+securityContext:
+  capabilities:
+    add:
+      - NET_BIND_SERVICE
