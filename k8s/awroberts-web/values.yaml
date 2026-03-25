@@ -38,8 +38,10 @@ readinessProbe:
   periodSeconds: 5
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
+  annotations:
+    metallb.io/address-pool: awroberts-pool
 
 autoscaling:
   enabled: false
