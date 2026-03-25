@@ -4,12 +4,16 @@ metadata:
   name: {{ include "awroberts.fullname" . }}
   labels:
     {{- include "awroberts.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.service.annotations }}
+    {{- toYaml .Values.service.annotations | nindent 4 }}
+    {{- end }}
 spec:
   type: {{ .Values.service.type }}
   selector:
     {{- include "awroberts.selectorLabels" . | nindent 4 }}
   ports:
-    - name: http
+    - name: {{ .Values.service.portName | default "http" }}
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.containerPort }}
-      protocol: TCP
+      protocol: {{ .Values.service.protocol | default "TCP" }}
