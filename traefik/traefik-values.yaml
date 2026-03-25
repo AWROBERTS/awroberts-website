@@ -11,7 +11,7 @@ additionalArguments:
 
 providers:
   kubernetesGateway:
-    enabled: true
+    enabled: false
 
 ports:
   web:
