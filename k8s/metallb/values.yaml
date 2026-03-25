@@ -7,13 +7,24 @@ frr:
 
 speaker:
   enabled: true
-  daemonset:
-    hostNetwork: false
+
+  extraManifests:
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: metallb-speaker
+        namespace: metallb-system
+      spec:
+        template:
+          spec:
+            hostNetwork: false
+
   securityContext:
     capabilities:
       add:
         - NET_ADMIN
         - NET_RAW
+
   frr:
     enabled: false
 
