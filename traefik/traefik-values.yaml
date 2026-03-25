@@ -36,22 +36,19 @@ ports:
 service:
   type: LoadBalancer
 
-deployment:
-  enabled: true
+securityContext:
+  allowPrivilegeEscalation: true
+  readOnlyRootFilesystem: false
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+  capabilities:
+    drop: []
+    add:
+      - NET_BIND_SERVICE
 
-  podSecurityContext:
-    fsGroup: 0
-    runAsUser: 0
-    runAsGroup: 0
-    runAsNonRoot: false
-
-  securityContext:
-    allowPrivilegeEscalation: true
-    readOnlyRootFilesystem: false
-    runAsUser: 0
-    runAsGroup: 0
-    runAsNonRoot: false
-    capabilities:
-      add:
-        - NET_BIND_SERVICE
-      drop: []
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+  fsGroup: 0
