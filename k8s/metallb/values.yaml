@@ -13,6 +13,9 @@ speaker:
         - NET_RAW
   frr:
     enabled: false
+  config:
+    interfaces:
+      - enp1s0
 
 frrk8s:
   enabled: false
