@@ -11,26 +11,8 @@ additionalArguments:
 
 providers:
   kubernetesGateway:
-    enabled: false
-
-ports:
-  web:
-    expose:
-      default: true
-    nodePort: 31509
-    port: 8000
-    protocol: TCP
-
-  websecure:
-    expose:
-      default: true
-    nodePort: 32545
-    port: 8443
-    protocol: TCP
+    enabled: true
 
 service:
-  type: LoadBalancer
-  annotations:
-    metallb.io/address-pool: awroberts-pool
-  spec:
-    loadBalancerIP: 192.168.1.150
+  type: ClusterIP
+
