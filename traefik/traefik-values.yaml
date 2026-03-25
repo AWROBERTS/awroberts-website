@@ -38,14 +38,20 @@ service:
 
 deployment:
   enabled: true
+
   podSecurityContext:
     fsGroup: 0
     runAsUser: 0
     runAsGroup: 0
     runAsNonRoot: false
+
   securityContext:
     allowPrivilegeEscalation: true
     readOnlyRootFilesystem: false
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: false
     capabilities:
       add:
         - NET_BIND_SERVICE
+      drop: []
