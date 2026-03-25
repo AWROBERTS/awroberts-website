@@ -5,15 +5,18 @@ logs:
     enabled: true
     format: json
 
-additionalArguments:
-  - "--entrypoints.web.address=:80"
-  - "--entrypoints.websecure.address=:443"
-  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
-  - "--entryPoints.web.forwardedHeaders.insecure=true"
-
 providers:
   kubernetesGateway:
     enabled: true
+
+gateway:
+  enabled: false
+
+additionalArguments:
+  - "--entrypoints.web.address=:80"
+  - "--entrypoints.websecure.address=:443"
+  - "--entryPoints.web.forwardedHeaders.insecure=true"
+  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
 
 ports:
   web:
@@ -32,4 +35,3 @@ ports:
 
 service:
   type: LoadBalancer
-
