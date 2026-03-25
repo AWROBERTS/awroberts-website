@@ -5,5 +5,6 @@ ensure_metallb_helm() {
 
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
-    --create-namespace
+    --create-namespace \
+    --set crds.enabled=false
 }

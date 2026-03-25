@@ -67,6 +67,7 @@ main() {
   build_image
   import_image
   restart_kube_proxy
+  ensure_metallb_crd
   ensure_metallb_helm
   ensure_metallb_config_helm
   ensure_traefik_helm

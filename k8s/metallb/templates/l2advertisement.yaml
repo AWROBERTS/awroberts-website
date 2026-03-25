@@ -2,6 +2,7 @@ apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
 metadata:
   name: {{ .Values.namePrefix }}-l2advert
+  namespace: metallb-system
 spec:
   ipAddressPools:
     - {{ .Values.namePrefix }}-pool
