@@ -6,4 +6,3 @@ metadata:
 spec:
   addresses:
     - "{{ .Values.ipRange.start }}-{{ .Values.ipRange.end }}"
-
