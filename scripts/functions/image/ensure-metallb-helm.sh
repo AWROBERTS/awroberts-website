@@ -1,13 +1,14 @@
 ensure_metallb_helm() {
   echo "Installing MetalLB..."
 
-  # Install CRDs first
   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/metallb.io_ipaddresspools.yaml
   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/metallb.io_l2advertisements.yaml
 
-  helm upgrade --install metallb "${PROJECT_ROOT}/k8s/metallb" \
+  # Install the official MetalLB chart (controller + webhook)
+  helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
-    --create-namespace
+    --create-namespace \
+    -f "${PROJECT_ROOT}/k8s/metallb/values.yaml"
 
   echo "Waiting for MetalLB controller to become ready..."
 
@@ -20,5 +21,10 @@ ensure_metallb_helm() {
   done
 
   echo "MetalLB controller is ready."
-}
 
+  # Install custom MetalLB config chart (speaker + IP pool + L2 advert)
+  helm upgrade --install metallb-config "${PROJECT_ROOT}/k8s/metallb-config" \
+    --namespace metallb-system
+
+  echo "MetalLB configuration applied."
+}
