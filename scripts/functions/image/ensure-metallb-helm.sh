@@ -1,10 +1,13 @@
-ensure_metallb_helm() {
-  echo "Installing MetalLB..."
+wait_for_metallb() {
+  echo "Waiting for MetalLB controller to become ready..."
 
-  helm upgrade --install metallb "${PROJECT_ROOT}/k8s/metallb" \
-    --namespace metallb-system \
-    --create-namespace
+  # Loop until the controller pod reports Ready=True
+  until kubectl get pod -n metallb-system \
+      -l app.kubernetes.io/component=controller \
+      -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null | grep -q "True"; do
+    sleep 1
+  done
 
-  echo "Waiting for MetalLB webhook to become ready..."
-  kubectl wait --for=condition=ready pod -n metallb-system --all --timeout=20s
+  echo "MetalLB controller is ready."
 }
