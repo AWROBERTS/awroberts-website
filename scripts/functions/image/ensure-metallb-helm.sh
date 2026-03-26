@@ -1,7 +1,9 @@
 ensure_metallb_helm() {
   echo "Installing MetalLB..."
 
-  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/
+  # Install CRDs first
+  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/metallb.io_ipaddresspools.yaml
+  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/metallb.io_l2advertisements.yaml
 
   helm upgrade --install metallb "${PROJECT_ROOT}/k8s/metallb" \
     --namespace metallb-system \
@@ -19,3 +21,4 @@ ensure_metallb_helm() {
 
   echo "MetalLB controller is ready."
 }
+
