@@ -10,7 +10,7 @@ metadata:
   name: {{ .Values.namePrefix }}-speaker
 rules:
 - apiGroups: [""]
-  resources: ["services", "endpoints", "nodes"]
+  resources: ["services", "endpoints", "nodes", "pods"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
