@@ -5,6 +5,15 @@ ensure_metallb_helm() {
     --namespace metallb-system \
     --create-namespace
 
-  echo "Waiting for MetalLB webhook to become ready..."
-  kubectl wait --for=condition=ready pod -n metallb-system --all --timeout=20s
+  echo "Waiting for MetalLB controller to become ready..."
+
+  # Wait until the controller pod is ready
+  until kubectl get pod -n metallb-system \
+      -l app.kubernetes.io/component=controller \
+      -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null | grep -q "True"; do
+    sleep 1
+  done
+
+  echo "MetalLB controller is ready."
 }
