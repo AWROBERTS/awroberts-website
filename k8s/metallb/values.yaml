@@ -82,9 +82,6 @@ speaker:
                 configMap:
                   name: metallb-excludel2
 
-  frr:
-    enabled: false
-
 ipRange:
   start: "192.168.1.150"
   end: "192.168.1.160"
