@@ -17,7 +17,7 @@ speaker:
           spec:
             hostNetwork: false
 
-  securityContext:
+  containerSecurityContext:
     capabilities:
       add:
         - NET_ADMIN
