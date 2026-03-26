@@ -1,6 +1,8 @@
 ensure_metallb_helm() {
   echo "Installing MetalLB..."
 
+  kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/crd/bases/
+
   helm upgrade --install metallb "${PROJECT_ROOT}/k8s/metallb" \
     --namespace metallb-system \
     --create-namespace
