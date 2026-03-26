@@ -9,13 +9,20 @@ data:
   config.conf: |
     apiVersion: kubeproxy.config.k8s.io/v1alpha1
     kind: KubeProxyConfiguration
-    mode: iptables
+    mode: ipvs
+    ipvs:
+      strictARP: true
+      scheduler: "rr"
+      minSyncPeriod: 0s
+      syncPeriod: 0s
+      tcpTimeout: 0s
+      tcpFinTimeout: 0s
+      udpTimeout: 0s
     clusterCIDR: 10.244.0.0/16
-    clientConnection:
-      kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
     bindAddress: 0.0.0.0
     bindAddressHardFail: false
-    configSyncPeriod: 0s
+    clientConnection:
+      kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
     conntrack:
       maxPerCore: 0
       min: 0
@@ -33,15 +40,6 @@ data:
       masqueradeBit: 14
       minSyncPeriod: 0s
       syncPeriod: 0s
-    ipvs:
-      excludeCIDRs: []
-      minSyncPeriod: 0s
-      scheduler: ""
-      strictARP: true
-      syncPeriod: 0s
-      tcpFinTimeout: 0s
-      tcpTimeout: 0s
-      udpTimeout: 0s
     metricsBindAddress: ""
     nodePortAddresses: []
     oomScoreAdj: -999
