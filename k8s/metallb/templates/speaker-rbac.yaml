@@ -15,6 +15,11 @@ rules:
 - apiGroups: ["discovery.k8s.io"]
   resources: ["endpointslices"]
   verbs: ["get", "list", "watch"]
+- apiGroups: ["metallb.io"]
+  resources:
+    - "servicebgpstatuses"
+    - "servicel2statuses"
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
