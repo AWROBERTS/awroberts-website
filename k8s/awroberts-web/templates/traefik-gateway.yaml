@@ -13,7 +13,17 @@ spec:
       value: 192.168.1.150
 
   listeners:
-    - name: https
+    - name: https-root
+      protocol: HTTPS
+      port: 443
+      hostname: "awroberts.co.uk"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.traefik.tls.secretName }}
+            namespace: {{ .Release.Namespace }}
+
+    - name: https-wildcard
       protocol: HTTPS
       port: 443
       hostname: "*.awroberts.co.uk"
@@ -26,4 +36,3 @@ spec:
     - name: http
       protocol: HTTP
       port: 80
-
