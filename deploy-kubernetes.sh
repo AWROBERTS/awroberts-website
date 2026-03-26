@@ -66,7 +66,6 @@ main() {
   image_vars
   build_image
   import_image
-  ensure_legacy_iptables
   restart_kube_proxy
   ensure_metallb_helm
   ensure_metallb_config_helm
