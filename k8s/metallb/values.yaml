@@ -1,7 +1,5 @@
 namePrefix: "awroberts"
 
-interface: "enp1s0"
-
 frr:
   enabled: false
 
