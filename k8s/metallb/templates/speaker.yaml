@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.namePrefix }}-speaker
+  namespace: metallb-system
+  labels:
+    app.kubernetes.io/component: speaker
+    app.kubernetes.io/name: {{ .Values.namePrefix }}-speaker
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: speaker
+      app.kubernetes.io/name: {{ .Values.namePrefix }}-speaker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: speaker
+        app.kubernetes.io/name: {{ .Values.namePrefix }}-speaker
+    spec:
+      serviceAccountName: {{ .Values.namePrefix }}-speaker
+      hostNetwork: true
+      containers:
+      - name: speaker
+        image: quay.io/metallb/speaker:latest
+        args:
+          - --port=7472
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+              - NET_ADMIN
+              - NET_RAW
+            drop:
+              - ALL
+        env:
+        - name: METALLB_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: METALLB_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
