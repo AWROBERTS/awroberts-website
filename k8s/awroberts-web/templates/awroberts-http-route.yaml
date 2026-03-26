@@ -6,7 +6,9 @@ metadata:
 spec:
   parentRefs:
     - name: {{ include "awroberts.fullname" . }}-gateway
-      sectionName: https
+      sectionName: https-root
+    - name: {{ include "awroberts.fullname" . }}-gateway
+      sectionName: https-wildcard
     - name: {{ include "awroberts.fullname" . }}-gateway
       sectionName: http
 
