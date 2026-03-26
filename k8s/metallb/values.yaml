@@ -7,8 +7,8 @@ speaker:
   enabled: false
 
 ipRange:
-  start: "192.168.1.150"
-  end: "192.168.1.160"
+  start: "192.168.1.108"
+  end: "192.168.1.108"
 
 frrk8s:
   enabled: false
