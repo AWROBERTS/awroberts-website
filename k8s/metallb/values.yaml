@@ -6,81 +6,81 @@ frr:
 speaker:
   enabled: false
 
-  extraManifests:
-    - apiVersion: apps/v1
-      kind: DaemonSet
-      metadata:
-        name: metallb-speaker
-        namespace: metallb-system
-        labels:
+extraManifests:
+  - apiVersion: apps/v1
+    kind: DaemonSet
+    metadata:
+      name: metallb-speaker
+      namespace: metallb-system
+      labels:
+        app.kubernetes.io/name: metallb
+        app.kubernetes.io/component: speaker
+        app.kubernetes.io/instance: metallb
+    spec:
+      selector:
+        matchLabels:
           app.kubernetes.io/name: metallb
           app.kubernetes.io/component: speaker
           app.kubernetes.io/instance: metallb
-      spec:
-        selector:
-          matchLabels:
+      template:
+        metadata:
+          labels:
             app.kubernetes.io/name: metallb
             app.kubernetes.io/component: speaker
             app.kubernetes.io/instance: metallb
-        template:
-          metadata:
-            labels:
-              app.kubernetes.io/name: metallb
-              app.kubernetes.io/component: speaker
-              app.kubernetes.io/instance: metallb
-          spec:
-            hostNetwork: true
-            serviceAccountName: metallb-speaker
-            terminationGracePeriodSeconds: 0
+        spec:
+          hostNetwork: true
+          serviceAccountName: metallb-speaker
+          terminationGracePeriodSeconds: 0
 
-            nodeSelector:
-              kubernetes.io/os: linux
+          nodeSelector:
+            kubernetes.io/os: linux
 
-            tolerations:
-              - key: "node-role.kubernetes.io/master"
-                operator: "Exists"
-                effect: "NoSchedule"
-              - key: "node-role.kubernetes.io/control-plane"
-                operator: "Exists"
-                effect: "NoSchedule"
+          tolerations:
+            - key: "node-role.kubernetes.io/master"
+              operator: "Exists"
+              effect: "NoSchedule"
+            - key: "node-role.kubernetes.io/control-plane"
+              operator: "Exists"
+              effect: "NoSchedule"
 
-            containers:
-              - name: speaker
-                image: quay.io/metallb/speaker:v0.15.3
-                args:
-                  - --port=7472
-                  - --log-level=info
-                securityContext:
-                  allowPrivilegeEscalation: false
-                  capabilities:
-                    add:
-                      - NET_ADMIN
-                      - NET_RAW
-                    drop:
-                      - ALL
-                  readOnlyRootFilesystem: true
-                env:
-                  - name: METALLB_NODE_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: spec.nodeName
-                  - name: METALLB_HOST
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: status.hostIP
-                volumeMounts:
-                  - name: memberlist
-                    mountPath: /etc/ml_secret_key
-                  - name: metallb-excludel2
-                    mountPath: /etc/metallb
+          containers:
+            - name: speaker
+              image: quay.io/metallb/speaker:v0.15.3
+              args:
+                - --port=7472
+                - --log-level=info
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  add:
+                    - NET_ADMIN
+                    - NET_RAW
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              env:
+                - name: METALLB_NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+                - name: METALLB_HOST
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.hostIP
+              volumeMounts:
+                - name: memberlist
+                  mountPath: /etc/ml_secret_key
+                - name: metallb-excludel2
+                  mountPath: /etc/metallb
 
-            volumes:
-              - name: memberlist
-                secret:
-                  secretName: metallb-memberlist
-              - name: metallb-excludel2
-                configMap:
-                  name: metallb-excludel2
+          volumes:
+            - name: memberlist
+              secret:
+                secretName: metallb-memberlist
+            - name: metallb-excludel2
+              configMap:
+                name: metallb-excludel2
 
 ipRange:
   start: "192.168.1.150"
