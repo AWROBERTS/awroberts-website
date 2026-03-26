@@ -26,6 +26,18 @@ speaker:
             hostNetwork: true
             serviceAccountName: metallb-speaker
             terminationGracePeriodSeconds: 0
+
+            nodeSelector:
+              kubernetes.io/os: linux
+
+            tolerations:
+              - key: "node-role.kubernetes.io/master"
+                operator: "Exists"
+                effect: "NoSchedule"
+              - key: "node-role.kubernetes.io/control-plane"
+                operator: "Exists"
+                effect: "NoSchedule"
+
             containers:
               - name: speaker
                 image: quay.io/metallb/speaker:v0.15.3
@@ -55,6 +67,7 @@ speaker:
                     mountPath: /etc/ml_secret_key
                   - name: metallb-excludel2
                     mountPath: /etc/metallb
+
             volumes:
               - name: memberlist
                 secret:
