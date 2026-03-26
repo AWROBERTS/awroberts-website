@@ -1,7 +1,7 @@
 ensure_metallb_helm() {
   echo "Installing MetalLB..."
 
-  # Install the official MetalLB chart (controller + CRDs)
+  # Install official MetalLB chart (controller + CRDs)
   helm upgrade --install metallb metallb/metallb \
     --namespace metallb-system \
     --create-namespace \
@@ -9,7 +9,7 @@ ensure_metallb_helm() {
 
   echo "Waiting for MetalLB controller to become ready..."
 
-  # Wait for controller pod to be ready
+  # Wait until controller pod is ready
   until kubectl get pod -n metallb-system \
       -l app.kubernetes.io/component=controller \
       -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' \
@@ -19,8 +19,8 @@ ensure_metallb_helm() {
 
   echo "MetalLB controller is ready."
 
-  # Install custom MetalLB config (speaker + pool + advert)
-  helm upgrade --install metallb-config "${PROJECT_ROOT}/k8s/metallb-config" \
+  # Install custom MetalLB config chart (speaker + IP pool + L2 advert)
+  helm upgrade --install metallb-config "${PROJECT_ROOT}/k8s/metallb" \
     --namespace metallb-system
 
   echo "MetalLB configuration applied."
