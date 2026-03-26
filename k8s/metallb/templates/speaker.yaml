@@ -33,7 +33,7 @@ spec:
             drop:
               - ALL
         env:
-        - name: POD_NAME
+        - name: METALLB_POD_NAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
@@ -45,3 +45,25 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.hostIP
+      tolerations:
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/disk-pressure
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/memory-pressure
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/pid-pressure
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/unschedulable
+        operator: Exists
+      - effect: NoSchedule
+        key: node.kubernetes.io/network-unavailable
+        operator: Exists
