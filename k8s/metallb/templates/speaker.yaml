@@ -17,7 +17,7 @@ spec:
         app.kubernetes.io/name: metallb
         app.kubernetes.io/component: speaker
     spec:
-      serviceAccountName: {{ .Values.namePrefix }}-speaker
+      serviceAccountName: speaker
       hostNetwork: true
       containers:
       - name: speaker
