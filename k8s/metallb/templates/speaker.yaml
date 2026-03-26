@@ -33,6 +33,10 @@ spec:
             drop:
               - ALL
         env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         - name: METALLB_NODE_NAME
           valueFrom:
             fieldRef:
@@ -41,7 +45,3 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.hostIP
-        - name: METALLB_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
