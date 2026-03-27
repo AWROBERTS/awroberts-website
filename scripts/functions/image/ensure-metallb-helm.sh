@@ -17,7 +17,13 @@ ensure_metallb_helm() {
     sleep 1
   done
 
-  echo "MetalLB controller is ready."
+  echo "Patching MetalLB speaker to add NET_ADMIN capability..."
+
+  kubectl -n metallb-system patch daemonset metallb-speaker \
+    --type merge \
+    --patch "$(cat ${PROJECT_ROOT}/k8s/metallb/speaker-capabilities.yaml)"
+
+  echo "MetalLB speaker patched."
 
   echo "Applying MetalLB L2 configuration..."
 
@@ -27,4 +33,3 @@ ensure_metallb_helm() {
 
   echo "MetalLB configuration applied."
 }
-

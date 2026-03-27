@@ -5,13 +5,6 @@ controller:
 speaker:
   frr:
     enabled: false
-  containerSecurityContext:
-    capabilities:
-      add:
-        - NET_ADMIN
-        - NET_RAW
-    runAsUser: 0
-    runAsNonRoot: false
 
 bgp:
   enabled: false
