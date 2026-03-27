@@ -1,3 +1,6 @@
+frr:
+  enabled: false
+
 controller:
   frr:
     enabled: false
