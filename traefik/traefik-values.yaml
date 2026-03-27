@@ -9,6 +9,10 @@ providers:
   kubernetesGateway:
     enabled: true
 
+experimental:
+  kubernetesGateway:
+    enabled: true
+
 gateway:
   enabled: true
   service:
