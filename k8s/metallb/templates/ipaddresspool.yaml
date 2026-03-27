@@ -1,8 +1,8 @@
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
-  name: {{ .Values.namePrefix }}-pool
+  name: awroberts-pool
   namespace: metallb-system
 spec:
   addresses:
-    - "{{ .Values.ipRange.start }}-{{ .Values.ipRange.end }}"
+    - 192.168.1.200-192.168.1.200
