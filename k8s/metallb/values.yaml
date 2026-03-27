@@ -5,7 +5,7 @@ controller:
 speaker:
   frr:
     enabled: false
-  securityContext:
+  containerSecurityContext:
     capabilities:
       add:
         - NET_ADMIN
