@@ -3,9 +3,6 @@ namePrefix: "awroberts"
 frr:
   enabled: false
 
-frrk8s:
-  enabled: false
-
 bgp:
   enabled: false
 
