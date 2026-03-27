@@ -37,6 +37,12 @@ ports:
     exposedPort: 443
     protocol: TCP
 
+  tcp:
+    port: 8000
+    expose:
+      default: false
+    protocol: TCP
+
 service:
   enabled: true
   type: LoadBalancer
