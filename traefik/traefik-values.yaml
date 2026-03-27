@@ -29,6 +29,7 @@ ports:
       default: true
     exposedPort: 80
     protocol: TCP
+    nodePort: null
 
   websecure:
     port: 443
@@ -36,6 +37,7 @@ ports:
       default: true
     exposedPort: 443
     protocol: TCP
+    nodePort: null
 
   tcp:
     port: 8000
