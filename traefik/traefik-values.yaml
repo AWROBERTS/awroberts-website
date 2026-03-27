@@ -19,6 +19,9 @@ additionalArguments:
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
 
+gateway:
+  enabled: false
+
 ports:
   web:
     port: 80
