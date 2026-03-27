@@ -10,7 +10,11 @@ providers:
     enabled: true
 
 gateway:
-  enabled: false
+  enabled: true
+  service:
+    enabled: true
+    type: LoadBalancer
+    loadBalancerIP: 192.168.1.150
 
 additionalArguments:
   - "--entrypoints.web.address=:80"
