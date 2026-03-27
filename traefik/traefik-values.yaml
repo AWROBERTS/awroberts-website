@@ -47,6 +47,11 @@ service:
   enabled: true
   type: LoadBalancer
   loadBalancerIP: "192.168.1.220"
+  spec:
+    externalTrafficPolicy: Cluster
+  nodePorts:
+    http: null
+    https: null
 
 securityContext:
   allowPrivilegeEscalation: true
