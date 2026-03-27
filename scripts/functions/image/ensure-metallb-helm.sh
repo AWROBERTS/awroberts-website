@@ -20,8 +20,8 @@ ensure_metallb_helm() {
   echo "Patching MetalLB speaker to add NET_ADMIN capability..."
 
   kubectl -n metallb-system patch daemonset metallb-speaker \
-    --type merge \
-    --patch "$(cat ${PROJECT_ROOT}/k8s/metallb/speaker-capabilities.yaml)"
+    --type='json' \
+    --patch "$(cat ${PROJECT_ROOT}/k8s/metallb/speaker-capabilities.json)"
 
   echo "MetalLB speaker patched."
 
