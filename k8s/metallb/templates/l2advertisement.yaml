@@ -6,3 +6,5 @@ metadata:
 spec:
   ipAddressPools:
     - {{ .Values.namePrefix }}-pool
+  interfaces:
+    - enp1s0
