@@ -48,7 +48,7 @@ ports:
 service:
   enabled: true
   type: LoadBalancer
-  loadBalancerIP: "192.168.1.150"
+  loadBalancerIP: "192.168.1.140"
   spec:
     externalTrafficPolicy: Cluster
     allocateLoadBalancerNodePorts: false
