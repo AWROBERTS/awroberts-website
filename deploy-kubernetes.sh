@@ -67,7 +67,6 @@ main() {
   build_image
   import_image
   restart_kube_proxy
-  ensure_metallb_helm
   ensure_traefik_helm
   deploy_with_helm
   ensure_tls_secret
