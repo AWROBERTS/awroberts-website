@@ -68,8 +68,3 @@ podSecurityContext:
   runAsGroup: 0
   runAsNonRoot: false
   fsGroup: 0
-
-traefik:
-  loadBalancerIP: "192.168.1.200"
-  tls:
-    secretName: "awroberts-tls"
