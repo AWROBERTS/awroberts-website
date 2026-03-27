@@ -38,7 +38,7 @@ readinessProbe:
   periodSeconds: 5
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 80
   portName: http
   protocol: TCP
