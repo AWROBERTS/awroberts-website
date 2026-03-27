@@ -1,0 +1,13 @@
+controller:
+  frr:
+    enabled: false
+
+speaker:
+  frr:
+    enabled: false
+
+bgp:
+  enabled: false
+
+layer2:
+  enabled: true
