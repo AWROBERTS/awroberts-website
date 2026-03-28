@@ -22,6 +22,10 @@ additionalArguments:
 gateway:
   enabled: false
 
+deployment:
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+
 ports:
   web:
     port: 80
@@ -29,7 +33,6 @@ ports:
       default: true
     exposedPort: 80
     protocol: TCP
-    nodePort: null
 
   websecure:
     port: 443
@@ -37,7 +40,6 @@ ports:
       default: true
     exposedPort: 443
     protocol: TCP
-    nodePort: null
 
   tcp:
     port: 8000
@@ -47,11 +49,9 @@ ports:
 
 service:
   enabled: true
-  type: LoadBalancer
-  loadBalancerIP: "192.168.1.140"
+  type: ClusterIP
   spec:
     externalTrafficPolicy: Cluster
-    allocateLoadBalancerNodePorts: false
   nodePorts:
     web: null
     websecure: null
