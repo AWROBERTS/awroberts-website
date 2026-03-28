@@ -10,4 +10,3 @@ ensure_traefik_helm() {
 
   echo "✅ Traefik installed or updated."
 }
-
