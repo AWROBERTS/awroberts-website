@@ -5,9 +5,6 @@ let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
-let lastX = -1, lastY = -1;
-let radius;
-
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
@@ -37,8 +34,6 @@ function setup() {
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(CENTER, TOP);
-
-  radius = min(width, height) * 0.03;
 }
 
 function draw() {
@@ -46,18 +41,7 @@ function draw() {
 
   image(bgVideo, 0, 0, width, height);
 
-  radius = min(width, height) * 0.03;
-
   drawEmail();
-
-  let cx = touches.length ? touches[0].x : mouseX;
-  let cy = touches.length ? touches[0].y : mouseY;
-
-  if (dist(cx, cy, lastX, lastY) > 2) {
-    applyInvert(cx, cy);
-    lastX = cx;
-    lastY = cy;
-  }
 }
 
 function drawEmail() {
@@ -86,33 +70,6 @@ function drawEmail() {
   text(emailText, width / 2, emailY);
 }
 
-function applyInvert(cx, cy) {
-  loadPixels();
-  let d = pixelDensity();
-
-  for (let x = -radius; x <= radius; x++) {
-    for (let y = -radius; y <= radius; y++) {
-      if (x * x + y * y > radius * radius) continue;
-
-      let dx = cx + x;
-      let dy = cy + y;
-
-      if (dx < 0 || dx >= width || dy < 0 || dy >= height) continue;
-
-      for (let i = 0; i < d; i++) {
-        for (let j = 0; j < d; j++) {
-          let index = 4 * ((dy * d + j) * width * d + (dx * d + i));
-          pixels[index] = 255 - pixels[index];
-          pixels[index + 1] = 255 - pixels[index + 1];
-          pixels[index + 2] = 255 - pixels[index + 2];
-        }
-      }
-    }
-  }
-
-  updatePixels();
-}
-
 function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
@@ -139,11 +96,8 @@ function touchStarted() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
+  bgVideo.size(width, height);
+
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textSize(emailSize);
-
-  radius = min(width, height) * 0.03;
-
-  lastX = -1;
-  lastY = -1;
 }
