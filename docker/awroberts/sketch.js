@@ -32,7 +32,7 @@ function setup() {
   });
 
   bgVideo.parent('canvas-container');
-  bgVideo.size(width, height);   // p5 controls video size
+  bgVideo.size(width, height);
   bgVideo.style('position', 'absolute');
   bgVideo.style('top', '0');
   bgVideo.style('left', '0');
@@ -49,6 +49,11 @@ function setup() {
 function draw() {
   clear();
   image(bgVideo, 0, 0, width, height);
+
+  // add a nearly invisible overlay so inversion has pixels to modify
+  fill(0, 0, 0, 1);   // 1 alpha = almost invisible
+  noStroke();
+  rect(0, 0, width, height);
 
   radius = min(width, height) * 0.03;
 
@@ -143,7 +148,7 @@ function touchStarted() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
-  bgVideo.size(width, height);   // keep video aligned with canvas
+  bgVideo.size(width, height);
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textSize(emailSize);
