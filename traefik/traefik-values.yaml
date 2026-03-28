@@ -23,6 +23,8 @@ gateway:
   enabled: false
 
 deployment:
+  enabled: true
+  kind: Deployment
   hostNetwork: true
   dnsPolicy: ClusterFirstWithHostNet
 
