@@ -23,11 +23,11 @@ gateway:
   enabled: false
 
 hostNetwork: true
-dnsPolicy: ClusterFirstWithHostNet
 
 deployment:
   enabled: true
   kind: Deployment
+  dnsPolicy: ClusterFirstWithHostNet
 
 ports:
   web:
