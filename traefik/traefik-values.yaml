@@ -52,8 +52,6 @@ ports:
 service:
   enabled: true
   type: ClusterIP
-  spec:
-    externalTrafficPolicy: Cluster
   nodePorts:
     web: null
     websecure: null
