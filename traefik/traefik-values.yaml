@@ -22,11 +22,12 @@ additionalArguments:
 gateway:
   enabled: false
 
+hostNetwork: true
+dnsPolicy: ClusterFirstWithHostNet
+
 deployment:
   enabled: true
   kind: Deployment
-  hostNetwork: true
-  dnsPolicy: ClusterFirstWithHostNet
 
 ports:
   web:
