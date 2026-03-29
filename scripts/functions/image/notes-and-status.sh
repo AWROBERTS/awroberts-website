@@ -126,7 +126,7 @@ notes_and_status() {
   echo
   echo "Gateways:"
   kubectl -n "$NAMESPACE" get gateway \
-    -o custom-columns=NAME:.metadata.name,CLASS:.spec.gatewayClassName,PROGRAMMED:.status.conditions[?(@.type=="Programmed")].status,AGE:.metadata.creationTimestamp \
+    -o 'custom-columns=NAME:.metadata.name,CLASS:.spec.gatewayClassName,PROGRAMMED:.status.conditions[?(@.type=="Programmed")].status,AGE:.metadata.creationTimestamp' \
     2>/dev/null || echo "No Gateways found in $NAMESPACE"
 
   echo
