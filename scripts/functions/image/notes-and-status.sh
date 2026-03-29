@@ -28,21 +28,35 @@ notes_and_status() {
 
     echo
     echo "Rollout status:"
-    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=30s
+    ROLLOUT_OUTPUT=$(kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --watch=false 2>&1)
+
+    if echo "$ROLLOUT_OUTPUT" | grep -q "successfully rolled out"; then
+      echo "deployment \"$DEPLOYMENT_NAME\" successfully rolled out"
+    else
+      echo "⚠️ Rollout not complete, showing details:"
+      kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=30s
+    fi
 
     echo
-    echo "Pods:"
-    kubectl -n "$NAMESPACE" get pods -l "app.kubernetes.io/instance=$HELM_RELEASE" -o wide
-
-    echo
-    echo "Probe status:"
-    kubectl -n "$NAMESPACE" describe pods -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-      | grep -E "Liveness|Readiness|Startup" -A2 || echo "No probe info found"
+    echo "Active Pods:"
+    kubectl -n "$NAMESPACE" get pods \
+      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      --field-selector=status.phase=Running \
+      -o wide
 
     echo
     echo "Pod readiness conditions:"
-    kubectl -n "$NAMESPACE" get pod -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+    kubectl -n "$NAMESPACE" get pod \
+      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      --field-selector=status.phase=Running \
       -o jsonpath='{range .items[*]}{.metadata.name}{" => Ready="}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+
+    echo
+    echo "Active ReplicaSet:"
+    kubectl -n "$NAMESPACE" get rs \
+      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      --sort-by=.metadata.creationTimestamp \
+      | tail -n 1
 
     echo
     echo "Service:"
@@ -56,11 +70,11 @@ notes_and_status() {
       kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o wide
 
       echo
-      echo "Service routing (EndpointSlice):"
+      echo "Pods receiving traffic:"
       kubectl -n "$NAMESPACE" get endpointslice \
         -l "kubernetes.io/service-name=$SERVICE_NAME" \
-        -o jsonpath='{range .items[*].endpoints[*]}{.addresses[*]}{"\n"}{end}' \
-        || echo "No EndpointSlice found"
+        -o jsonpath='{range .items[*].endpoints[*]}{.targetRef.name}{"\n"}{end}' \
+        || echo "No routing endpoints found"
     fi
 
     echo
