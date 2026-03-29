@@ -28,7 +28,7 @@ notes_and_status() {
 
     echo
     echo "Rollout status:"
-    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME"
+    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=30s
 
     echo
     echo "Pods:"
@@ -65,16 +65,17 @@ notes_and_status() {
 
     echo
     echo "HTTPRoutes:"
-    HTTPROUTE_NAME=$(kubectl -n "$NAMESPACE" get httproute \
-      -o jsonpath='{range .items[?(@.spec.parentRefs[*].name=="'"$DEPLOYMENT_NAME"'-gateway")]}{.metadata.name}{"\n"}{end}')
+    HTTPROUTE_NAME="${DEPLOYMENT_NAME}-route"
 
-    if [[ -z "$HTTPROUTE_NAME" ]]; then
-      echo "HTTPRoute not found"
-    else
+    if kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" >/dev/null 2>&1; then
       echo "$HTTPROUTE_NAME"
+
       echo
       echo "HTTPRoute attachment conditions:"
-      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" -o jsonpath='{.status.parents[*].conditions[*].type}{"="}{.status.parents[*].conditions[*].status}{"\n"}'
+      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" \
+        -o jsonpath='{range .status.parents[*].conditions[*]}{.type}{"="}{.status}{"\n"}{end}'
+    else
+      echo "HTTPRoute not found"
     fi
 
     echo
