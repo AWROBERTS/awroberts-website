@@ -42,14 +42,17 @@ notes_and_status() {
     kubectl -n "$NAMESPACE" get pods \
       -l "app.kubernetes.io/instance=$HELM_RELEASE" \
       --field-selector=status.phase=Running \
-      -o wide
+      -o json \
+      | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | [.metadata.name, .status.containerStatuses[0].ready, .status.phase, .status.containerStatuses[0].restartCount, .status.podIP] | @tsv' \
+      | column -t
 
     echo
     echo "Pod readiness conditions:"
     kubectl -n "$NAMESPACE" get pod \
       -l "app.kubernetes.io/instance=$HELM_RELEASE" \
       --field-selector=status.phase=Running \
-      -o jsonpath='{range .items[*]}{.metadata.name}{" => Ready="}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+      -o json \
+      | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | "\(.metadata.name) => Ready=\(.status.conditions[] | select(.type==\"Ready\").status)"'
 
     echo
     echo "Active ReplicaSet:"
