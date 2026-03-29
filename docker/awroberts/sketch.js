@@ -5,7 +5,7 @@ let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
-// diagnostics JSON
+// deployment JSON
 let diag;
 
 function preload() {
@@ -47,7 +47,7 @@ function draw() {
   image(bgVideo, 0, 0, width, height);
 
   drawEmail();
-  drawDeploymentInfo(); // NEW
+  drawDeploymentInfo();
 }
 
 function drawEmail() {
@@ -80,26 +80,22 @@ function drawDeploymentInfo() {
   if (!diag) return;
 
   textAlign(LEFT, TOP);
-  textSize(20);
+  textSize(100);
   fill(255);
 
   let startY = emailY + emailSize + 40;
   let x = width / 2 - 300;
 
   text(`Deployment: ${diag.deployment.name}`, x, startY);
-  text(`Ready: ${diag.deployment.ready}`, x, startY + 30);
-  text(`Image: ${diag.deployment.image}`, x, startY + 60);
+  text(`Ready: ${diag.deployment.ready}`, x, startY + 60);
+  text(`Image: ${diag.deployment.image}`, x, startY + 120);
 
-  text(`Pod: ${diag.pod.name}`, x, startY + 110);
-  text(`Status: ${diag.pod.status}`, x, startY + 140);
-  text(`Restarts: ${diag.pod.restarts}`, x, startY + 170);
-  text(`Pod IP: ${diag.pod.ip}`, x, startY + 200);
+  text(`Pod: ${diag.pod.name}`, x, startY + 200);
+  text(`Status: ${diag.pod.status}`, x, startY + 260);
+  text(`Pod IP: ${diag.pod.ip}`, x, startY + 380);
 
-  text(`Service ClusterIP: ${diag.service.clusterIP}`, x, startY + 250);
-  text(`Service Port: ${diag.service.port}`, x, startY + 280);
-
-  text(`Node Internal IP: ${diag.node.internal}`, x, startY + 330);
-  text(`Node Public IP: ${diag.node.public}`, x, startY + 360);
+  text(`Service ClusterIP: ${diag.service.clusterIP}`, x, startY + 460);
+  text(`Node Internal IP: ${diag.node.internal}`, x, startY + 600);
 }
 
 function mousePressed() {
