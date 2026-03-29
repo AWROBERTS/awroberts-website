@@ -40,19 +40,57 @@ notes_and_status() {
       | grep -E "Liveness|Readiness|Startup" -A2 || echo "No probe info found"
 
     echo
+    echo "Pod readiness conditions:"
+    kubectl -n "$NAMESPACE" get pod -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      -o jsonpath='{range .items[*]}{.metadata.name}{" => Ready="}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+
+    echo
     echo "Service:"
-    kubectl -n "$NAMESPACE" get svc -l "app.kubernetes.io/instance=$HELM_RELEASE" -o wide || echo "Service not found"
+    SERVICE_NAME=$(kubectl -n "$NAMESPACE" get svc \
+      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+    if [[ -z "$SERVICE_NAME" ]]; then
+      echo "Service not found"
+    else
+      kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o wide
+
+      echo
+      echo "Service routing (EndpointSlice):"
+      kubectl -n "$NAMESPACE" get endpointslice \
+        -l "kubernetes.io/service-name=$SERVICE_NAME" \
+        -o jsonpath='{range .items[*].endpoints[*]}{.addresses[*]}{"\n"}{end}' \
+        || echo "No EndpointSlice found"
+    fi
 
     echo
     echo "HTTPRoutes:"
-    kubectl -n "$NAMESPACE" get httproute \
-      -o jsonpath='{range .items[?(@.spec.parentRefs[*].name=="'"$DEPLOYMENT_NAME"'-gateway")]}{.metadata.name}{"\n"}{end}' \
-      2>/dev/null
-    if [[ $? -ne 0 ]]; then echo "HTTPRoute not found"; fi
+    HTTPROUTE_NAME=$(kubectl -n "$NAMESPACE" get httproute \
+      -o jsonpath='{range .items[?(@.spec.parentRefs[*].name=="'"$DEPLOYMENT_NAME"'-gateway")]}{.metadata.name}{"\n"}{end}')
+
+    if [[ -z "$HTTPROUTE_NAME" ]]; then
+      echo "HTTPRoute not found"
+    else
+      echo "$HTTPROUTE_NAME"
+      echo
+      echo "HTTPRoute attachment conditions:"
+      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" -o jsonpath='{.status.parents[*].conditions[*].type}{"="}{.status.parents[*].conditions[*].status}{"\n"}'
+    fi
 
     echo
     echo "Middlewares (Gateway API):"
     kubectl -n "$NAMESPACE" get middleware 2>/dev/null || echo "Middleware not found"
+
+    echo
+    echo "Routing chain summary:"
+    echo "- Gateway: ${DEPLOYMENT_NAME}-gateway"
+    echo "- HTTPRoute: ${HTTPROUTE_NAME:-none}"
+    echo "- Service: ${SERVICE_NAME:-none}"
+    echo "- Pods receiving traffic:"
+    kubectl -n "$NAMESPACE" get endpointslice \
+      -l "kubernetes.io/service-name=$SERVICE_NAME" \
+      -o jsonpath='{range .items[*].endpoints[*]}{.targetRef.name}{"\n"}{end}' \
+      || echo "No routing endpoints found"
   fi
 
   echo
