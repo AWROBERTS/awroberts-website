@@ -96,4 +96,5 @@ notes_and_status() {
   echo "Public IP:"
   curl -s https://api.ipify.org || echo "Unavailable"
   echo
+  echo
 }
