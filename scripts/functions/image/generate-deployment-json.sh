@@ -16,8 +16,6 @@ generate_deployment_json() {
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
     -o jsonpath='{.items[0].metadata.name}')
 
-  PUBLIC_IP=$(curl -s https://api.ipify.org || echo "Unavailable")
-
   DEPLOY_READY=$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.status.readyReplicas}/{.status.replicas}')
   DEPLOY_IMAGE=$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.spec.template.spec.containers[0].image}')
   DEPLOY_AGE=$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.metadata.creationTimestamp}')
@@ -30,6 +28,9 @@ generate_deployment_json() {
   SERVICE_PORT=$(kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o jsonpath='{.spec.ports[0].port}')
 
   NODE_INTERNAL_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+
+  # Extract image SHA from containerd after import
+  IMAGE_SHA=$(ctr -n k8s.io images ls | grep "$IMAGE_TAG" | awk '{print $3}')
 
   cat <<EOF > deployment.json
 {
@@ -50,14 +51,17 @@ generate_deployment_json() {
     "port": $SERVICE_PORT
   },
   "node": {
-    "internal": "$NODE_INTERNAL_IP",
-    "public": "$PUBLIC_IP"
+    "internal": "$NODE_INTERNAL_IP"
+  },
+  "build": {
+    "imageTag": "$IMAGE_TAG",
+    "image": "$FULL_IMAGE",
+    "sha": "$IMAGE_SHA"
   }
 }
 EOF
 
   echo "deployment.json generated."
-
   echo
   echo "📤 Copying JSON into running pod"
 
