@@ -79,8 +79,8 @@ function drawEmail() {
 function drawDeploymentInfo() {
   if (!diag) return;
 
-  textAlign(LEFT, TOP);
-  textSize(100);
+  textAlign(LEFT);
+  textSize(50);
   fill(255);
 
   let startY = emailY + emailSize + 40;
