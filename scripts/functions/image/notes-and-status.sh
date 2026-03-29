@@ -28,15 +28,15 @@ notes_and_status() {
 
     echo
     echo "Service:"
-    kubectl -n "$NAMESPACE" get svc -o wide | grep "$DEPLOYMENT_NAME" || echo "Service not found"
+    kubectl -n "$NAMESPACE" get svc -l "app.kubernetes.io/instance=$HELM_RELEASE" -o wide || echo "Service not found"
 
     echo
     echo "HTTPRoutes:"
-    kubectl -n "$NAMESPACE" get httproute 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "HTTPRoute not found"
+    kubectl -n "$NAMESPACE" get httproute -l "app.kubernetes.io/instance=$HELM_RELEASE" 2>/dev/null || echo "HTTPRoute not found"
 
     echo
-    echo "Middleware:"
-    kubectl -n "$NAMESPACE" get middleware 2>/dev/null | grep "$DEPLOYMENT_NAME" || echo "Middleware not found"
+    echo "Middlewares (Gateway API):"
+    kubectl -n "$NAMESPACE" get middleware 2>/dev/null || echo "Middleware not found"
   fi
 
   echo
@@ -52,30 +52,12 @@ notes_and_status() {
   kubectl -n traefik get svc traefik -o wide 2>/dev/null || echo "Traefik service not found"
 
   echo
-  echo "Traefik NodePorts:"
-  kubectl -n traefik get svc traefik -o jsonpath='{.spec.ports[*].nodePort}' 2>/dev/null \
-    && echo "" \
-    || echo "No NodePorts found"
-
-  echo
   echo "Gateways:"
   kubectl -n "$NAMESPACE" get gateway 2>/dev/null || echo "No Gateways found in $NAMESPACE"
-  kubectl -n traefik get gateway 2>/dev/null || echo "No Gateways found in traefik"
-
-  echo
-  echo "HTTPRoutes:"
-  kubectl -n "$NAMESPACE" get httproute 2>/dev/null || echo "No HTTPRoutes found in $NAMESPACE"
-  kubectl -n traefik get httproute 2>/dev/null || echo "No HTTPRoutes found in traefik"
-
-  echo
-  echo "Middlewares:"
-  kubectl -n "$NAMESPACE" get middleware 2>/dev/null || echo "No middlewares found in $NAMESPACE"
-  kubectl -n traefik get middleware 2>/dev/null || echo "No middlewares found in traefik"
 
   echo
   echo "TLS Secrets:"
   kubectl -n "$NAMESPACE" get secret | grep tls 2>/dev/null || echo "No TLS secrets found in $NAMESPACE"
-  kubectl -n traefik get secret | grep tls 2>/dev/null || echo "No TLS secrets found in traefik"
 
   echo
   echo "=============================="
