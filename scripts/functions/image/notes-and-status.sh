@@ -67,7 +67,8 @@ notes_and_status() {
     if [[ -z "$SERVICE_NAME" ]]; then
       echo "Service not found"
     else
-      kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o wide
+      kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" \
+        -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port,AGE:.metadata.creationTimestamp
 
       echo
       echo "Pods receiving traffic:"
@@ -118,7 +119,9 @@ notes_and_status() {
 
   echo
   echo "Traefik Service:"
-  kubectl -n traefik get svc traefik -o wide 2>/dev/null || echo "Traefik service not found"
+  kubectl -n traefik get svc traefik \
+    -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port,AGE:.metadata.creationTimestamp \
+    2>/dev/null || echo "Traefik service not found"
 
   echo
   echo "Gateways:"
