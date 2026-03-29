@@ -28,7 +28,7 @@ notes_and_status() {
 
     echo
     echo "Rollout status:"
-    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=5s
+    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME"
 
     echo
     echo "Pods:"
