@@ -45,7 +45,10 @@ notes_and_status() {
 
     echo
     echo "HTTPRoutes:"
-    kubectl -n "$NAMESPACE" get httproute -l "app.kubernetes.io/instance=$HELM_RELEASE" 2>/dev/null || echo "HTTPRoute not found"
+    kubectl -n "$NAMESPACE" get httproute \
+      -o jsonpath='{range .items[?(@.spec.parentRefs[*].name=="'"$DEPLOYMENT_NAME"'-gateway")]}{.metadata.name}{"\n"}{end}' \
+      2>/dev/null
+    if [[ $? -ne 0 ]]; then echo "HTTPRoute not found"; fi
 
     echo
     echo "Middlewares (Gateway API):"
