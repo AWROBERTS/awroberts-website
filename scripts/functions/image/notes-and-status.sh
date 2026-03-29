@@ -27,6 +27,19 @@ notes_and_status() {
     kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide
 
     echo
+    echo "Rollout status:"
+    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=5s
+
+    echo
+    echo "Pods:"
+    kubectl -n "$NAMESPACE" get pods -l "app.kubernetes.io/instance=$HELM_RELEASE" -o wide
+
+    echo
+    echo "Probe status:"
+    kubectl -n "$NAMESPACE" describe pods -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      | grep -E "Liveness|Readiness|Startup" -A2 || echo "No probe info found"
+
+    echo
     echo "Service:"
     kubectl -n "$NAMESPACE" get svc -l "app.kubernetes.io/instance=$HELM_RELEASE" -o wide || echo "Service not found"
 
