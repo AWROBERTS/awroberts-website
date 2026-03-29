@@ -43,7 +43,16 @@ notes_and_status() {
       -l "app.kubernetes.io/instance=$HELM_RELEASE" \
       --field-selector=status.phase=Running \
       -o json \
-      | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | [.metadata.name, .status.containerStatuses[0].ready, .status.phase, .status.containerStatuses[0].restartCount, .status.podIP] | @tsv' \
+      | jq -r '
+          .items[]
+          | select(.metadata.deletionTimestamp == null)
+          | [.metadata.name,
+             .status.containerStatuses[0].ready,
+             .status.phase,
+             .status.containerStatuses[0].restartCount,
+             .status.podIP]
+          | @tsv
+        ' \
       | column -t
 
     echo
@@ -52,7 +61,12 @@ notes_and_status() {
       -l "app.kubernetes.io/instance=$HELM_RELEASE" \
       --field-selector=status.phase=Running \
       -o json \
-      | jq -r '.items[] | select(.metadata.deletionTimestamp == null) | "\(.metadata.name) => Ready=\(.status.conditions[] | select(.type==\"Ready\").status)"'
+      | jq -r '
+          .items[]
+          | select(.metadata.deletionTimestamp == null)
+          | .metadata.name + " => Ready=" +
+            (.status.conditions[] | select(.type=="Ready") | .status)
+        '
 
     echo
     echo "Active ReplicaSet:"
