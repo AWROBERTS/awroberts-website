@@ -1,6 +1,6 @@
 setup_kubernetes_networking() {
   # Version marker for idempotency and controlled updates
-  SYSCTL_VERSION="v2"
+  SYSCTL_VERSION="v3"
   SYSCTL_FILE="/etc/sysctl.d/99-kubernetes-cri.conf"
   INVALID_OVERRIDE_FILE="/etc/sysctl.d/99-kubernetes-disable-invalid.conf"
 
@@ -26,13 +26,13 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward = 1
 EOF
 
-  # Override invalid legacy sysctl keys without modifying system files
+  # Override invalid legacy sysctl keys
   sudo tee "$INVALID_OVERRIDE_FILE" >/dev/null <<EOF
-# Disable invalid legacy sysctl keys
-net.ipv4.conf.all.accept_source_route =
-net.ipv4.conf.all.promote_secondaries =
-net.ipv4.conf.*.accept_source_route =
-net.ipv4.conf.*.promote_secondaries =
+# Override invalid legacy sysctl keys with safe values
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.all.promote_secondaries = 0
+net.ipv4.conf.*.accept_source_route = 0
+net.ipv4.conf.*.promote_secondaries = 0
 EOF
 
   echo "🔁 Reloading sysctl settings..."
