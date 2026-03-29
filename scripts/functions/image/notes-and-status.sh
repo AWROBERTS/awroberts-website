@@ -170,7 +170,7 @@ notes_and_status() {
   curl -s https://api.ipify.org || echo "Unavailable"
   echo
 
-    # ==============================
+  # ==============================
   # 📦 Generate JSON for p5 sketch
   # ==============================
 
