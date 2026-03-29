@@ -104,8 +104,15 @@ notes_and_status() {
 
       echo
       echo "HTTPRoute attachment conditions:"
-      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" \
-        -o jsonpath='{range .status.parents[*].conditions[*]}{.type}{"="}{.status}{"\n"}{end}'
+      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" -o json \
+        | jq -r '
+            .status.parents[]
+            | "Parent: \(.parentRef.name) (listener: \(.parentRef.sectionName // "default"))\n" +
+              (
+                .conditions[]
+                | "  " + .type + "=" + .status
+              )
+          '
     else
       echo "HTTPRoute not found"
     fi
