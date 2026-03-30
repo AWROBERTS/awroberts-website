@@ -49,12 +49,14 @@ function draw() {
 }
 
 function drawEmail() {
-  let x = width - 30;
-  let y = 30;
+  let margin = 30;
+  let x = width - margin;
+  let y = margin;
   let buffer = 20;
 
   let textW = textWidth(emailText);
 
+  // Hover detection (right-aligned)
   isHoveringEmail =
     mouseX > x - textW - buffer &&
     mouseX < x + buffer &&
@@ -71,6 +73,7 @@ function drawEmail() {
     cursor(ARROW);
   }
 
+  textAlign(RIGHT, TOP);
   text(emailText, x, y);
 }
 
