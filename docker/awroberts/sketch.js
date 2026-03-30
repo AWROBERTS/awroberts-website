@@ -23,10 +23,9 @@ function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  // WORKING SimpleIcons URLs
-  icons.github = loadImage('https://cdn.simpleicons.org/github/ffffff');
-  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/0A66C2'); // LinkedIn brand color
-  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp/ffffff');
+  icons.github = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/github.svg');
+  icons.linkedin = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/linkedin.svg');
+  icons.bandcamp = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/bandcamp.svg');
 }
 
 function setup() {
