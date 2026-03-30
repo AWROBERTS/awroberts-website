@@ -3,6 +3,7 @@ let vid;
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
+  // Load the video
   vid = createVideo('/awroberts-media/background.mp4', () => {
     vid.volume(0);
     vid.attribute('muted', '');
@@ -13,12 +14,14 @@ function setup() {
     vid.play();
   });
 
-  vid.hide();
+  // IMPORTANT: show the video so Chrome can expose captureStream()
+  vid.show();
 }
 
 function draw() {
   background(0);
 
+  // Only draw when the video has enough data
   if (vid.elt.readyState >= 2) {
     resetMatrix();
     noStroke();
