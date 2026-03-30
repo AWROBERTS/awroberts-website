@@ -80,23 +80,33 @@ function drawDeploymentInfo() {
   if (!diag) return;
 
   textAlign(LEFT);
-  textSize(50);
+  textSize(32);
   fill(255);
 
-  let startY = emailY + emailSize + 40;
-  let x = width / 2 - 300;
+  // Bottom-left anchor
+  const margin = 40;
+  let x = margin;
+  let y = height - margin;
 
-  text(`Deployment: ${diag.deployment.name}`, x, startY);
-  text(`Ready: ${diag.deployment.ready}`, x, startY + 60);
-  text(`Image: ${diag.deployment.image}`, x, startY + 120);
+  // Build lines from bottom upward
+  const lines = [
+    `SHA: ${diag.build.sha}`,
+    `Image Tag: ${diag.build.imageTag}`,
+    `Image: ${diag.deployment.image}`,
+    `Pod IP: ${diag.pod.ip}`,
+    `Pod Status: ${diag.pod.status}`,
+    `Pod: ${diag.pod.name}`,
+    `Service ClusterIP: ${diag.service.clusterIP}`,
+    `Deployment: ${diag.deployment.name}`
+  ];
 
-  text(`Pod: ${diag.pod.name}`, x, startY + 200);
-  text(`Status: ${diag.pod.status}`, x, startY + 260);
-  text(`Pod IP: ${diag.pod.ip}`, x, startY + 380);
-
-  text(`Service ClusterIP: ${diag.service.clusterIP}`, x, startY + 460);
-  text(`Node Internal IP: ${diag.node.internal}`, x, startY + 600);
+  // Draw from bottom to top
+  for (let i = lines.length - 1; i >= 0; i--) {
+    text(lines[i], x, y);
+    y -= 40; // line spacing
+  }
 }
+
 
 function mousePressed() {
   if (isHoveringEmail) {
