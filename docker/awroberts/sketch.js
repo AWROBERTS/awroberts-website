@@ -5,108 +5,60 @@ let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
-let diag = null;
-let rippleBuffer;
+// deployment JSON
+let diag;
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
+  diag = loadJSON('/deployment.json');
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight); // P2D renderer
+  pixelDensity(1);
 
-  // Load deployment info asynchronously
-  loadJSON('/deployment.json', d => diag = d);
+  const canvas = createCanvas(windowWidth, windowHeight);
+  canvas.parent('canvas-container');
+  canvas.style('position', 'absolute');
+  canvas.style('top', '0');
+  canvas.style('left', '0');
+  canvas.style('z-index', '1');
 
-  // Load 4K background video
-  bgVideo = createVideo('/awroberts-media/background.mp4');
-  bgVideo.volume(0);
-  bgVideo.attribute('muted', '');
-  bgVideo.attribute('playsinline', '');
-  bgVideo.loop();
-  bgVideo.hide(); // safe in P2D
+  bgVideo = createVideo('/awroberts-media/background.mp4', () => {
+    bgVideo.volume(0);
+    bgVideo.attribute('muted', '');
+    bgVideo.attribute('playsinline', '');
+    bgVideo.attribute('autoplay', '');
+    bgVideo.loop();
+    bgVideo.play();
+  });
 
-  // Off‑screen buffer for ripple effect
-  rippleBuffer = createGraphics(width, height);
+  bgVideo.hide();
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
+  textSize(emailSize);
   textAlign(CENTER, TOP);
 }
 
 function draw() {
-  background(0);
+  clear();
+  image(bgVideo, 0, 0, width, height);
 
-  // Draw video into buffer
-  rippleBuffer.image(bgVideo, 0, 0, width, height);
-
-  // Apply ripple effect
-  applyRippleEffect();
-
-  // Draw the processed buffer
-  image(rippleBuffer, 0, 0, width, height);
-
-  // Overlays
   drawEmail();
   drawDeploymentInfo();
 }
 
-function applyRippleEffect() {
-  rippleBuffer.loadPixels();
-
-  let cx = mouseX;
-  let cy = mouseY;
-  let t = millis() * 0.001;
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-
-      let dx = x - cx;
-      let dy = y - cy;
-      let dist = Math.sqrt(dx * dx + dy * dy);
-
-      // Matches your GLSL ripple frequency & speed
-      let ripple = Math.sin(dist * 0.15 - t * 5.0) * 5.0;
-
-      // Normalized direction
-      let nx = dx / (dist + 0.0001);
-      let ny = dy / (dist + 0.0001);
-
-      // Displaced sample position
-      let sx = Math.floor(x + nx * ripple);
-      let sy = Math.floor(y + ny * ripple);
-
-      sx = constrain(sx, 0, width - 1);
-      sy = constrain(sy, 0, height - 1);
-
-      let srcIndex = (sy * width + sx) * 4;
-      let dstIndex = (y * width + x) * 4;
-
-      rippleBuffer.pixels[dstIndex]     = rippleBuffer.pixels[srcIndex];
-      rippleBuffer.pixels[dstIndex + 1] = rippleBuffer.pixels[srcIndex + 1];
-      rippleBuffer.pixels[dstIndex + 2] = rippleBuffer.pixels[srcIndex + 2];
-      // alpha stays unchanged
-    }
-  }
-
-  rippleBuffer.updatePixels();
-}
-
 function drawEmail() {
   let totalWidth = textWidth(emailText);
-
-  let mx = mouseX;
-  let my = mouseY;
-
   let xStart = width / 2 - totalWidth / 2;
   let yStart = emailY;
   let buffer = 20;
 
   isHoveringEmail =
-    mx > xStart - buffer &&
-    mx < xStart + totalWidth + buffer &&
-    my > yStart - buffer &&
-    my < yStart + emailSize + buffer;
+    mouseX > xStart - buffer &&
+    mouseX < xStart + totalWidth + buffer &&
+    mouseY > yStart - buffer &&
+    mouseY < yStart + emailSize + buffer;
 
   if (isHoveringEmail) {
     fill(255, 220, 180);
@@ -177,6 +129,8 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  rippleBuffer = createGraphics(width, height);
+  bgVideo.size(width, height);
+
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
+  textSize(emailSize);
 }
