@@ -94,7 +94,7 @@ function drawDeploymentInfo() {
     `deployment: ${diag.deployment.name}`,
     `pod: ${diag.pod.name}`,
     `pod ip: ${diag.pod.ip}`,
-    `service clusterip: ${diag.service.clusterIP}`,
+    `service cluster ip: ${diag.service.clusterIP}`,
     `image tag: ${diag.build.imageTag}`,
     `sha: ${diag.build.sha}`
   ];
