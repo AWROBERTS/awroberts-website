@@ -23,10 +23,10 @@ function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  // CDN icons (white SVG)
-  icons.github = loadImage('https://cdn.simpleicons.org/github/ffffff');
-  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/ffffff');
-  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp/ffffff');
+  // CDN icons (base SVG, no color suffix)
+  icons.github = loadImage('https://cdn.simpleicons.org/github');
+  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin');
+  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp');
 }
 
 function setup() {
@@ -115,7 +115,7 @@ function drawSocialIcons() {
 
     if (icon) {
       push();
-      tint(255, alpha); // fade-in
+      tint(255, alpha); // fade-in + white tint
       image(icon, x, y, size, size);
       pop();
     }
@@ -207,7 +207,10 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  bgVideo.size(width, height);
+
+  if (bgVideo) {
+    bgVideo.size(width, height);
+  }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
   textSize(emailSize);
