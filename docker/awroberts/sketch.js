@@ -35,6 +35,9 @@ function setup() {
 }
 
 function draw() {
+  // Ensure video has produced a frame
+  if (bgVideo.elt.readyState < 2) return;
+
   // --- SHADER VIDEO BACKGROUND ---
   shader(rippleShader);
 
@@ -44,6 +47,10 @@ function draw() {
   rippleShader.setUniform('time', millis() / 1000.0);
 
   noStroke();
+  resetMatrix();
+  translate(0, 0, 0);
+
+  // plane() provides UVs; rect() does NOT
   plane(width, height);
 
   // --- OVERLAYS ---
@@ -55,7 +62,7 @@ function draw() {
 function drawEmail() {
   let totalWidth = textWidth(emailText);
 
-  // Convert WEBGL coords to screen coords
+  // Convert mouse coords to WEBGL space
   let mx = mouseX - width / 2;
   let my = mouseY - height / 2;
 
@@ -117,7 +124,6 @@ function mousePressed() {
 
 function touchStarted() {
   if (touches.length > 0) {
-    // Convert touch to WEBGL coordinates
     let tx = touches[0].x - width / 2;
     let ty = touches[0].y - height / 2;
 
