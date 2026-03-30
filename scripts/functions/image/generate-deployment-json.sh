@@ -33,6 +33,8 @@ generate_deployment_json() {
 
   K8S_VERSION=$(kubectl version -o json | jq -r '.serverVersion.gitVersion')
 
+  HELM_VERSION=$(helm version --short --client)
+
   TRAEFIK_IMAGE=$(kubectl -n traefik get deploy traefik \
     -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)
   TRAEFIK_VERSION="${TRAEFIK_IMAGE##*:}"
@@ -65,6 +67,9 @@ generate_deployment_json() {
   },
   "kubernetes": {
     "version": "$K8S_VERSION"
+  },
+  "helm": {
+    "version": "$HELM_VERSION"
   },
   "traefik": {
     "image": "$TRAEFIK_IMAGE",

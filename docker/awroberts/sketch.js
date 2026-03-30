@@ -56,7 +56,6 @@ function drawEmail() {
 
   let textW = textWidth(emailText);
 
-  // Hover detection (right-aligned)
   isHoveringEmail =
     mouseX > x - textW - buffer &&
     mouseX < x + buffer &&
@@ -90,6 +89,7 @@ function drawDeploymentInfo() {
 
   const lines = [
     `Kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
+    `Helm: ${diag.helm?.version ?? 'N/A'}`,
     `Traefik: ${diag.traefik?.version ?? 'N/A'}`,
     `Deployment: ${diag.deployment.name}`,
     `Pod: ${diag.pod.name}`,
