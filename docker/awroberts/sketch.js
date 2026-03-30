@@ -7,9 +7,26 @@ let isHoveringEmail = false;
 // deployment JSON
 let diag;
 
+// social icons
+let icons = {};
+let socialLinks = [
+  { imgKey: 'github', url: 'https://github.com/awroberts' },
+  { imgKey: 'linkedin', url: 'https://www.linkedin.com/in/alexander-roberts-53563312b/' },
+  { imgKey: 'bandcamp', url: 'https://chewvalleytapes.bandcamp.com/' }
+];
+let hoveringSocial = -1;
+
+// fade-in animation
+let fadeStartTime;
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
+
+  // CDN icons (white SVG)
+  icons.github = loadImage('https://cdn.simpleicons.org/github/ffffff');
+  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/ffffff');
+  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp/ffffff');
 }
 
 function setup() {
@@ -38,6 +55,8 @@ function setup() {
   textFont(curwenFont);
   textSize(emailSize);
   textAlign(RIGHT, TOP);
+
+  fadeStartTime = millis();
 }
 
 function draw() {
@@ -45,6 +64,7 @@ function draw() {
   image(bgVideo, 0, 0, width, height);
 
   drawEmail();
+  drawSocialIcons();
   drawDeploymentInfo();
 }
 
@@ -74,6 +94,51 @@ function drawEmail() {
 
   textAlign(RIGHT, TOP);
   text(emailText, x, y);
+}
+
+function drawSocialIcons() {
+  const size = emailSize * 0.8;   // responsive scaling
+  const margin = 30;
+  const spacing = size + 20;      // horizontal spacing
+  const xStart = margin;
+  const y = margin;
+
+  hoveringSocial = -1;
+
+  // fade-in alpha (0 → 255 over 1 second)
+  let fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
+  let alpha = fadeProgress * 255;
+
+  socialLinks.forEach((item, i) => {
+    let x = xStart + i * spacing;
+    let icon = icons[item.imgKey];
+
+    if (icon) {
+      push();
+      tint(255, alpha); // fade-in
+      image(icon, x, y, size, size);
+      pop();
+    }
+
+    // Hover detection
+    if (
+      mouseX > x &&
+      mouseX < x + size &&
+      mouseY > y &&
+      mouseY < y + size
+    ) {
+      hoveringSocial = i;
+      cursor(HAND);
+
+      // highlight box
+      push();
+      noFill();
+      stroke(255, 220, 180, alpha);
+      strokeWeight(2);
+      rect(x - 4, y - 4, size + 8, size + 8, 4);
+      pop();
+    }
+  });
 }
 
 function drawDeploymentInfo() {
@@ -110,6 +175,11 @@ function drawDeploymentInfo() {
 function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
+    return;
+  }
+
+  if (hoveringSocial !== -1) {
+    window.open(socialLinks[hoveringSocial].url, '_blank');
   }
 }
 
