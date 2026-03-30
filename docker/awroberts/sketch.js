@@ -23,9 +23,9 @@ function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  // Correct SimpleIcons URLs (must include a color)
+  // WORKING SimpleIcons URLs
   icons.github = loadImage('https://cdn.simpleicons.org/github/ffffff');
-  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/ffffff');
+  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/0A66C2'); // LinkedIn brand color
   icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp/ffffff');
 }
 
