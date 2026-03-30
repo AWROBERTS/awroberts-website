@@ -35,10 +35,9 @@ function setup() {
 }
 
 function draw() {
-  // Ensure video has produced a frame
+  // Prevent black screen before video is ready
   if (bgVideo.elt.readyState < 2) return;
 
-  // --- SHADER VIDEO BACKGROUND ---
   shader(rippleShader);
 
   rippleShader.setUniform('tex', bgVideo);
@@ -50,10 +49,8 @@ function draw() {
   resetMatrix();
   translate(0, 0, 0);
 
-  // plane() provides UVs; rect() does NOT
   plane(width, height);
 
-  // --- OVERLAYS ---
   resetShader();
   drawEmail();
   drawDeploymentInfo();
@@ -62,7 +59,6 @@ function draw() {
 function drawEmail() {
   let totalWidth = textWidth(emailText);
 
-  // Convert mouse coords to WEBGL space
   let mx = mouseX - width / 2;
   let my = mouseY - height / 2;
 
