@@ -88,15 +88,15 @@ function drawDeploymentInfo() {
   let x = margin;
 
   const lines = [
-    `Kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
-    `Helm: ${diag.helm?.version ?? 'N/A'}`,
-    `Traefik: ${diag.traefik?.version ?? 'N/A'}`,
-    `Deployment: ${diag.deployment.name}`,
-    `Pod: ${diag.pod.name}`,
-    `Pod IP: ${diag.pod.ip}`,
-    `Service ClusterIP: ${diag.service.clusterIP}`,
-    `Image Tag: ${diag.build.imageTag}`,
-    `SHA: ${diag.build.sha}`
+    `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
+    `helm: ${diag.helm?.version ?? 'N/A'}`,
+    `traefik: ${diag.traefik?.version ?? 'N/A'}`,
+    `deployment: ${diag.deployment.name}`,
+    `pod: ${diag.pod.name}`,
+    `pod ip: ${diag.pod.ip}`,
+    `service clusterip: ${diag.service.clusterIP}`,
+    `image tag: ${diag.build.imageTag}`,
+    `sha: ${diag.build.sha}`
   ];
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
