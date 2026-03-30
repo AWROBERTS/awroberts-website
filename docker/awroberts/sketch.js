@@ -85,6 +85,8 @@ function drawDeploymentInfo() {
   let x = margin;
 
   const lines = [
+    `Kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
+    `Traefik: ${diag.traefik?.version ?? 'N/A'}`,
     `Deployment: ${diag.deployment.name}`,
     `Pod: ${diag.pod.name}`,
     `Pod IP: ${diag.pod.ip}`,

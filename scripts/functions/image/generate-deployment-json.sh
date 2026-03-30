@@ -29,8 +29,13 @@ generate_deployment_json() {
 
   NODE_INTERNAL_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 
-  # Extract image SHA from containerd after import
   IMAGE_SHA=$(ctr -n k8s.io images ls | grep "$IMAGE_TAG" | awk '{print $3}')
+
+  K8S_VERSION=$(kubectl version -o json | jq -r '.serverVersion.gitVersion')
+
+  TRAEFIK_IMAGE=$(kubectl -n traefik get deploy traefik \
+    -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)
+  TRAEFIK_VERSION="${TRAEFIK_IMAGE##*:}"
 
   cat <<EOF > deployment.json
 {
@@ -57,6 +62,13 @@ generate_deployment_json() {
     "imageTag": "$IMAGE_TAG",
     "image": "$FULL_IMAGE",
     "sha": "$IMAGE_SHA"
+  },
+  "kubernetes": {
+    "version": "$K8S_VERSION"
+  },
+  "traefik": {
+    "image": "$TRAEFIK_IMAGE",
+    "version": "$TRAEFIK_VERSION"
   }
 }
 EOF
