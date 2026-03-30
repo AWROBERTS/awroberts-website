@@ -8,27 +8,23 @@ let isHoveringEmail = false;
 let diag = null;
 
 function preload() {
-  // Only load the font here — preload must stay minimal
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
-  // Load JSON asynchronously so it does NOT interrupt video playback
+  // Load JSON asynchronously
   loadJSON('/deployment.json', d => diag = d);
 
-  // Create the video ONCE
+  // Create the video ONCE, but do NOT autoplay or play yet
   bgVideo = createVideo('/awroberts-media/background.mp4');
   bgVideo.elt.setAttribute('crossorigin', 'anonymous');
   bgVideo.volume(0);
   bgVideo.attribute('muted', '');
   bgVideo.attribute('playsinline', '');
-  bgVideo.attribute('autoplay', '');
-  bgVideo.loop();
-  bgVideo.play();
 
-  // Keep video alive in DOM but invisible
+  // Keep video in DOM but invisible
   bgVideo.style('position', 'absolute');
   bgVideo.style('top', '0');
   bgVideo.style('left', '0');
@@ -45,7 +41,7 @@ function setup() {
 function draw() {
   background(0);
 
-  // Draw video first
+  // Draw video if it's started and has data
   if (bgVideo && bgVideo.elt.readyState >= 2) {
     push();
     resetMatrix();
@@ -55,7 +51,6 @@ function draw() {
     pop();
   }
 
-  // Then overlays
   drawEmail();
   drawDeploymentInfo();
 }
@@ -117,12 +112,21 @@ function drawDeploymentInfo() {
 }
 
 function mousePressed() {
+  // Start video playback on user gesture (most reliable)
+  if (bgVideo) {
+    bgVideo.loop();
+  }
+
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
   }
 }
 
 function touchStarted() {
+  if (bgVideo) {
+    bgVideo.loop();
+  }
+
   if (touches.length > 0) {
     let tx = touches[0].x - width / 2;
     let ty = touches[0].y - height / 2;
