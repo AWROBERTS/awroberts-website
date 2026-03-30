@@ -40,8 +40,13 @@ function setup() {
 }
 
 function draw() {
-  clear();
+  background(0);
 
+  // Draw overlays FIRST
+  drawEmail();
+  drawDeploymentInfo();
+
+  // Draw video LAST
   if (bgVideo && bgVideo.elt.readyState === 4) {
     push();
     resetMatrix();
@@ -50,9 +55,6 @@ function draw() {
     plane(width, height);
     pop();
   }
-
-  drawEmail();
-  drawDeploymentInfo();
 }
 
 function drawEmail() {
