@@ -5,36 +5,37 @@ let emailSize;
 let emailY = 40;
 let isHoveringEmail = false;
 
-let diag;
+let diag = null;
 
 function preload() {
+  // Only load the font here — preload must stay minimal
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
-  diag = loadJSON('/deployment.json');
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
 
-  // Create the video ONCE
-  if (!bgVideo) {
-    bgVideo = createVideo('/awroberts-media/background.mp4');
-    bgVideo.elt.setAttribute('crossorigin', 'anonymous');
-    bgVideo.volume(0);
-    bgVideo.attribute('muted', '');
-    bgVideo.attribute('playsinline', '');
-    bgVideo.attribute('autoplay', '');
-    bgVideo.loop();
-    bgVideo.play();
+  // Load JSON asynchronously so it does NOT interrupt video playback
+  loadJSON('/deployment.json', d => diag = d);
 
-    // Keep video in DOM but invisible and non-interactive
-    bgVideo.style('position', 'absolute');
-    bgVideo.style('top', '0');
-    bgVideo.style('left', '0');
-    bgVideo.style('width', '1px');
-    bgVideo.style('height', '1px');
-    bgVideo.style('opacity', '0');
-    bgVideo.style('pointer-events', 'none');
-  }
+  // Create the video ONCE
+  bgVideo = createVideo('/awroberts-media/background.mp4');
+  bgVideo.elt.setAttribute('crossorigin', 'anonymous');
+  bgVideo.volume(0);
+  bgVideo.attribute('muted', '');
+  bgVideo.attribute('playsinline', '');
+  bgVideo.attribute('autoplay', '');
+  bgVideo.loop();
+  bgVideo.play();
+
+  // Keep video alive in DOM but invisible
+  bgVideo.style('position', 'absolute');
+  bgVideo.style('top', '0');
+  bgVideo.style('left', '0');
+  bgVideo.style('width', '1px');
+  bgVideo.style('height', '1px');
+  bgVideo.style('opacity', '0');
+  bgVideo.style('pointer-events', 'none');
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
@@ -42,7 +43,6 @@ function setup() {
 }
 
 function draw() {
-  // Avoid clear() in WEBGL
   background(0);
 
   // Draw video first
