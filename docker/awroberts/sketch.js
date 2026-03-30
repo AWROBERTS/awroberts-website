@@ -43,8 +43,8 @@ function draw() {
   rippleShader.setUniform('mouse', [mouseX, height - mouseY]);
   rippleShader.setUniform('time', millis() / 1000.0);
 
-  // Fullscreen quad (WEBGL origin is center)
-  rect(-width / 2, -height / 2, width, height);
+  noStroke();
+  plane(width, height);
 
   // --- OVERLAYS ---
   resetShader();
@@ -54,13 +54,14 @@ function draw() {
 
 function drawEmail() {
   let totalWidth = textWidth(emailText);
-  let xStart = width / 2 - totalWidth / 2;
-  let yStart = emailY;
-  let buffer = 20;
 
-  // Convert mouse coords from WEBGL to screen space
+  // Convert WEBGL coords to screen coords
   let mx = mouseX - width / 2;
   let my = mouseY - height / 2;
+
+  let xStart = -totalWidth / 2;
+  let yStart = -height / 2 + emailY;
+  let buffer = 20;
 
   isHoveringEmail =
     mx > xStart - buffer &&
@@ -116,15 +117,20 @@ function mousePressed() {
 
 function touchStarted() {
   if (touches.length > 0) {
+    // Convert touch to WEBGL coordinates
     let tx = touches[0].x - width / 2;
     let ty = touches[0].y - height / 2;
 
     let totalWidth = textWidth(emailText);
-    let xStart = width / 2 - totalWidth / 2;
-    let yStart = emailY;
+    let xStart = -totalWidth / 2;
+    let yStart = -height / 2 + emailY;
 
-    if (tx > xStart && tx < xStart + totalWidth &&
-        ty > yStart && ty < yStart + emailSize) {
+    if (
+      tx > xStart &&
+      tx < xStart + totalWidth &&
+      ty > yStart &&
+      ty < yStart + emailSize
+    ) {
       window.location.href = 'mailto:info@awroberts.co.uk';
     }
   }
