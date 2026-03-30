@@ -2,7 +2,6 @@ let bgVideo;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
-let emailY = 40;
 let isHoveringEmail = false;
 
 // deployment JSON
@@ -34,10 +33,11 @@ function setup() {
 
   bgVideo.hide();
 
-  emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
+
   textFont(curwenFont);
   textSize(emailSize);
-  textAlign(CENTER, TOP);
+  textAlign(RIGHT, TOP);
 }
 
 function draw() {
@@ -49,16 +49,17 @@ function draw() {
 }
 
 function drawEmail() {
-  let totalWidth = textWidth(emailText);
-  let xStart = width / 2 - totalWidth / 2;
-  let yStart = emailY;
+  let x = width - 30;
+  let y = 30;
   let buffer = 20;
 
+  let textW = textWidth(emailText);
+
   isHoveringEmail =
-    mouseX > xStart - buffer &&
-    mouseX < xStart + totalWidth + buffer &&
-    mouseY > yStart - buffer &&
-    mouseY < yStart + emailSize + buffer;
+    mouseX > x - textW - buffer &&
+    mouseX < x + buffer &&
+    mouseY > y - buffer &&
+    mouseY < y + emailSize + buffer;
 
   if (isHoveringEmail) {
     fill(255, 220, 180);
@@ -70,7 +71,7 @@ function drawEmail() {
     cursor(ARROW);
   }
 
-  text(emailText, width / 2, emailY);
+  text(emailText, x, y);
 }
 
 function drawDeploymentInfo() {
@@ -114,15 +115,15 @@ function touchStarted() {
     let tx = touches[0].x;
     let ty = touches[0].y;
 
-    let totalWidth = textWidth(emailText);
-    let xStart = width / 2 - totalWidth / 2;
-    let yStart = emailY;
+    let x = width - 30;
+    let y = 30;
+    let textW = textWidth(emailText);
 
     if (
-      tx > xStart &&
-      tx < xStart + totalWidth &&
-      ty > yStart &&
-      ty < yStart + emailSize
+      tx > x - textW &&
+      tx < x &&
+      ty > y &&
+      ty < y + emailSize
     ) {
       window.location.href = 'mailto:info@awroberts.co.uk';
     }
@@ -134,6 +135,6 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   bgVideo.size(width, height);
 
-  emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
   textSize(emailSize);
 }
