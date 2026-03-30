@@ -83,7 +83,6 @@ function drawDeploymentInfo() {
 
   const margin = 30;
   let x = margin;
-  let y = height - margin;
 
   const lines = [
     `Deployment: ${diag.deployment.name}`,
@@ -94,9 +93,11 @@ function drawDeploymentInfo() {
     `SHA: ${diag.build.sha}`
   ];
 
-  for (let i = lines.length - 1; i >= 0; i--) {
+  let y = height - margin - (baseSize * 1.3 * lines.length);
+
+  for (let i = 0; i < lines.length; i++) {
     text(lines[i], x, y);
-    y -= baseSize * 1.3;
+    y += baseSize * 1.3;
   }
 }
 
