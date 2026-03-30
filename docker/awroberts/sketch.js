@@ -79,8 +79,7 @@ function drawEmail() {
 function drawDeploymentInfo() {
   if (!diag) return;
 
-  // Scale text relative to screen size
-  const baseSize = min(windowWidth, windowHeight) * 0.03;
+  const baseSize = min(windowWidth, windowHeight) * 0.02;
   textSize(baseSize);
   textAlign(LEFT);
   fill(255);
@@ -89,24 +88,20 @@ function drawDeploymentInfo() {
   let x = margin;
   let y = height - margin;
 
-  // Lines to display (bottom to top)
   const lines = [
-    `SHA: ${diag.build.sha}`,
-    `Image Tag: ${diag.build.imageTag}`,
-    `Service ClusterIP: ${diag.service.clusterIP}`,
-    `Pod IP: ${diag.pod.ip}`,
-    `Pod: ${diag.pod.name}`,
-    `Deployment: ${diag.deployment.name}`
+      `Deployment: ${diag.deployment.name}`,
+      `Pod: ${diag.pod.name}`,
+      `Pod IP: ${diag.pod.ip}`,
+      `Service ClusterIP: ${diag.service.clusterIP}`,
+      `Image Tag: ${diag.build.imageTag}`,
+      `SHA: ${diag.build.sha}`
   ];
 
-  // Draw upward from bottom-left
   for (let i = lines.length - 1; i >= 0; i--) {
     text(lines[i], x, y);
-    y -= baseSize * 1.4; // spacing proportional to text size
+    y -= baseSize * 1.3;
   }
 }
-
-
 
 function mousePressed() {
   if (isHoveringEmail) {
