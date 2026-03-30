@@ -19,11 +19,11 @@ function setup() {
 function draw() {
   background(0);
 
-  if (bgVideo.elt.readyState >= 2) {
-    resetMatrix();            // ensures camera is neutral
+  if (vid.elt.readyState >= 2) {
+    resetMatrix();
     noStroke();
-    texture(bgVideo);
-    plane(width, height);     // full-screen quad
+    texture(vid);
+    plane(width, height);
   }
 }
 
