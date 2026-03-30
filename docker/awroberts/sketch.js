@@ -118,8 +118,9 @@ function touchStarted() {
     let tx = touches[0].x;
     let ty = touches[0].y;
 
-    let x = width - 30;
-    let y = 30;
+    let margin = 30;
+    let x = width - margin;
+    let y = margin;
     let textW = textWidth(emailText);
 
     if (
