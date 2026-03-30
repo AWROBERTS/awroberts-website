@@ -13,26 +13,28 @@ function preload() {
 }
 
 function setup() {
-  pixelDensity(1);
   createCanvas(windowWidth, windowHeight, WEBGL);
 
-  bgVideo = createVideo('/awroberts-media/background.mp4');
-  bgVideo.elt.setAttribute('crossorigin', 'anonymous');
-  bgVideo.volume(0);
-  bgVideo.attribute('muted', '');
-  bgVideo.attribute('playsinline', '');
-  bgVideo.attribute('autoplay', '');
-  bgVideo.loop();
-  bgVideo.play();
+  // Create the video ONCE
+  if (!bgVideo) {
+    bgVideo = createVideo('/awroberts-media/background.mp4');
+    bgVideo.elt.setAttribute('crossorigin', 'anonymous');
+    bgVideo.volume(0);
+    bgVideo.attribute('muted', '');
+    bgVideo.attribute('playsinline', '');
+    bgVideo.attribute('autoplay', '');
+    bgVideo.loop();
+    bgVideo.play();
 
-  // Keep video in DOM and composited
-  bgVideo.style('position', 'absolute');
-  bgVideo.style('top', '0');
-  bgVideo.style('left', '0');
-  bgVideo.style('width', '1px');
-  bgVideo.style('height', '1px');
-  bgVideo.style('opacity', '0');
-  bgVideo.style('pointer-events', 'none');
+    // Keep video in DOM but invisible and non-interactive
+    bgVideo.style('position', 'absolute');
+    bgVideo.style('top', '0');
+    bgVideo.style('left', '0');
+    bgVideo.style('width', '1px');
+    bgVideo.style('height', '1px');
+    bgVideo.style('opacity', '0');
+    bgVideo.style('pointer-events', 'none');
+  }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
@@ -40,14 +42,11 @@ function setup() {
 }
 
 function draw() {
+  // Avoid clear() in WEBGL
   background(0);
 
-  // Draw overlays FIRST
-  drawEmail();
-  drawDeploymentInfo();
-
-  // Draw video LAST
-  if (bgVideo && bgVideo.elt.readyState === 4) {
+  // Draw video first
+  if (bgVideo && bgVideo.elt.readyState >= 2) {
     push();
     resetMatrix();
     noStroke();
@@ -55,6 +54,10 @@ function draw() {
     plane(width, height);
     pop();
   }
+
+  // Then overlays
+  drawEmail();
+  drawDeploymentInfo();
 }
 
 function drawEmail() {
