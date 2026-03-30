@@ -23,10 +23,10 @@ function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  // SimpleIcons URLs
-  icons.github = loadImage('https://cdn.simpleicons.org/github.svg');
-  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin.svg');
-  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp.svg');
+  // Correct SimpleIcons URLs (must include a color)
+  icons.github = loadImage('https://cdn.simpleicons.org/github/ffffff');
+  icons.linkedin = loadImage('https://cdn.simpleicons.org/linkedin/ffffff');
+  icons.bandcamp = loadImage('https://cdn.simpleicons.org/bandcamp/ffffff');
 }
 
 function setup() {
@@ -208,7 +208,6 @@ function touchStarted() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 
-  // Prevent crash if bgVideo isn't ready yet
   if (bgVideo) {
     bgVideo.size(width, height);
   }
