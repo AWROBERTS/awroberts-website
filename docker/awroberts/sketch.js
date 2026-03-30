@@ -1,7 +1,5 @@
 let bgVideo;
-let rippleShader;
 let curwenFont;
-
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let emailY = 40;
@@ -10,7 +8,6 @@ let isHoveringEmail = false;
 let diag;
 
 function preload() {
-  rippleShader = loadShader('/shaders/ripple.vert', '/shaders/ripple.frag');
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 }
@@ -35,23 +32,19 @@ function setup() {
 }
 
 function draw() {
-  // Prevent black screen before video is ready
-  if (bgVideo.elt.readyState < 2) return;
+  clear();
 
-  shader(rippleShader);
+  // Draw video normally (no shader)
+  if (bgVideo && bgVideo.elt.readyState >= 2) {
+    push();
+    resetMatrix();
+    translate(0, 0, 0);
+    texture(bgVideo);
+    noStroke();
+    plane(width, height);
+    pop();
+  }
 
-  rippleShader.setUniform('tex', bgVideo);
-  rippleShader.setUniform('resolution', [width, height]);
-  rippleShader.setUniform('mouse', [mouseX, height - mouseY]);
-  rippleShader.setUniform('time', millis() / 1000.0);
-
-  noStroke();
-  resetMatrix();
-  translate(0, 0, 0);
-
-  plane(width, height);
-
-  resetShader();
   drawEmail();
   drawDeploymentInfo();
 }
