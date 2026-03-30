@@ -25,8 +25,13 @@ function setup() {
   bgVideo.attribute('autoplay', '');
   bgVideo.loop();
   bgVideo.play();
-  bgVideo.hide(); // keep hidden, but still works as a texture
-  // --------------------------------
+
+  // Keep video in DOM but invisible (critical for Chrome + Metal)
+  bgVideo.style('opacity', '0');
+  bgVideo.style('position', 'absolute');
+  bgVideo.style('z-index', '-1');
+  bgVideo.style('pointer-events', 'none');
+  // -------------------------------------------------------------
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
