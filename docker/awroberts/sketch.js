@@ -16,7 +16,6 @@ function setup() {
   pixelDensity(1);
   createCanvas(windowWidth, windowHeight, WEBGL);
 
-  // --- Working video pipeline ---
   bgVideo = createVideo('/awroberts-media/background.mp4');
   bgVideo.elt.setAttribute('crossorigin', 'anonymous');
   bgVideo.volume(0);
@@ -26,12 +25,14 @@ function setup() {
   bgVideo.loop();
   bgVideo.play();
 
-  // Keep video in DOM but invisible (critical for Chrome + Metal)
-  bgVideo.style('opacity', '0');
+  // Keep video in DOM and composited
   bgVideo.style('position', 'absolute');
-  bgVideo.style('z-index', '-1');
+  bgVideo.style('top', '0');
+  bgVideo.style('left', '0');
+  bgVideo.style('width', '1px');
+  bgVideo.style('height', '1px');
+  bgVideo.style('opacity', '0');
   bgVideo.style('pointer-events', 'none');
-  // -------------------------------------------------------------
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.1, 24, 140);
   textFont(curwenFont);
@@ -41,9 +42,7 @@ function setup() {
 function draw() {
   clear();
 
-  // Draw video as WebGL texture
   if (bgVideo && bgVideo.elt.readyState === 4) {
-    bgVideo.loadPixels(); // ensures frame updates
     push();
     resetMatrix();
     noStroke();
