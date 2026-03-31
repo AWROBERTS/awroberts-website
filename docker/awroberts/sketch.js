@@ -23,9 +23,10 @@ function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  icons.github = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/github.svg');
-  icons.linkedin = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/linkedin.svg');
-  icons.bandcamp = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/bandcamp.svg');
+  // PNG versions — tintable, reliable, always load
+  icons.github = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/github.png');
+  icons.linkedin = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/linkedin.png');
+  icons.bandcamp = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/bandcamp.png');
 }
 
 function setup() {
@@ -114,7 +115,7 @@ function drawSocialIcons() {
 
     if (icon) {
       push();
-      tint(255, alpha); // fade-in + white tint
+      tint(255, alpha); // PURE WHITE + fade-in
       image(icon, x, y, size, size);
       pop();
     }
