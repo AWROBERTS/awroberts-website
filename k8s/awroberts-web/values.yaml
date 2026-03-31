@@ -48,9 +48,9 @@ autoscaling:
 
 backgroundVideo:
   image:
-    repository: awroberts/background-video
-    tag: "1.0.0"
-    pullPolicy: IfNotPresent
+    repository: background-video
+    tag: latest
+    pullPolicy: Never
 
   ffmpeg:
     image:
