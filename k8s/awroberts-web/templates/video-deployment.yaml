@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "awroberts.fullname" . }}-videos
+  name: {{ include "awroberts.fullname" . }}-background
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ include "awroberts.fullname" . }}-videos
+      app: {{ include "awroberts.fullname" . }}-background
   template:
     metadata:
       labels:
-        app: {{ include "awroberts.fullname" . }}-videos
+        app: {{ include "awroberts.fullname" . }}-background
     spec:
       containers:
         - name: nginx
