@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: {{ include "awroberts.fullname" . }}-videos
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: {{ include "awroberts.fullname" . }}-videos
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080
+
