@@ -63,7 +63,7 @@ build_all_images() {
 
   echo "📦 Preparing to build images with tag: ${TAG}"
   echo "  APP_IMAGE_NAME: ${APP_IMAGE_NAME}"
-  echo "  BG_IMAGE_NAME:  ${BG_IMAGE_NAME}"
+  echo "  BACKGROUND_IMAGE_NAME:  ${BACKGROUND_IMAGE_NAME}"
 
   # APP
   echo "🚀 Building APP image..."
@@ -76,7 +76,7 @@ build_all_images() {
 
   # BACKGROUND VIDEO
   echo "🎞️ Building BACKGROUND VIDEO image..."
-  image_vars_for "${BG_IMAGE_NAME}" "${TAG}"
+  image_vars_for "${BACKGROUND_IMAGE_NAME}" "${TAG}"
   BG_FULL_IMAGE="${FULL_IMAGE}"
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
   BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
