@@ -190,8 +190,14 @@ function drawDeploymentInfo() {
     `pod: ${diag.pod.name}`,
     `pod ip: ${diag.pod.ip}`,
     `service cluster ip: ${diag.service.clusterIP}`,
-    `image tag: ${diag.build.imageTag}`,
-    `sha: ${diag.build.sha}`
+
+    // awroberts image
+    `awroberts: ${diag.build.awroberts.name}:${diag.build.awroberts.tag}`,
+    `awroberts sha: ${diag.build.awroberts.sha}`,
+
+    // background video image
+    `background-video: ${diag.build.backgroundVideo.name}:${diag.build.backgroundVideo.tag}`,
+    `background-video sha: ${diag.build.backgroundVideo.sha}`
   ];
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
