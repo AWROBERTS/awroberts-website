@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "awroberts.fullname" . }}-background
+  labels:
+    app: {{ include "awroberts.fullname" . }}-background
 spec:
   replicas: 1
   selector:
@@ -13,13 +15,13 @@ spec:
         app: {{ include "awroberts.fullname" . }}-background
     spec:
       containers:
-        - name: nginx
+        - name: background-video
           image: nginx:alpine
           ports:
             - containerPort: 80
           volumeMounts:
             - name: media-volume
-              mountPath: /usr/share/nginx/html
+              mountPath: /usr/share/nginx/html/media
       volumes:
         - name: media-volume
           hostPath:
