@@ -21,7 +21,7 @@ spec:
             - containerPort: 80
           volumeMounts:
             - name: media-volume
-              mountPath: /usr/share/nginx/html/media
+              mountPath: /usr/share/nginx/html
       volumes:
         - name: media-volume
           hostPath:
