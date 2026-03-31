@@ -19,14 +19,16 @@ let hoveringSocial = -1;
 // fade-in animation
 let fadeStartTime;
 
+// glow colour (C1 Soft Ice Blue)
+const glowColor = [127, 203, 255]; // #7FCBFF
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
 
-  // PNG versions — tintable, reliable, always load
-  icons.github = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/github.png');
-  icons.linkedin = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/linkedin.png');
-  icons.bandcamp = loadImage('https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/bandcamp.png');
+  icons.github = loadImage('/assets/github.png');
+  icons.linkedin = loadImage('/assets/linkedin.png');
+  icons.bandcamp = loadImage('/assets/bandcamp.png');
 }
 
 function setup() {
@@ -68,6 +70,21 @@ function draw() {
   drawDeploymentInfo();
 }
 
+// ----------------------------
+// GLOW HELPER
+// ----------------------------
+function drawGlow(x, y, w, h, alpha) {
+  push();
+  noStroke();
+  fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
+  drawingContext.filter = 'blur(12px)';
+  rect(x, y, w, h, 6);
+  pop();
+}
+
+// ----------------------------
+// EMAIL
+// ----------------------------
 function drawEmail() {
   let margin = 30;
   let x = width - margin;
@@ -82,8 +99,14 @@ function drawEmail() {
     mouseY > y - buffer &&
     mouseY < y + emailSize + buffer;
 
+  let glowAlpha = isHoveringEmail ? 255 : 0;
+
+  // glow behind email
+  drawGlow(x - textW - 10, y - 5, textW + 20, emailSize + 10, glowAlpha);
+
+  // text
   if (isHoveringEmail) {
-    fill(255, 220, 180);
+    fill(255);
     textSize(emailSize * 1.05);
     cursor(HAND);
   } else {
@@ -96,16 +119,19 @@ function drawEmail() {
   text(emailText, x, y);
 }
 
+// ----------------------------
+// SOCIAL ICONS
+// ----------------------------
 function drawSocialIcons() {
-  const size = emailSize * 0.8;   // responsive scaling
+  const size = emailSize * 0.8;
   const margin = 30;
-  const spacing = size + 20;      // horizontal spacing
+  const spacing = size + 20;
   const xStart = margin;
   const y = margin;
 
   hoveringSocial = -1;
 
-  // fade-in alpha (0 → 255 over 1 second)
+  // fade-in alpha
   let fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
   let alpha = fadeProgress * 255;
 
@@ -113,34 +139,35 @@ function drawSocialIcons() {
     let x = xStart + i * spacing;
     let icon = icons[item.imgKey];
 
-    if (icon) {
-      push();
-      tint(255, alpha); // PURE WHITE + fade-in
-      image(icon, x, y, size, size);
-      pop();
-    }
-
-    // Hover detection
-    if (
+    let isHover =
       mouseX > x &&
       mouseX < x + size &&
       mouseY > y &&
-      mouseY < y + size
-    ) {
+      mouseY < y + size;
+
+    if (isHover) {
       hoveringSocial = i;
       cursor(HAND);
+    }
 
-      // highlight box
+    let glowAlpha = isHover ? 255 : 0;
+
+    // glow behind icon
+    drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
+
+    // icon
+    if (icon) {
       push();
-      noFill();
-      stroke(255, 220, 180, alpha);
-      strokeWeight(2);
-      rect(x - 4, y - 4, size + 8, size + 8, 4);
+      tint(255, alpha);
+      image(icon, x, y, size, size);
       pop();
     }
   });
 }
 
+// ----------------------------
+// DEPLOYMENT INFO
+// ----------------------------
 function drawDeploymentInfo() {
   if (!diag) return;
 
@@ -172,6 +199,9 @@ function drawDeploymentInfo() {
   }
 }
 
+// ----------------------------
+// INTERACTION
+// ----------------------------
 function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';
