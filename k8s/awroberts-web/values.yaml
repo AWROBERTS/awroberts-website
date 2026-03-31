@@ -45,3 +45,30 @@ service:
 
 autoscaling:
   enabled: false
+
+backgroundVideo:
+  image:
+    repository: awroberts/background-video
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+  ffmpeg:
+    image:
+      repository: jrottenberg/ffmpeg
+      tag: "4.4-alpine"
+      pullPolicy: IfNotPresent
+
+  video:
+    filename: "background.mp4"
+
+  hls:
+    segmentDuration: 4
+    playlistSize: 8
+
+  volume:
+    useHostPath: false
+    hostPath: "/var/www/html/awroberts/awroberts-media"
+
+  resources:
+    nginx: {}
+    ffmpeg: {}
