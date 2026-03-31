@@ -15,15 +15,84 @@ spec:
         app: {{ include "awroberts.fullname" . }}-background
     spec:
       containers:
-        - name: background-video
-          image: nginx:alpine
+
+        # -------------------------
+        # NGINX (serves HLS output)
+        # -------------------------
+        - name: nginx
+          image: "{{ .Values.backgroundVideo.image.repository }}:{{ .Values.backgroundVideo.image.tag }}"
+          imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
           ports:
             - containerPort: 80
           volumeMounts:
+            - name: hls
+              mountPath: /usr/share/nginx/html/stream
+            {{- if .Values.backgroundVideo.volume.useHostPath }}
             - name: media-volume
-              mountPath: /usr/share/nginx/html
+              mountPath: {{ .Values.volume.mountPath }}
+            {{- end }}
+
+        # -------------------------
+        # FFMPEG (generates HLS)
+        # -------------------------
+        - name: ffmpeg
+          image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
+          imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - >
+              ffmpeg -stream_loop -1 -i /videos/{{ .Values.backgroundVideo.video.filename }}
+              -c:v libx264 -preset veryfast -b:v 3000k
+              -c:a aac -ar 44100 -b:a 128k
+              -f hls
+              -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
+              -hls_list_size {{ .Values.backgroundVideo.hls.playlistSize }}
+              -hls_flags delete_segments+append_list
+              /output/index.m3u8
+          volumeMounts:
+            - name: hls
+              mountPath: /output
+
+          # -------------------------
+          # READINESS PROBE
+          # -------------------------
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  test -s /output/index.m3u8
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          # -------------------------
+          # LIVENESS PROBE
+          # -------------------------
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  test -f /output/index.m3u8 &&
+                  find /output/index.m3u8 -mmin -0.2 | grep index.m3u8
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+      # -------------------------
+      # VOLUMES
+      # -------------------------
       volumes:
+        - name: hls
+          emptyDir: {}
+        {{- if .Values.backgroundVideo.volume.useHostPath }}
         - name: media-volume
           hostPath:
-            path: {{ .Values.volume.hostPath }}
+            path: {{ .Values.backgroundVideo.volume.hostPath }}
             type: DirectoryOrCreate
+        {{- end }}
