@@ -56,14 +56,6 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          volumeMounts:
-            - name: media-volume
-              mountPath: {{ .Values.volume.mountPath }}
-      volumes:
-        - name: media-volume
-          hostPath:
-            path: {{ .Values.volume.hostPath }}
-            type: DirectoryOrCreate
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
