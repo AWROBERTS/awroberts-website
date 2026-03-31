@@ -71,7 +71,7 @@ main() {
   ensure_tls_secret
 
   cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
-  cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
+  cleanup_old_images "${BACKGROUND_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
 
   notes_and_status
   generate_deployment_json
