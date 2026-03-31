@@ -37,30 +37,56 @@ build_image_generic() {
   local CONTEXT="$3"
 
   echo "🔨 Building ${IMAGE}"
+  echo "   → Context: ${CONTEXT}"
+
+  local start end duration
+  start=$(date +%s)
+
   docker build \
     --no-cache \
     -t "${IMAGE}" \
     -t "${LATEST}" \
     "${CONTEXT}"
+
+  end=$(date +%s)
+  duration=$(( end - start ))
+
+  echo "⏱️ Build completed in ${duration}s"
 }
 
 build_all_images() {
   local TAG
   TAG="$(git_sha_tag)"
 
+  local start_all end_all duration_all
+  start_all=$(date +%s)
+
+  echo "📦 Preparing to build images with tag: ${TAG}"
+  echo "  APP_IMAGE_NAME: ${APP_IMAGE_NAME}"
+  echo "  BG_IMAGE_NAME:  ${BG_IMAGE_NAME}"
+
   # APP
+  echo "🚀 Building APP image..."
   image_vars_for "${APP_IMAGE_NAME}" "${TAG}"
   APP_FULL_IMAGE="${FULL_IMAGE}"
   APP_LATEST_IMAGE="${LATEST_IMAGE}"
   APP_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
-  build_image_generic "${APP_FULL_IMAGE}" "${APP_LATEST_IMAGE}" "${PROJECT_ROOT}"
+  echo "  → ${APP_FULL_IMAGE}"
+  build_image_generic "${APP_FULL_IMAGE}" "${APP_LATEST_IMAGE}" "${PROJECT_ROOT}/docker/awroberts"
 
   # BACKGROUND VIDEO
+  echo "🎞️ Building BACKGROUND VIDEO image..."
   image_vars_for "${BG_IMAGE_NAME}" "${TAG}"
   BG_FULL_IMAGE="${FULL_IMAGE}"
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
   BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
-  build_image_generic "${BG_FULL_IMAGE}" "${BG_LATEST_IMAGE}" "${PROJECT_ROOT}"
+  echo "  → ${BG_FULL_IMAGE}"
+  build_image_generic "${BG_FULL_IMAGE}" "${BG_LATEST_IMAGE}" "${PROJECT_ROOT}/docker/background-video"
+
+  end_all=$(date +%s)
+  duration_all=$(( end_all - start_all ))
+
+  echo "🏁 All images built in ${duration_all}s"
 }
 
 # -----------------------------
