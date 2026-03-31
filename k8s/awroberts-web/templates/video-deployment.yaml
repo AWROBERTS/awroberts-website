@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "awroberts.fullname" . }}-videos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "awroberts.fullname" . }}-videos
+  template:
+    metadata:
+      labels:
+        app: {{ include "awroberts.fullname" . }}-videos
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: media-volume
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: media-volume
+          hostPath:
+            path: {{ .Values.volume.hostPath }}
+            type: DirectoryOrCreate

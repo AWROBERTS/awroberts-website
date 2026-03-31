@@ -22,6 +22,9 @@ let fadeStartTime;
 // glow colour (C1 Soft Ice Blue)
 const glowColor = [127, 203, 255]; // #7FCBFF
 
+// LAN video URL served by nginx NodePort
+const VIDEO_URL = "http://192.168.1.108:30080/background.mp4";
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
@@ -41,7 +44,8 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  bgVideo = createVideo('/awroberts-media/background.mp4', () => {
+  // load video from nginx pod
+  bgVideo = createVideo([VIDEO_URL], () => {
     bgVideo.volume(0);
     bgVideo.attribute('muted', '');
     bgVideo.attribute('playsinline', '');
@@ -90,15 +94,12 @@ function drawEmail() {
   const x = width - margin;
   const y = margin;
 
-  // measure text width at *normal* size
   textSize(emailSize);
   const textW = textWidth(emailText);
 
-  // padding around the glow + hover box
   const padX = 12;
   const padY = 6;
 
-  // unified hitbox
   const hitLeft = x - textW - padX;
   const hitRight = x + padX;
   const hitTop = y - padY;
@@ -110,7 +111,6 @@ function drawEmail() {
     mouseY >= hitTop &&
     mouseY <= hitBottom;
 
-  // glow
   if (isHoveringEmail) {
     drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 255);
     cursor(HAND);
@@ -118,7 +118,6 @@ function drawEmail() {
     drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 0);
   }
 
-  // draw text (slightly larger on hover)
   textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
   fill(255);
   textAlign(RIGHT, TOP);
@@ -137,7 +136,6 @@ function drawSocialIcons() {
 
   hoveringSocial = -1;
 
-  // fade-in alpha
   let fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
   let alpha = fadeProgress * 255;
 
@@ -158,10 +156,8 @@ function drawSocialIcons() {
 
     let glowAlpha = isHover ? 255 : 0;
 
-    // glow behind icon
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
-    // icon
     if (icon) {
       push();
       tint(255, alpha);
