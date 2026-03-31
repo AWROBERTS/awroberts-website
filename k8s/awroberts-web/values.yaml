@@ -66,7 +66,7 @@ backgroundVideo:
     playlistSize: 8
 
   volume:
-    useHostPath: false
+    useHostPath: true
     hostPath: "/var/www/html/awroberts/awroberts-media"
 
   resources:
