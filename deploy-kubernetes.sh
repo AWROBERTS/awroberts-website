@@ -63,15 +63,16 @@ main() {
   verify_kubelet_cgroup
   cluster_targeting
   info_and_validate_context
-  image_vars
-  build_image
-  import_image
+  build_all_images
+  import_all_images
   restart_kube_proxy
   ensure_traefik_helm
   deploy_with_helm
   ensure_tls_secret
 
-  cleanup_old_images "${IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${FULL_IMAGE}"
+  cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
+  cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
+
   notes_and_status
   generate_deployment_json
 }
