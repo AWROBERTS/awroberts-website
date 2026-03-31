@@ -23,7 +23,7 @@ let fadeStartTime;
 const glowColor = [127, 203, 255]; // #7FCBFF
 
 // video URL served by nginx pod
-const VIDEO_URL = "https://awroberts.co.uk/media/background.mp4";
+const VIDEO_URL = "https://awroberts.co.uk/media/stream/index.m3u8";
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
