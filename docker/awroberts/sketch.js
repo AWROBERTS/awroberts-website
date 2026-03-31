@@ -86,35 +86,41 @@ function drawGlow(x, y, w, h, alpha) {
 // EMAIL
 // ----------------------------
 function drawEmail() {
-  let margin = 30;
-  let x = width - margin;
-  let y = margin;
-  let buffer = 20;
+  const margin = 30;
+  const x = width - margin;
+  const y = margin;
 
-  let textW = textWidth(emailText);
+  // measure text width at *normal* size
+  textSize(emailSize);
+  const textW = textWidth(emailText);
+
+  // padding around the glow + hover box
+  const padX = 12;
+  const padY = 6;
+
+  // unified hitbox
+  const hitLeft = x - textW - padX;
+  const hitRight = x + padX;
+  const hitTop = y - padY;
+  const hitBottom = y + emailSize + padY;
 
   isHoveringEmail =
-    mouseX > x - textW - buffer &&
-    mouseX < x + buffer &&
-    mouseY > y - buffer &&
-    mouseY < y + emailSize + buffer;
+    mouseX >= hitLeft &&
+    mouseX <= hitRight &&
+    mouseY >= hitTop &&
+    mouseY <= hitBottom;
 
-  let glowAlpha = isHoveringEmail ? 255 : 0;
-
-  // glow behind email
-  drawGlow(x - textW - 10, y - 5, textW + 20, emailSize + 10, glowAlpha);
-
-  // text
+  // glow
   if (isHoveringEmail) {
-    fill(255);
-    textSize(emailSize * 1.05);
+    drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 255);
     cursor(HAND);
   } else {
-    fill(255);
-    textSize(emailSize);
-    cursor(ARROW);
+    drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 0);
   }
 
+  // draw text (slightly larger on hover)
+  textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
+  fill(255);
   textAlign(RIGHT, TOP);
   text(emailText, x, y);
 }
