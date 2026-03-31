@@ -4,8 +4,8 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-videos
 spec:
   parentRefs:
-    - name: traefik-gateway
-      namespace: traefik
+    - name: awroberts-web-deploy-gateway
+      namespace: awroberts
   hostnames:
     - awroberts.co.uk
   rules:
