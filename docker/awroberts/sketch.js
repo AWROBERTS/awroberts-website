@@ -22,8 +22,8 @@ let fadeStartTime;
 // glow colour (C1 Soft Ice Blue)
 const glowColor = [127, 203, 255]; // #7FCBFF
 
-// LAN video URL served by nginx NodePort
-const VIDEO_URL = "http://192.168.1.108:30080/background.mp4";
+// video URL served by nginx pod
+const VIDEO_URL = "https://awroberts.co.uk/media/background.mp4";
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
