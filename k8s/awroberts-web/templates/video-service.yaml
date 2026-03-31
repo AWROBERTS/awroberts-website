@@ -7,6 +7,6 @@ spec:
   selector:
     app: {{ include "awroberts.fullname" . }}-background
   ports:
-    - port: 80
+    - name: http
+      port: 80
       targetPort: 80
-
