@@ -4,6 +4,7 @@ generate_deployment_json() {
   echo "📦 Generating deployment.json"
   echo "=============================="
 
+  json_image_obj() {
   DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
     -o jsonpath='{.items[0].metadata.name}')
