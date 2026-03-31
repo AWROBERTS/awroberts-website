@@ -4,12 +4,12 @@ generate_deployment_json() {
   echo "📦 Generating deployment.json"
   echo "=============================="
 
-  # Helper to escape JSON strings safely
+  # Escape helper
   json_escape() {
     printf '%s' "$1" | jq -R .
   }
 
-  # Helper to output a JSON object for an image
+  # Image object helper
   json_image_obj() {
     local NAME="$1"
     local TAG="$2"
@@ -25,7 +25,7 @@ EOF
   }
 
   # -----------------------------
-  # Collect Kubernetes metadata
+  # Kubernetes metadata
   # -----------------------------
   DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
@@ -73,8 +73,8 @@ EOF
     "name": $(json_escape "$DEPLOYMENT_NAME"),
     "ready": $(json_escape "$DEPLOY_READY"),
     "images": {
-      "imageOne": $(json_escape "${APP_IMAGE_NAME_BASE}:${IMAGE_TAG}"),
-      "imageTwo": $(json_escape "${BG_IMAGE_NAME_BASE}:${IMAGE_TAG}")
+      "awroberts": $(json_escape "${APP_IMAGE_NAME_BASE}:${IMAGE_TAG}"),
+      "backgroundVideo": $(json_escape "${BG_IMAGE_NAME_BASE}:${IMAGE_TAG}")
     },
     "age": $(json_escape "$DEPLOY_AGE")
   },
@@ -92,8 +92,8 @@ EOF
     "internal": $(json_escape "$NODE_INTERNAL_IP")
   },
   "build": {
-    "imageOne": $(json_image_obj "$APP_IMAGE_NAME_BASE" "$IMAGE_TAG" "$APP_SHA"),
-    "imageTwo": $(json_image_obj "$BG_IMAGE_NAME_BASE" "$IMAGE_TAG" "$BG_SHA")
+    "awroberts": $(json_image_obj "$APP_IMAGE_NAME_BASE" "$IMAGE_TAG" "$APP_SHA"),
+    "backgroundVideo": $(json_image_obj "$BG_IMAGE_NAME_BASE" "$IMAGE_TAG" "$BG_SHA")
   },
   "kubernetes": {
     "version": $(json_escape "$K8S_VERSION")
