@@ -18,6 +18,7 @@ additionalArguments:
   - "--entrypoints.websecure.address=:443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
+  - "--entrypoints.websecure.http.tls.alpnProtocols=h2,http/1.1"
 
 gateway:
   enabled: false
