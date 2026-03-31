@@ -97,11 +97,12 @@ function drawEmail() {
   textSize(emailSize);
   const textW = textWidth(emailText);
 
-  const padX = 12;
-  const padY = 6;
+  const padLeft = emailSize * 0.8;
+  const padRight = emailSize * 0.2;
+  const padY = emailSize * 0.25;
 
-  const hitLeft = x - textW - padX;
-  const hitRight = x + padX;
+  const hitLeft = x - textW - padLeft;
+  const hitRight = x + padRight;
   const hitTop = y - padY;
   const hitBottom = y + emailSize + padY;
 
@@ -112,10 +113,10 @@ function drawEmail() {
     mouseY <= hitBottom;
 
   if (isHoveringEmail) {
-    drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 255);
+    drawGlow(hitLeft, hitTop, hitRight - hitLeft, hitBottom - hitTop, 255);
     cursor(HAND);
   } else {
-    drawGlow(hitLeft, hitTop, (hitRight - hitLeft), (hitBottom - hitTop), 0);
+    drawGlow(hitLeft, hitTop, hitRight - hitLeft, hitBottom - hitTop, 0);
   }
 
   textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
