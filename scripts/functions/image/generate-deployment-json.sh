@@ -59,10 +59,15 @@ EOF
   TRAEFIK_VERSION="${TRAEFIK_IMAGE##*:}"
 
   # -----------------------------
-  # Image SHAs (separate)
+  # Image SHAs (Kubernetes-native)
   # -----------------------------
-  APP_SHA=$(ctr -n k8s.io images ls | grep "${APP_IMAGE_NAME_BASE}:${IMAGE_TAG}" | awk '{print $3}')
-  BG_SHA=$(ctr -n k8s.io images ls | grep "${BG_IMAGE_NAME_BASE}:${IMAGE_TAG}" | awk '{print $3}')
+  APP_SHA=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" \
+    -o jsonpath='{.status.containerStatuses[?(@.name=="awroberts")].imageID}' \
+    | sed 's/.*@sha256://')
+
+  BG_SHA=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" \
+    -o jsonpath='{.status.containerStatuses[?(@.name=="backgroundVideo")].imageID}' \
+    | sed 's/.*@sha256://')
 
   # -----------------------------
   # Generate JSON
