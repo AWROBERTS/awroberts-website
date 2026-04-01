@@ -5,9 +5,6 @@ logs:
     enabled: true
     format: json
 
-providers: {}
-experimental: {}
-
 additionalArguments:
   - "--entrypoints.web.address=:80"
   - "--entrypoints.websecure.address=:443"
@@ -40,29 +37,6 @@ ports:
     exposedPort: 443
     protocol: TCP
 
-  tcp:
-    port: 8000
-    expose:
-      default: false
-    protocol: TCP
-
 service:
   enabled: true
   type: ClusterIP
-
-securityContext:
-  allowPrivilegeEscalation: true
-  readOnlyRootFilesystem: false
-  runAsUser: 0
-  runAsGroup: 0
-  runAsNonRoot: false
-  capabilities:
-    drop: []
-    add:
-      - NET_BIND_SERVICE
-
-podSecurityContext:
-  runAsUser: 0
-  runAsGroup: 0
-  runAsNonRoot: false
-  fsGroup: 0
