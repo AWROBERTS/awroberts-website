@@ -62,8 +62,8 @@ backgroundVideo:
     filename: "background.mp4"
 
   hls:
-    segmentDuration: 4
-    playlistSize: 8
+    segmentDuration: 2
+    playlistSize: 5
 
   volume:
     useHostPath: true
