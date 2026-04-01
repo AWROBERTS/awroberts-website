@@ -1,5 +1,8 @@
 let bgVideoEl;
-let videoReady = false;
+let videoReady = false;   // becomes true ONLY when a real frame is decoded
+let videoFadeStart = null;
+let videoFadeDuration = 1200; // ms fade-in
+
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
@@ -17,7 +20,7 @@ let socialLinks = [
 ];
 let hoveringSocial = -1;
 
-// fade-in animation
+// fade-in animation for UI
 let fadeStartTime;
 
 // glow colour
@@ -52,14 +55,21 @@ function setup() {
     console.error("ERROR: <video id='bg-video'> not found in DOM");
   }
 
-  // Only mark video ready when the FIRST FRAME is actually decodable
-  bgVideoEl.addEventListener("canplay", () => {
-    videoReady = true;
-  });
-
-  bgVideoEl.addEventListener("canplaythrough", () => {
-    videoReady = true;
-  });
+  // -------------------------------------------------------
+  // Detect the first actual decoded frame
+  // -------------------------------------------------------
+  if ("requestVideoFrameCallback" in bgVideoEl) {
+    bgVideoEl.requestVideoFrameCallback(() => {
+      videoReady = true;
+      videoFadeStart = millis();
+    });
+  } else {
+    // fallback for older browsers
+    bgVideoEl.addEventListener("canplay", () => {
+      videoReady = true;
+      videoFadeStart = millis();
+    });
+  }
 
   // Load HLS stream using hls.js
   if (Hls.isSupported()) {
@@ -87,13 +97,26 @@ function setup() {
 function draw() {
   clear();
 
+  // ---------------------------------------------------
+  // SAFE VIDEO DRAWING + SMOOTH FADE-IN
+  // ---------------------------------------------------
   if (
     bgVideoEl instanceof HTMLVideoElement &&
     videoReady &&
     bgVideoEl.videoWidth > 0 &&
     bgVideoEl.videoHeight > 0
   ) {
+    let alpha = 255;
+
+    if (videoFadeStart !== null) {
+      let t = (millis() - videoFadeStart) / videoFadeDuration;
+      alpha = constrain(t * 255, 0, 255);
+    }
+
+    push();
+    tint(255, alpha);
     image(bgVideoEl, 0, 0, width, height);
+    pop();
   }
 
   drawEmail();
