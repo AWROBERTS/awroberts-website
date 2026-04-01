@@ -2,9 +2,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: {{ include "awroberts.fullname" . }}-gateway
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    metallb.io/address-pool: awroberts-pool
+  namespace: traefik
+
 spec:
   gatewayClassName: traefik
 
