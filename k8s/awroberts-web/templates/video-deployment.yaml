@@ -27,9 +27,10 @@ spec:
           volumeMounts:
             - name: hls
               mountPath: /usr/share/nginx/html/stream
+
             {{- if .Values.backgroundVideo.volume.useHostPath }}
             - name: media-volume
-              mountPath: {{ .Values.volume.mountPath }}
+              mountPath: /var/www/html/awroberts/awroberts-media
             {{- end }}
 
         # -------------------------
@@ -41,7 +42,8 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              ffmpeg -stream_loop -1 -i /videos/{{ .Values.backgroundVideo.video.filename }}
+              ffmpeg -stream_loop -1
+              -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
               -c:v libx264 -preset veryfast -b:v 3000k
               -c:a aac -ar 44100 -b:a 128k
               -f hls
@@ -53,31 +55,28 @@ spec:
             - name: hls
               mountPath: /output
 
-          # -------------------------
-          # READINESS PROBE
-          # -------------------------
+            {{- if .Values.backgroundVideo.volume.useHostPath }}
+            - name: media-volume
+              mountPath: /var/www/html/awroberts/awroberts-media
+            {{- end }}
+
           readinessProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
-                - >
-                  test -s /output/index.m3u8
+                - test -s /output/index.m3u8
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
 
-          # -------------------------
-          # LIVENESS PROBE
-          # -------------------------
           livenessProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
-                - >
-                  test -f /output/index.m3u8 &&
+                - test -f /output/index.m3u8 &&
                   find /output/index.m3u8 -mmin -0.2 | grep index.m3u8
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -90,6 +89,7 @@ spec:
       volumes:
         - name: hls
           emptyDir: {}
+
         {{- if .Values.backgroundVideo.volume.useHostPath }}
         - name: media-volume
           hostPath:
