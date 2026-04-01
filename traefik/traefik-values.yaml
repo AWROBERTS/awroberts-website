@@ -13,6 +13,7 @@ additionalArguments:
   - "--entrypoints.websecure.address=:443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
+  - "--providers.kubernetesgateway=true"
 
 gateway:
   enabled: true
