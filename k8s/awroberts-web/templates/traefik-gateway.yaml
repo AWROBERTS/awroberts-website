@@ -21,7 +21,6 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
-            namespace: {{ .Release.Namespace }}
 
     - name: https-wildcard
       protocol: HTTPS
@@ -31,7 +30,6 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
-            namespace: {{ .Release.Namespace }}
 
     - name: http
       protocol: HTTP
