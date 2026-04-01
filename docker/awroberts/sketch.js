@@ -1,17 +1,19 @@
 let bgVideoEl;
-let videoReady = false;   // becomes true ONLY when a real frame is decoded
+let videoReady = false;
 let videoFadeStart = null;
-let videoFadeDuration = 1200; // ms fade-in
+let videoFadeDuration = 1200;
+
+// NEW: buffer canvas + context
+let videoBufferCanvas;
+let videoBufferCtx;
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let isHoveringEmail = false;
 
-// deployment JSON
 let diag;
 
-// social icons
 let icons = {};
 let socialLinks = [
   { imgKey: 'github', url: 'https://github.com/awroberts' },
@@ -20,13 +22,10 @@ let socialLinks = [
 ];
 let hoveringSocial = -1;
 
-// fade-in animation for UI
 let fadeStartTime;
 
-// glow colour
 const glowColor = [127, 203, 255];
 
-// HLS video URL
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8";
 
 function preload() {
@@ -48,30 +47,27 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  // Get the hidden HTML video element
+  // Get video element
   bgVideoEl = document.getElementById("bg-video");
 
-  if (!bgVideoEl) {
-    console.error("ERROR: <video id='bg-video'> not found in DOM");
-  }
+  // NEW: get buffer canvas + context
+  videoBufferCanvas = document.getElementById("video-buffer");
+  videoBufferCtx = videoBufferCanvas.getContext("2d");
 
-  // -------------------------------------------------------
-  // Detect the first actual decoded frame
-  // -------------------------------------------------------
+  // Detect first decoded frame
   if ("requestVideoFrameCallback" in bgVideoEl) {
     bgVideoEl.requestVideoFrameCallback(() => {
       videoReady = true;
       videoFadeStart = millis();
     });
   } else {
-    // fallback for older browsers
     bgVideoEl.addEventListener("canplay", () => {
       videoReady = true;
       videoFadeStart = millis();
     });
   }
 
-  // Load HLS stream using hls.js
+  // Load HLS
   if (Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(VIDEO_URL);
@@ -80,7 +76,6 @@ function setup() {
       bgVideoEl.play();
     });
   } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
-    // Safari fallback
     bgVideoEl.src = VIDEO_URL;
     bgVideoEl.play();
   }
@@ -98,14 +93,14 @@ function draw() {
   clear();
 
   // ---------------------------------------------------
-  // SAFE VIDEO DRAWING + SMOOTH FADE-IN
+  // NEW: update buffer canvas with video frame
   // ---------------------------------------------------
-  if (
-    bgVideoEl instanceof HTMLVideoElement &&
-    videoReady &&
-    bgVideoEl.videoWidth > 0 &&
-    bgVideoEl.videoHeight > 0
-  ) {
+  updateVideoBuffer();
+
+  // ---------------------------------------------------
+  // Draw buffer canvas into p5 (instead of video)
+  // ---------------------------------------------------
+  if (videoReady) {
     let alpha = 255;
 
     if (videoFadeStart !== null) {
@@ -115,13 +110,35 @@ function draw() {
 
     push();
     tint(255, alpha);
-    image(bgVideoEl, 0, 0, width, height);
+    image(videoBufferCanvas, 0, 0, width, height);
     pop();
   }
 
   drawEmail();
   drawSocialIcons();
   drawDeploymentInfo();
+}
+
+// ---------------------------------------------------
+// NEW: draw video → buffer canvas safely
+// ---------------------------------------------------
+function updateVideoBuffer() {
+  if (!videoReady) return;
+
+  if (
+    bgVideoEl.videoWidth > 0 &&
+    bgVideoEl.videoHeight > 0
+  ) {
+    videoBufferCanvas.width = bgVideoEl.videoWidth;
+    videoBufferCanvas.height = bgVideoEl.videoHeight;
+
+    try {
+      videoBufferCtx.drawImage(bgVideoEl, 0, 0);
+    } catch (err) {
+      // If WebKit throws, we ignore it — p5 never sees the bad frame
+      console.warn("Video frame skipped:", err);
+    }
+  }
 }
 
 // ----------------------------
@@ -209,7 +226,6 @@ function drawSocialIcons() {
 
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
-    // Prevent drawImage crash if icon failed to load
     if (
       icon instanceof p5.Image &&
       icon.width > 0 &&
@@ -240,7 +256,7 @@ function drawDeploymentInfo() {
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
-    `traefik: ${diag.traefik?.version ?? 'N/A'}`,
+    `traefefik: ${diag.traefik?.version ?? 'N/A'}`,
     `deployment: ${diag.deployment.name}`,
     `pod: ${diag.pod.name}`,
     `pod ip: ${diag.pod.ip}`,
