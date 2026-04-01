@@ -19,7 +19,6 @@
   <!--
     IMPORTANT:
     Safari + Chrome WILL NOT DECODE VIDEO FRAMES if the element is display:none.
-    It must remain "renderable" for the decoder to work.
     So we move it off-screen instead of hiding it.
   -->
   <video id="bg-video"
@@ -34,6 +33,27 @@
            height:1px;
          ">
   </video>
+
+  <!--
+    DEBUG BUFFER CANVAS
+    This is where the video will be drawn FIRST.
+    p5 will draw THIS canvas instead of the video.
+    This avoids the WebKit drawImage crash.
+  -->
+  <canvas id="video-buffer"
+          width="640"
+          height="360"
+          style="
+            position:fixed;
+            bottom:20px;
+            right:20px;
+            width:200px;
+            height:112px;
+            border:2px solid #00aaff;
+            z-index:9999;
+            background:#000;
+          ">
+  </canvas>
 
   <div id="canvas-container"></div>
 
