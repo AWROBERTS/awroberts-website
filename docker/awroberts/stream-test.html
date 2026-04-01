@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stream Test</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    video {
+      width: 80vw;
+      max-width: 960px;
+      background: #111;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+  <div>
+    <p>Direct HLS test: <code>https://awroberts.co.uk/stream/index.m3u8</code></p>
+    <video id="test-video" muted autoplay playsinline controls crossorigin="anonymous"></video>
+  </div>
+
+  <script>
+    const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+    const video = document.getElementById('test-video');
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.warn("HLS.js error:", data);
+      });
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        console.log("MEDIA_ATTACHED");
+        video.play().catch(err => console.warn("play() failed:", err));
+      });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("MANIFEST_PARSED");
+        video.play().catch(err => console.warn("play() failed:", err));
+      });
+      hls.loadSource(VIDEO_URL);
+      hls.attachMedia(video);
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      console.log("Native HLS path");
+      video.src = VIDEO_URL;
+      video.play().catch(err => console.warn("play() failed:", err));
+    } else {
+      console.log("HLS not supported in this browser");
+    }
+  </script>
+
+</body>
+</html>
