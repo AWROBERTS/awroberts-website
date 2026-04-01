@@ -1,4 +1,4 @@
-let bgVideo;
+let bgVideoEl;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
@@ -19,11 +19,11 @@ let hoveringSocial = -1;
 // fade-in animation
 let fadeStartTime;
 
-// glow colour (C1 Soft Ice Blue)
-const glowColor = [127, 203, 255]; // #7FCBFF
+// glow colour
+const glowColor = [127, 203, 255];
 
-// video URL served by nginx pod
-const VIDEO_URL = "https://awroberts.co.uk/media/stream/index.m3u8";
+// HLS video URL
+const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8";
 
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
@@ -44,17 +44,22 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  // load video from nginx pod
-  bgVideo = createVideo([VIDEO_URL], () => {
-    bgVideo.volume(0);
-    bgVideo.attribute('muted', '');
-    bgVideo.attribute('playsinline', '');
-    bgVideo.attribute('autoplay', '');
-    bgVideo.loop();
-    bgVideo.play();
-  });
+  // Get the hidden HTML video element
+  bgVideoEl = document.getElementById("bg-video");
 
-  bgVideo.hide();
+  // Load HLS stream using hls.js
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(VIDEO_URL);
+    hls.attachMedia(bgVideoEl);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      bgVideoEl.play();
+    });
+  } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
+    // Safari fallback
+    bgVideoEl.src = VIDEO_URL;
+    bgVideoEl.play();
+  }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
 
@@ -67,7 +72,11 @@ function setup() {
 
 function draw() {
   clear();
-  image(bgVideo, 0, 0, width, height);
+
+  // Draw the video frame if available
+  if (bgVideoEl && bgVideoEl.readyState >= 2) {
+    image(bgVideoEl, 0, 0, width, height);
+  }
 
   drawEmail();
   drawSocialIcons();
@@ -190,12 +199,8 @@ function drawDeploymentInfo() {
     `pod: ${diag.pod.name}`,
     `pod ip: ${diag.pod.ip}`,
     `service cluster ip: ${diag.service.clusterIP}`,
-
-    // awroberts image
     `awroberts: ${diag.build.awroberts.name}:${diag.build.awroberts.tag}`,
     `awroberts sha: ${diag.build.awroberts.sha}`,
-
-    // background video image
     `background-video: ${diag.build.backgroundVideo.name}:${diag.build.backgroundVideo.tag}`,
     `background-video sha: ${diag.build.backgroundVideo.sha}`
   ];
@@ -246,11 +251,6 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-
-  if (bgVideo) {
-    bgVideo.size(width, height);
-  }
-
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
   textSize(emailSize);
 }
