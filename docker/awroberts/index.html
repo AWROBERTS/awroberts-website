@@ -15,8 +15,25 @@
 </head>
 
 <body>
-  <!-- Hidden video element for HLS playback -->
-  <video id="bg-video" muted playsinline autoplay style="display:none"></video>
+
+  <!--
+    IMPORTANT:
+    Safari + Chrome WILL NOT DECODE VIDEO FRAMES if the element is display:none.
+    It must remain "renderable" for the decoder to work.
+    So we move it off-screen instead of hiding it.
+  -->
+  <video id="bg-video"
+         muted
+         playsinline
+         autoplay
+         style="
+           position:absolute;
+           left:-9999px;
+           top:-9999px;
+           width:1px;
+           height:1px;
+         ">
+  </video>
 
   <div id="canvas-container"></div>
 
