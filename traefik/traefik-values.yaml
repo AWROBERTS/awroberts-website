@@ -5,20 +5,15 @@ logs:
     enabled: true
     format: json
 
-providers:
-  kubernetesGateway:
-    enabled: true
+providers: {}
 
-experimental:
-  kubernetesGateway:
-    enabled: true
+experimental: {}
 
 additionalArguments:
   - "--entrypoints.web.address=:80"
   - "--entrypoints.websecure.address=:443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
-  - "--entrypoints.websecure.http.tls.alpnProtocols=h2,http/1.1"
 
 gateway:
   enabled: false
@@ -28,7 +23,6 @@ hostNetwork: false
 deployment:
   enabled: true
   kind: Deployment
-
   dnsPolicy: ClusterFirst
 
 ports:
@@ -54,9 +48,7 @@ ports:
 
 service:
   enabled: true
-
   type: NodePort
-
   nodePorts:
     web: 30080
     websecure: 30443
