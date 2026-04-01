@@ -4,8 +4,9 @@ let videoFadeStart = null;
 let videoFadeDuration = 1200;
 
 // NEW: buffer canvas + context
-let videoBufferCanvas;
-let videoBufferCtx;
+let videoBufferCanvas = null;
+let videoBufferCtx = null;
+let bufferReady = false; // NEW: ensures p5 never draws undefined
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -50,9 +51,8 @@ function setup() {
   // Get video element
   bgVideoEl = document.getElementById("bg-video");
 
-  // NEW: get buffer canvas + context
-  videoBufferCanvas = document.getElementById("video-buffer");
-  videoBufferCtx = videoBufferCanvas.getContext("2d");
+  // NEW: wait for buffer canvas to exist
+  waitForBufferCanvas();
 
   // Detect first decoded frame
   if ("requestVideoFrameCallback" in bgVideoEl) {
@@ -89,18 +89,35 @@ function setup() {
   fadeStartTime = millis();
 }
 
+// ---------------------------------------------------
+// NEW: Wait for buffer canvas to exist before drawing
+// ---------------------------------------------------
+function waitForBufferCanvas() {
+  videoBufferCanvas = document.getElementById("video-buffer");
+
+  if (!videoBufferCanvas) {
+    requestAnimationFrame(waitForBufferCanvas);
+    return;
+  }
+
+  videoBufferCtx = videoBufferCanvas.getContext("2d");
+  bufferReady = true;
+}
+
 function draw() {
   clear();
 
   // ---------------------------------------------------
   // NEW: update buffer canvas with video frame
   // ---------------------------------------------------
-  updateVideoBuffer();
+  if (bufferReady) {
+    updateVideoBuffer();
+  }
 
   // ---------------------------------------------------
   // Draw buffer canvas into p5 (instead of video)
   // ---------------------------------------------------
-  if (videoReady) {
+  if (bufferReady && videoReady) {
     let alpha = 255;
 
     if (videoFadeStart !== null) {
@@ -110,7 +127,12 @@ function draw() {
 
     push();
     tint(255, alpha);
-    image(videoBufferCanvas, 0, 0, width, height);
+
+    // NEW: guard to prevent undefined width crash
+    if (videoBufferCanvas) {
+      image(videoBufferCanvas, 0, 0, width, height);
+    }
+
     pop();
   }
 
@@ -123,7 +145,7 @@ function draw() {
 // NEW: draw video → buffer canvas safely
 // ---------------------------------------------------
 function updateVideoBuffer() {
-  if (!videoReady) return;
+  if (!videoReady || !bufferReady) return;
 
   if (
     bgVideoEl.videoWidth > 0 &&
@@ -135,7 +157,6 @@ function updateVideoBuffer() {
     try {
       videoBufferCtx.drawImage(bgVideoEl, 0, 0);
     } catch (err) {
-      // If WebKit throws, we ignore it — p5 never sees the bad frame
       console.warn("Video frame skipped:", err);
     }
   }
@@ -256,7 +277,7 @@ function drawDeploymentInfo() {
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
-    `traefefik: ${diag.traefik?.version ?? 'N/A'}`,
+    `traefik: ${diag.traefik?.version ?? 'N/A'}`,
     `deployment: ${diag.deployment.name}`,
     `pod: ${diag.pod.name}`,
     `pod ip: ${diag.pod.ip}`,
