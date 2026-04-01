@@ -48,7 +48,15 @@ function setup() {
   // Get the hidden HTML video element
   bgVideoEl = document.getElementById("bg-video");
 
-  // Mark video as ready when it has enough data
+  if (!bgVideoEl) {
+    console.error("ERROR: <video id='bg-video'> not found in DOM");
+  }
+
+  // Mark video as ready when metadata or data is available
+  bgVideoEl.addEventListener("loadedmetadata", () => {
+    videoReady = true;
+  });
+
   bgVideoEl.addEventListener("loadeddata", () => {
     videoReady = true;
   });
@@ -79,7 +87,13 @@ function setup() {
 function draw() {
   clear();
 
-  if (videoReady && bgVideoEl.readyState >= 2) {
+  if (
+    bgVideoEl instanceof HTMLVideoElement &&
+    videoReady &&
+    bgVideoEl.readyState >= 2 &&
+    bgVideoEl.videoWidth > 0 &&
+    bgVideoEl.videoHeight > 0
+  ) {
     image(bgVideoEl, 0, 0, width, height);
   }
 
