@@ -23,12 +23,13 @@ additionalArguments:
 gateway:
   enabled: false
 
-hostNetwork: true
+hostNetwork: false
 
 deployment:
   enabled: true
   kind: Deployment
-  dnsPolicy: ClusterFirstWithHostNet
+
+  dnsPolicy: ClusterFirst
 
 ports:
   web:
@@ -53,10 +54,12 @@ ports:
 
 service:
   enabled: true
-  type: ClusterIP
+
+  type: NodePort
+
   nodePorts:
-    web: null
-    websecure: null
+    web: 30080
+    websecure: 30443
 
 securityContext:
   allowPrivilegeEscalation: true
