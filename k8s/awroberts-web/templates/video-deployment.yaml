@@ -27,11 +27,8 @@ spec:
           volumeMounts:
             - name: hls
               mountPath: /usr/share/nginx/html/stream
-
-            {{- if .Values.backgroundVideo.volume.useHostPath }}
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
-            {{- end }}
 
         # -------------------------
         # FFMPEG (generates LIVE HLS)
@@ -45,7 +42,8 @@ spec:
               ffmpeg -re -stream_loop -1
               -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
               -c:v libx264 -preset veryfast -tune zerolatency -b:v 3000k
-              -g 48 -keyint_min 48 -sc_threshold 0
+              -g 60 -keyint_min 60 -sc_threshold 0
+              -force_key_frames "expr:gte(t,n_forced*2)"
               -c:a aac -ar 44100 -b:a 128k
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
@@ -55,11 +53,8 @@ spec:
           volumeMounts:
             - name: hls
               mountPath: /output
-
-            {{- if .Values.backgroundVideo.volume.useHostPath }}
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
-            {{- end }}
 
           readinessProbe:
             exec:
@@ -89,10 +84,7 @@ spec:
       volumes:
         - name: hls
           emptyDir: {}
-
-        {{- if .Values.backgroundVideo.volume.useHostPath }}
         - name: media-volume
           hostPath:
             path: {{ .Values.backgroundVideo.volume.hostPath }}
             type: DirectoryOrCreate
-        {{- end }}
