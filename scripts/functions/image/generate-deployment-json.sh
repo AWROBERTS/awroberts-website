@@ -61,13 +61,25 @@ EOF
   # -----------------------------
   # Image SHAs (Kubernetes-native)
   # -----------------------------
+  # SHA for main awroberts container
   APP_SHA=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" \
     -o jsonpath='{.status.containerStatuses[?(@.name=="awroberts")].imageID}' \
     | sed 's/.*@sha256://')
 
-  BG_SHA=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" \
-    -o jsonpath='{.status.containerStatuses[?(@.name=="backgroundVideo")].imageID}' \
+  # Find background video pod
+  BG_POD_NAME=$(kubectl -n "$NAMESPACE" get pods \
+    -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+    -l "app.kubernetes.io/name=awroberts-web-deploy-background" \
+    -o jsonpath='{.items[0].metadata.name}')
+
+  # Extract SHA from ffmpeg container
+  BG_SHA=$(kubectl -n "$NAMESPACE" get pod "$BG_POD_NAME" \
+    -o jsonpath='{.status.containerStatuses[?(@.name=="ffmpeg")].imageID}' \
     | sed 's/.*@sha256://')
+
+  # Fallbacks to avoid invalid JSON
+  [ -z "$APP_SHA" ] && APP_SHA="unknown"
+  [ -z "$BG_SHA" ] && BG_SHA="unknown"
 
   # -----------------------------
   # Generate JSON
