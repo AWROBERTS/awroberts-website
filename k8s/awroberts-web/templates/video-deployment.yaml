@@ -45,6 +45,7 @@ spec:
               ffmpeg -re -stream_loop -1
               -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
               -c:v libx264 -preset veryfast -tune zerolatency -b:v 3000k
+              -g 48 -keyint_min 48 -sc_threshold 0
               -c:a aac -ar 44100 -b:a 128k
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
