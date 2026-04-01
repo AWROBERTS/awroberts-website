@@ -18,19 +18,23 @@
 
   <!--
     IMPORTANT:
-    Safari + Chrome WILL NOT DECODE VIDEO FRAMES if the element is display:none.
-    So we move it off-screen instead of hiding it.
+    Chrome WILL NOT DECODE VIDEO FRAMES if the element is 1×1 or effectively invisible.
+    It will buffer segments but never start the media pipeline.
+    So we keep it off‑screen but at a real size.
   -->
   <video id="bg-video"
          muted
          playsinline
          autoplay
+         crossorigin="anonymous"
          style="
            position:absolute;
            left:-9999px;
            top:-9999px;
-           width:1px;
-           height:1px;
+           width:320px;
+           height:180px;
+           opacity:0;
+           pointer-events:none;
          ">
   </video>
 
