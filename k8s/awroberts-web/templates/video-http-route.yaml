@@ -12,7 +12,7 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /media/
+            value: /stream
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}-background
           port: 80
