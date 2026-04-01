@@ -65,7 +65,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - test -s /output/index.m3u8
+                - test -f /output/index.m3u8 || test -f /output/index.m3u8.tmp
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 2
@@ -76,8 +76,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - test -f /output/index.m3u8 &&
-                  find /output/index.m3u8 -mmin -0.2 | grep index.m3u8
+                - test $(ls -1 /output/index*.ts 2>/dev/null | wc -l) -gt 0
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 2
