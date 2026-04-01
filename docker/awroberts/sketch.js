@@ -6,7 +6,7 @@ let videoFadeDuration = 1200;
 // Buffer canvas + context
 let videoBufferCanvas = null;
 let videoBufferCtx = null;
-let bufferReady = false; // NEW: ensures p5 never draws undefined
+let bufferReady = false;
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -29,6 +29,13 @@ const glowColor = [127, 203, 255];
 
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8";
 
+// ---------------------------------------------------
+// WAIT FOR DOM BEFORE P5 SETUP
+// ---------------------------------------------------
+window.addEventListener("DOMContentLoaded", () => {
+  new p5();
+});
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
@@ -48,19 +55,19 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  // Get video element
+  // Get video element (NOW guaranteed to exist)
   bgVideoEl = document.getElementById("bg-video");
 
-  // Wait for buffer canvas to exist
+  // Wait for buffer canvas
   waitForBufferCanvas();
 
   // Detect first decoded frame
-  if ("requestVideoFrameCallback" in bgVideoEl) {
+  if (bgVideoEl && "requestVideoFrameCallback" in bgVideoEl) {
     bgVideoEl.requestVideoFrameCallback(() => {
       videoReady = true;
       videoFadeStart = millis();
     });
-  } else {
+  } else if (bgVideoEl) {
     bgVideoEl.addEventListener("canplay", () => {
       videoReady = true;
       videoFadeStart = millis();
@@ -68,16 +75,18 @@ function setup() {
   }
 
   // Load HLS
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(VIDEO_URL);
-    hls.attachMedia(bgVideoEl);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+  if (bgVideoEl) {
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(VIDEO_URL);
+      hls.attachMedia(bgVideoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        bgVideoEl.play();
+      });
+    } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      bgVideoEl.src = VIDEO_URL;
       bgVideoEl.play();
-    });
-  } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
-    bgVideoEl.src = VIDEO_URL;
-    bgVideoEl.play();
+    }
   }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
@@ -90,7 +99,7 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// Wait for buffer canvas to exist before drawing
+// Wait for buffer canvas to exist
 // ---------------------------------------------------
 function waitForBufferCanvas() {
   videoBufferCanvas = document.getElementById("video-buffer");
@@ -107,16 +116,12 @@ function waitForBufferCanvas() {
 function draw() {
   clear();
 
-  // ---------------------------------------------------
-  // Update buffer canvas with video frame
-  // ---------------------------------------------------
+  // Update buffer safely
   if (bufferReady) {
     updateVideoBuffer();
   }
 
-  // ---------------------------------------------------
-  // Draw buffer canvas into p5 (instead of video)
-  // ---------------------------------------------------
+  // Draw buffer canvas into p5
   if (bufferReady && videoReady) {
     let alpha = 255;
 
@@ -128,7 +133,6 @@ function draw() {
     push();
     tint(255, alpha);
 
-    // Guard to prevent undefined width crash
     if (videoBufferCanvas) {
       image(videoBufferCanvas, 0, 0, width, height);
     }
@@ -142,18 +146,15 @@ function draw() {
 }
 
 // ---------------------------------------------------
-// Draw video → buffer canvas safely
+// SAFE video → buffer canvas
 // ---------------------------------------------------
 function updateVideoBuffer() {
+  // Strongest possible guards
+  if (!bgVideoEl) return;
   if (!videoReady || !bufferReady) return;
+  if (bgVideoEl.videoWidth === undefined) return;
 
-  // Strong guard to prevent undefined.width crash
-  if (!bgVideoEl || bgVideoEl.videoWidth === undefined) return;
-
-  if (
-    bgVideoEl.videoWidth > 0 &&
-    bgVideoEl.videoHeight > 0
-  ) {
+  if (bgVideoEl.videoWidth > 0 && bgVideoEl.videoHeight > 0) {
     videoBufferCanvas.width = bgVideoEl.videoWidth;
     videoBufferCanvas.height = bgVideoEl.videoHeight;
 
@@ -250,11 +251,7 @@ function drawSocialIcons() {
 
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
-    if (
-      icon instanceof p5.Image &&
-      icon.width > 0 &&
-      icon.height > 0
-    ) {
+    if (icon instanceof p5.Image && icon.width > 0 && icon.height > 0) {
       push();
       tint(255, alpha);
       image(icon, x, y, size, size);
@@ -323,12 +320,7 @@ function touchStarted() {
     let y = margin;
     let textW = textWidth(emailText);
 
-    if (
-      tx > x - textW &&
-      tx < x &&
-      ty > y &&
-      ty < y + emailSize
-    ) {
+    if (tx > x - textW && tx < x && ty > y && ty < y + emailSize) {
       window.location.href = 'mailto:info@awroberts.co.uk';
     }
   }
