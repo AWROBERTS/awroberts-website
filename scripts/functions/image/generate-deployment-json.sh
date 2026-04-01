@@ -66,13 +66,12 @@ EOF
     -o jsonpath='{.status.containerStatuses[?(@.name=="awroberts")].imageID}' \
     | sed 's/.*@sha256://')
 
-  # Find background video pod
+  # Find the background video pod using the correct label
   BG_POD_NAME=$(kubectl -n "$NAMESPACE" get pods \
-    -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -l "app.kubernetes.io/name=awroberts-web-deploy-background" \
+    -l "app=awroberts-web-deploy-background" \
     -o jsonpath='{.items[0].metadata.name}')
 
-  # Extract SHA from ffmpeg container
+  # Extract SHA from the ffmpeg container
   BG_SHA=$(kubectl -n "$NAMESPACE" get pod "$BG_POD_NAME" \
     -o jsonpath='{.status.containerStatuses[?(@.name=="ffmpeg")].imageID}' \
     | sed 's/.*@sha256://')
