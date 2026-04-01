@@ -27,7 +27,8 @@ let fadeStartTime;
 
 const glowColor = [127, 203, 255];
 
-const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8";
+// Cache‑buster to force fresh HLS session
+const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 
 // ---------------------------------------------------
 // WAIT FOR DOM BEFORE P5 SETUP
@@ -55,7 +56,7 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
-  // Get video element (NOW guaranteed to exist)
+  // Get video element
   bgVideoEl = document.getElementById("bg-video");
 
   // Wait for buffer canvas
@@ -64,28 +65,50 @@ function setup() {
   // Detect first decoded frame
   if (bgVideoEl && "requestVideoFrameCallback" in bgVideoEl) {
     bgVideoEl.requestVideoFrameCallback(() => {
+      console.log("First decoded frame detected");
       videoReady = true;
       videoFadeStart = millis();
     });
   } else if (bgVideoEl) {
     bgVideoEl.addEventListener("canplay", () => {
+      console.log("Video canplay fired");
       videoReady = true;
       videoFadeStart = millis();
     });
   }
 
-  // Load HLS
+  // ---------------------------------------------------
+  // Robust HLS.js setup with full error logging
+  // ---------------------------------------------------
   if (bgVideoEl) {
     if (Hls.isSupported()) {
-      const hls = new Hls();
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.warn("HLS.js error:", data);
+      });
+
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        console.log("HLS.js media attached");
+        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+      });
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("HLS.js manifest parsed");
+        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+      });
+
+      console.log("Loading HLS source:", VIDEO_URL);
       hls.loadSource(VIDEO_URL);
       hls.attachMedia(bgVideoEl);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        bgVideoEl.play();
-      });
+
     } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      console.log("Native HLS supported");
       bgVideoEl.src = VIDEO_URL;
-      bgVideoEl.play();
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
     }
   }
 
@@ -149,20 +172,17 @@ function draw() {
 // SAFE video → buffer canvas
 // ---------------------------------------------------
 function updateVideoBuffer() {
-  // Strongest possible guards
   if (!bgVideoEl) return;
   if (!videoReady || !bufferReady) return;
-  if (bgVideoEl.videoWidth === undefined) return;
+  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
 
-  if (bgVideoEl.videoWidth > 0 && bgVideoEl.videoHeight > 0) {
-    videoBufferCanvas.width = bgVideoEl.videoWidth;
-    videoBufferCanvas.height = bgVideoEl.videoHeight;
+  videoBufferCanvas.width = bgVideoEl.videoWidth;
+  videoBufferCanvas.height = bgVideoEl.videoHeight;
 
-    try {
-      videoBufferCtx.drawImage(bgVideoEl, 0, 0);
-    } catch (err) {
-      console.warn("Video frame skipped:", err);
-    }
+  try {
+    videoBufferCtx.drawImage(bgVideoEl, 0, 0);
+  } catch (err) {
+    console.warn("Video frame skipped:", err);
   }
 }
 
