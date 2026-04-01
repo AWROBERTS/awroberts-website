@@ -49,7 +49,7 @@ spec:
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
               -hls_list_size {{ .Values.backgroundVideo.hls.playlistSize }}
-              -hls_flags delete_segments+append_list
+              -hls_flags delete_segments
               /output/index.m3u8
           volumeMounts:
             - name: hls
