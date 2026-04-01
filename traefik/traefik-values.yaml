@@ -6,7 +6,6 @@ logs:
     format: json
 
 providers: {}
-
 experimental: {}
 
 additionalArguments:
@@ -16,14 +15,14 @@ additionalArguments:
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
 
 gateway:
-  enabled: false
+  enabled: true
 
-hostNetwork: false
+hostNetwork: true
 
 deployment:
   enabled: true
   kind: Deployment
-  dnsPolicy: ClusterFirst
+  dnsPolicy: ClusterFirstWithHostNet
 
 ports:
   web:
@@ -48,10 +47,7 @@ ports:
 
 service:
   enabled: true
-  type: NodePort
-  nodePorts:
-    web: 30080
-    websecure: 30443
+  type: ClusterIP
 
 securityContext:
   allowPrivilegeEscalation: true
