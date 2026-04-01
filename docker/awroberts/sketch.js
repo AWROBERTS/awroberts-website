@@ -1,4 +1,5 @@
 let bgVideoEl;
+let videoReady = false;
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
@@ -47,6 +48,11 @@ function setup() {
   // Get the hidden HTML video element
   bgVideoEl = document.getElementById("bg-video");
 
+  // Mark video as ready when it has enough data
+  bgVideoEl.addEventListener("loadeddata", () => {
+    videoReady = true;
+  });
+
   // Load HLS stream using hls.js
   if (Hls.isSupported()) {
     const hls = new Hls();
@@ -73,8 +79,7 @@ function setup() {
 function draw() {
   clear();
 
-  // Draw the video frame if available
-  if (bgVideoEl && bgVideoEl.readyState >= 2) {
+  if (videoReady && bgVideoEl.readyState >= 2) {
     image(bgVideoEl, 0, 0, width, height);
   }
 
