@@ -3,7 +3,7 @@ let videoReady = false;
 let videoFadeStart = null;
 let videoFadeDuration = 1200;
 
-// NEW: buffer canvas + context
+// Buffer canvas + context
 let videoBufferCanvas = null;
 let videoBufferCtx = null;
 let bufferReady = false; // NEW: ensures p5 never draws undefined
@@ -51,7 +51,7 @@ function setup() {
   // Get video element
   bgVideoEl = document.getElementById("bg-video");
 
-  // NEW: wait for buffer canvas to exist
+  // Wait for buffer canvas to exist
   waitForBufferCanvas();
 
   // Detect first decoded frame
@@ -90,7 +90,7 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// NEW: Wait for buffer canvas to exist before drawing
+// Wait for buffer canvas to exist before drawing
 // ---------------------------------------------------
 function waitForBufferCanvas() {
   videoBufferCanvas = document.getElementById("video-buffer");
@@ -108,7 +108,7 @@ function draw() {
   clear();
 
   // ---------------------------------------------------
-  // NEW: update buffer canvas with video frame
+  // Update buffer canvas with video frame
   // ---------------------------------------------------
   if (bufferReady) {
     updateVideoBuffer();
@@ -128,7 +128,7 @@ function draw() {
     push();
     tint(255, alpha);
 
-    // NEW: guard to prevent undefined width crash
+    // Guard to prevent undefined width crash
     if (videoBufferCanvas) {
       image(videoBufferCanvas, 0, 0, width, height);
     }
@@ -142,10 +142,13 @@ function draw() {
 }
 
 // ---------------------------------------------------
-// NEW: draw video → buffer canvas safely
+// Draw video → buffer canvas safely
 // ---------------------------------------------------
 function updateVideoBuffer() {
   if (!videoReady || !bufferReady) return;
+
+  // Strong guard to prevent undefined.width crash
+  if (!bgVideoEl || bgVideoEl.videoWidth === undefined) return;
 
   if (
     bgVideoEl.videoWidth > 0 &&
