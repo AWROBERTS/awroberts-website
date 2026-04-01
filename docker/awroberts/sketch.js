@@ -52,12 +52,12 @@ function setup() {
     console.error("ERROR: <video id='bg-video'> not found in DOM");
   }
 
-  // Mark video as ready when metadata or data is available
-  bgVideoEl.addEventListener("loadedmetadata", () => {
+  // Only mark video ready when the FIRST FRAME is actually decodable
+  bgVideoEl.addEventListener("canplay", () => {
     videoReady = true;
   });
 
-  bgVideoEl.addEventListener("loadeddata", () => {
+  bgVideoEl.addEventListener("canplaythrough", () => {
     videoReady = true;
   });
 
@@ -90,7 +90,6 @@ function draw() {
   if (
     bgVideoEl instanceof HTMLVideoElement &&
     videoReady &&
-    bgVideoEl.readyState >= 2 &&
     bgVideoEl.videoWidth > 0 &&
     bgVideoEl.videoHeight > 0
   ) {
@@ -187,7 +186,12 @@ function drawSocialIcons() {
 
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
-    if (icon) {
+    // Prevent drawImage crash if icon failed to load
+    if (
+      icon instanceof p5.Image &&
+      icon.width > 0 &&
+      icon.height > 0
+    ) {
       push();
       tint(255, alpha);
       image(icon, x, y, size, size);
