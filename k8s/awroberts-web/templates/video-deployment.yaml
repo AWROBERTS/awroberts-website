@@ -34,7 +34,7 @@ spec:
             {{- end }}
 
         # -------------------------
-        # FFMPEG (generates HLS)
+        # FFMPEG (generates LIVE HLS)
         # -------------------------
         - name: ffmpeg
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
@@ -42,14 +42,14 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              ffmpeg -stream_loop -1
+              ffmpeg -re -stream_loop -1
               -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
-              -c:v libx264 -preset veryfast -b:v 3000k
+              -c:v libx264 -preset veryfast -tune zerolatency -b:v 3000k
               -c:a aac -ar 44100 -b:a 128k
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
               -hls_list_size {{ .Values.backgroundVideo.hls.playlistSize }}
-              -hls_flags delete_segments
+              -hls_flags delete_segments+program_date_time+independent_segments
               /output/index.m3u8
           volumeMounts:
             - name: hls
