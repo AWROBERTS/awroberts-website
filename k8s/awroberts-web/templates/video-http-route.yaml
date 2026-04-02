@@ -4,12 +4,10 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background
 spec:
   parentRefs:
----    - name: {{ .Values.gateway.name | default "awroberts-web-deploy-gateway" }}
+    - name: {{ .Values.gateway.name | default "awroberts-web-deploy-gateway" }}
       namespace: {{ .Values.gateway.namespace | default "traefik" }}
   hostnames:
-    {{- range .Values.traefik.hostnames }}
-    - {{ . }}
-    {{- end }}
+{{ toYaml .Values.traefik.hostnames | nindent 4 }}
   rules:
     - matches:
         - path:
