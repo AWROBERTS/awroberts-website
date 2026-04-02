@@ -82,7 +82,7 @@ notes_and_status() {
 
   echo
   echo "TLS Secrets:"
-  kubectl -n "$NAMESPACE" get secret | grep tls 2>/dev/null || echo "No TLS secrets found in $NAMESPACE"
+  kubectl -n traefik get secret | grep tls 2>/dev/null || echo "No TLS secrets found in traefik"
 
   echo
   echo "=============================="
