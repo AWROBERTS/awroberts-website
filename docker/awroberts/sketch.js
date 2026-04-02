@@ -4,8 +4,17 @@ let videoReady = false;
 let videoFadeStart = null;
 let videoFadeDuration = 1200;
 
-// p5 render/effects layer
+// Full-resolution video source buffer
+let videoSourceCanvas = null;
+let videoSourceCtx = null;
+let videoSourceReady = false;
+let videoSourceWidth = 0;
+let videoSourceHeight = 0;
+
+// Persistent display buffer to keep the last good frame visible
 let videoLayer = null;
+let videoLayerCtx = null;
+let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
@@ -50,9 +59,15 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
+  videoSourceCanvas = document.createElement("canvas");
+  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
+  videoSourceReady = true;
+
   videoLayer = createGraphics(windowWidth, windowHeight);
   videoLayer.pixelDensity(1);
   videoLayer.clear();
+  videoLayerReady = true;
+  videoLayerCtx = videoLayer.drawingContext;
 
   bgVideoEl = document.getElementById("bg-video");
 
@@ -143,41 +158,54 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// Copy video directly into p5.Graphics background layer
-// Only clear/draw when a new frame is actually copied.
-// If no new frame arrives, keep the last good frame visible.
+// Copy video frame into the source canvas, then only
+// promote it to the visible layer when a new frame arrives.
+// The visible layer keeps the last good frame.
 // ---------------------------------------------------
-function updateVideoLayer() {
+function updateVideoFrame() {
   if (!bgVideoEl) return false;
   if (!videoReady) return false;
-  if (!videoLayer) return false;
+  if (!videoSourceReady || !videoLayerReady) return false;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
 
   const currentTime = bgVideoEl.currentTime;
   const hasAdvanced = currentTime !== lastVideoTime;
 
-  if (!hasAdvanced && hasVideoFrame) {
+  if (hasVideoFrame && !hasAdvanced) {
     return true;
+  }
+
+  const sourceW = bgVideoEl.videoWidth;
+  const sourceH = bgVideoEl.videoHeight;
+
+  if (!sourceW || !sourceH) return hasVideoFrame;
+
+  if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
+    videoSourceCanvas.width = sourceW;
+    videoSourceCanvas.height = sourceH;
+    videoSourceWidth = sourceW;
+    videoSourceHeight = sourceH;
   }
 
   if (videoLayer.width !== width || videoLayer.height !== height) {
     videoLayer.resizeCanvas(width, height);
     videoLayer.pixelDensity(1);
+    videoLayerCtx = videoLayer.drawingContext;
   }
 
-  const ctx = videoLayer.drawingContext;
-
   try {
-    ctx.save();
-    ctx.clearRect(0, 0, videoLayer.width, videoLayer.height);
-    ctx.drawImage(bgVideoEl, 0, 0, videoLayer.width, videoLayer.height);
-    ctx.restore();
+    videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
+
+    videoLayerCtx.save();
+    videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.restore();
 
     lastVideoTime = currentTime;
     hasVideoFrame = true;
     return true;
   } catch (err) {
-    console.warn("Video layer update skipped:", err);
+    console.warn("Video frame copy skipped:", err);
     return hasVideoFrame;
   }
 }
@@ -185,8 +213,8 @@ function updateVideoLayer() {
 function draw() {
   clear();
 
-  if (videoReady && videoLayer) {
-    const frameAvailable = updateVideoLayer();
+  if (videoReady && videoLayerReady) {
+    const frameAvailable = updateVideoFrame();
 
     if (frameAvailable || hasVideoFrame) {
       let alpha = 255;
