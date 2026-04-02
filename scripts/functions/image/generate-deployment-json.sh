@@ -56,11 +56,6 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_all_pods_json() {
-    local namespace="$1"
-    kubectl get pods -n "$namespace" -o json 2>/dev/null
-  }
-
   get_first_deployment_name() {
     kubectl get deploy -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
@@ -73,33 +68,10 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_traefik_deployment_name() {
-    kubectl get deploy -n traefik \
-      -l "app.kubernetes.io/name=traefik" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
-  }
-
-  get_traefik_service_name() {
-    kubectl get svc -n traefik \
-      -l "app.kubernetes.io/name=traefik" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
-  }
-
-  get_traefik_image() {
-    local traefik_deploy_name="$1"
-    kubectl get deploy "$traefik_deploy_name" -n traefik \
-      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null
-  }
-
-  get_traefik_version_from_image() {
-    local traefik_image_ref="$1"
-    local image_tag="${traefik_image_ref##*:}"
-
-    if [[ -n "$image_tag" && "$image_tag" != "$traefik_image_ref" ]]; then
-      echo "$image_tag"
-    else
-      echo "unknown"
-    fi
+  get_workload_pods_json() {
+    local namespace="$1"
+    local selector="$2"
+    kubectl get pods -n "$namespace" -l "$selector" -o json 2>/dev/null
   }
 
   local deployment_name
@@ -124,27 +96,6 @@ generate_deployment_json() {
   if [[ -z "${service_name:-}" ]]; then
     echo "❌ No service found for Helm release '${HELM_RELEASE}' in namespace '${NAMESPACE}'" >&2
     return 1
-  fi
-
-  local traefik_deployment_name
-  traefik_deployment_name="$(get_traefik_deployment_name)"
-
-  local traefik_service_name
-  traefik_service_name="$(get_traefik_service_name)"
-
-  local traefik_image="docker.io/traefik:v3.6.12"
-  local traefik_version="v3.6.12"
-  local traefik_sha="unknown"
-
-  if [[ -n "${traefik_deployment_name:-}" ]]; then
-    local live_traefik_image
-    live_traefik_image="$(get_traefik_image "$traefik_deployment_name")"
-
-    if [[ -n "${live_traefik_image:-}" ]]; then
-      traefik_image="$live_traefik_image"
-      traefik_version="$(get_traefik_version_from_image "$live_traefik_image")"
-      traefik_sha="$(resolve_image_sha "$live_traefik_image")"
-    fi
   fi
 
   local app_image="${APP_FULL_IMAGE:-${APP_IMAGE_NAME:-awroberts}:unknown}"
@@ -186,26 +137,6 @@ generate_deployment_json() {
   local service_port
   service_port="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
 
-  local traefik_deploy_ready="0/0"
-  if [[ -n "${traefik_deployment_name:-}" ]]; then
-    traefik_deploy_ready="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || echo "0/0")"
-  fi
-
-  local traefik_deploy_age=""
-  if [[ -n "${traefik_deployment_name:-}" ]]; then
-    traefik_deploy_age="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")"
-  fi
-
-  local traefik_service_cluster_ip=""
-  if [[ -n "${traefik_service_name:-}" ]]; then
-    traefik_service_cluster_ip="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
-  fi
-
-  local traefik_service_port=""
-  if [[ -n "${traefik_service_name:-}" ]]; then
-    traefik_service_port="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
-  fi
-
   local kubernetes_version
   kubernetes_version="$(
     kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
@@ -215,31 +146,29 @@ generate_deployment_json() {
   helm_version="$(helm version --short 2>/dev/null || echo "")"
 
   local app_pods_json
-  app_pods_json="$(get_all_pods_json "${NAMESPACE}")"
+  app_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app.kubernetes.io/instance=${HELM_RELEASE}")"
 
-  local traefik_pods_json
-  traefik_pods_json="$(get_all_pods_json "traefik")"
+  local bg_pods_json
+  bg_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app=${HELM_RELEASE}-background")"
 
-  local pods_array="[]"
-  pods_array="$(
-    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${traefik_pods_json:-{\"items\":[]}}" | jq -s '
-      [
-        (.[0].items[]? | {
-          namespace: "awroberts",
+  local pods_json
+  pods_json="$(
+    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${bg_pods_json:-{\"items\":[]}}" | jq -s '
+      {
+        awroberts: [.[0].items[]? | {
           name: .metadata.name,
           status: .status.phase,
           restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
           ip: .status.podIP
-        }),
-        (.[1].items[]? | {
-          namespace: "traefik",
+        }],
+        backgroundVideo: [.[1].items[]? | {
           name: .metadata.name,
           status: .status.phase,
           restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
           ip: .status.podIP
-        })
-      ]
-    ' 2>/dev/null || echo "[]"
+        }]
+      }
+    ' 2>/dev/null || echo '{"awroberts":[],"backgroundVideo":[]}'
   )"
 
   cat > "$output_file" <<EOF
@@ -260,24 +189,14 @@ generate_deployment_json() {
       "sha": "${app_sha}"
     }
   },
-  "traefik": {
-    "deployment": {
-      "name": "${traefik_deployment_name}",
-      "ready": "${traefik_deploy_ready}",
-      "age": "${traefik_deploy_age}"
-    },
-    "service": {
-      "name": "${traefik_service_name}",
-      "clusterIP": "${traefik_service_cluster_ip}",
-      "port": ${traefik_service_port}
-    },
+  "backgroundVideo": {
     "build": {
-      "image": "${traefik_image}",
-      "version": "${traefik_version}",
-      "sha": "${traefik_sha}"
+      "image": "${bg_image}",
+      "tag": "${bg_image##*:}",
+      "sha": "${bg_sha}"
     }
   },
-  "pods": ${pods_array},
+  "pods": ${pods_json},
   "pod": {
     "name": "${pod_name}",
     "status": "${pod_status}",
