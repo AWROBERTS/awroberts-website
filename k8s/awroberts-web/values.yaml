@@ -16,7 +16,11 @@ traefik:
     includeSubdomains: true
 
 gateway:
+  name: awroberts-web-deploy-gateway
   namespace: traefik
+
+stream:
+  pathPrefix: /stream
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
