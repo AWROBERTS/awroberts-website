@@ -14,6 +14,9 @@ additionalArguments:
 gateway:
   enabled: true
 
+rbac:
+  enabled: true
+
 hostNetwork: true
 
 ports:
@@ -46,11 +49,3 @@ ports:
 service:
   enabled: true
   type: ClusterIP
-
-rbac:
-  enabled: true
-  rules:
-    - apiGroups: ["gateway.networking.k8s.io"]
-      resources: ["gatewayclasses", "gateways", "httproutes", "grpcroutes", "referencegrants", "backendtlspolicies"]
-      verbs: ["get", "list", "watch"]
-
