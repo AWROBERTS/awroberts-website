@@ -186,26 +186,22 @@ generate_deployment_json() {
   local service_port
   service_port="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
 
-  local traefik_deploy_ready
-  traefik_deploy_ready="0/0"
+  local traefik_deploy_ready="0/0"
   if [[ -n "${traefik_deployment_name:-}" ]]; then
     traefik_deploy_ready="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || echo "0/0")"
   fi
 
-  local traefik_deploy_age
-  traefik_deploy_age=""
+  local traefik_deploy_age=""
   if [[ -n "${traefik_deployment_name:-}" ]]; then
     traefik_deploy_age="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")"
   fi
 
-  local traefik_service_cluster_ip
-  traefik_service_cluster_ip=""
+  local traefik_service_cluster_ip=""
   if [[ -n "${traefik_service_name:-}" ]]; then
     traefik_service_cluster_ip="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
   fi
 
-  local traefik_service_port
-  traefik_service_port=""
+  local traefik_service_port=""
   if [[ -n "${traefik_service_name:-}" ]]; then
     traefik_service_port="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
   fi
@@ -225,35 +221,26 @@ generate_deployment_json() {
   traefik_pods_json="$(get_all_pods_json "traefik")"
 
   local pods_array="[]"
-  if [[ -n "${app_pods_json:-}" || -n "${traefik_pods_json:-}" ]]; then
-    pods_array="$(
-      jq -nc \
-        --argjson appPods "${app_pods_json:-{\"items\":[]}}" \
-        --argjson traefikPods "${traefik_pods_json:-{\"items\":[]}}" \
-        '
-        {
-          pods: (
-            [
-              $appPods.items[]? | {
-                namespace: "awroberts",
-                name: .metadata.name,
-                status: .status.phase,
-                restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-                ip: .status.podIP
-              },
-              $traefikPods.items[]? | {
-                namespace: "traefik",
-                name: .metadata.name,
-                status: .status.phase,
-                restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-                ip: .status.podIP
-              }
-            ]
-          )
-        } | .pods
-        '
-    )"
-  fi
+  pods_array="$(
+    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${traefik_pods_json:-{\"items\":[]}}" | jq -s '
+      [
+        (.[0].items[]? | {
+          namespace: "awroberts",
+          name: .metadata.name,
+          status: .status.phase,
+          restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+          ip: .status.podIP
+        }),
+        (.[1].items[]? | {
+          namespace: "traefik",
+          name: .metadata.name,
+          status: .status.phase,
+          restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+          ip: .status.podIP
+        })
+      ]
+    ' 2>/dev/null || echo "[]"
+  )"
 
   cat > "$output_file" <<EOF
 {
