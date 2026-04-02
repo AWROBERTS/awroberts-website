@@ -6,6 +6,8 @@ logs:
     format: json
 
 additionalArguments:
+  - "--entryPoints.web.address=:8080"
+  - "--entryPoints.websecure.address=:8443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
   - "--providers.kubernetesgateway=true"
@@ -20,30 +22,15 @@ podSecurityContext:
   runAsGroup: 65532
   runAsNonRoot: true
 
-deployment:
-  initContainers:
-    - name: setcap
-      image: docker.io/traefik:v3.6.12
-      command:
-        - /bin/sh
-        - -c
-        - |
-          apk add --no-cache libcap
-          setcap 'cap_net_bind_service=+ep' /usr/local/bin/traefik
-      securityContext:
-        runAsUser: 0
-        runAsGroup: 0
-        privileged: true
-
 ports:
   web:
-    port: 80
+    port: 8080
     expose:
       default: true
     exposedPort: 80
 
   websecure:
-    port: 443
+    port: 8443
     expose:
       default: true
     exposedPort: 443
