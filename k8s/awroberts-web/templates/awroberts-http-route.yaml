@@ -6,10 +6,13 @@ metadata:
 spec:
   parentRefs:
     - name: {{ include "awroberts.fullname" . }}-gateway
+      namespace: traefik
       sectionName: https-root
     - name: {{ include "awroberts.fullname" . }}-gateway
+      namespace: traefik
       sectionName: https-wildcard
     - name: {{ include "awroberts.fullname" . }}-gateway
+      namespace: traefik
       sectionName: http
 
   hostnames:
