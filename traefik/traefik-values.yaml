@@ -1,9 +1,19 @@
-logs:
-  general:
-    level: INFO
-  access:
-    enabled: true
-    format: json
+podSecurity:
+  enabled: false
+
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+
+deployment:
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: true
+
+hostNetwork: true
 
 additionalArguments:
   - "--entryPoints.web.forwardedHeaders.insecure=true"
@@ -13,23 +23,12 @@ additionalArguments:
 gateway:
   enabled: true
 
-hostNetwork: true
-
-podSecurityContext:
-  runAsUser: 0
-  runAsGroup: 0
-  runAsNonRoot: false
-
-deployment:
-  enabled: true
-  kind: Deployment
-  dnsPolicy: ClusterFirstWithHostNet
-
-  securityContext:
-    runAsUser: 0
-    runAsGroup: 0
-    runAsNonRoot: false
-    allowPrivilegeEscalation: true
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
+    format: json
 
 ports:
   web:
@@ -37,14 +36,12 @@ ports:
     expose:
       default: true
     exposedPort: 80
-    protocol: TCP
 
   websecure:
     port: 443
     expose:
       default: true
     exposedPort: 443
-    protocol: TCP
 
 service:
   enabled: true
