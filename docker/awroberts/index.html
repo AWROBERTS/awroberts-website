@@ -7,21 +7,11 @@
 
   <link rel="stylesheet" href="style.css" />
 
-  <!-- p5.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
-
-  <!-- hls.js for cross‑browser HLS playback -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 
 <body>
-
-  <!--
-    IMPORTANT:
-    Chrome WILL NOT DECODE VIDEO FRAMES if the element is 1×1 or effectively invisible.
-    It will buffer segments but never start the media pipeline.
-    So we keep it off‑screen but at a real size.
-  -->
   <video id="bg-video"
          muted
          playsinline
@@ -38,30 +28,8 @@
          ">
   </video>
 
-  <!--
-    DEBUG BUFFER CANVAS
-    This is where the video will be drawn FIRST.
-    p5 will draw THIS canvas instead of the video.
-    This avoids the WebKit drawImage crash.
-  -->
-  <canvas id="video-buffer"
-          width="640"
-          height="360"
-          style="
-            position:fixed;
-            bottom:20px;
-            right:20px;
-            width:200px;
-            height:112px;
-            border:2px solid #00aaff;
-            z-index:9999;
-            background:#000;
-          ">
-  </canvas>
-
   <div id="canvas-container"></div>
 
-  <!-- CRITICAL: ensure DOM is ready before sketch.js runs -->
   <script defer src="sketch.js"></script>
 </body>
 </html>
