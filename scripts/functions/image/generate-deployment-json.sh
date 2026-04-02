@@ -171,7 +171,9 @@ generate_deployment_json() {
   service_port="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
 
   local kubernetes_version
-  kubernetes_version="$(kubectl version --client --short 2>/dev/null | awk '{print $3}' || echo "")"
+  kubernetes_version="$(
+    kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
+  )"
 
   local helm_version
   helm_version="$(helm version --short 2>/dev/null || echo "")"
