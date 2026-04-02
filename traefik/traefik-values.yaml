@@ -26,6 +26,8 @@ deployment:
       runAsUser: 0
       runAsGroup: 0
       runAsNonRoot: false
+      allowPrivilegeEscalation: true
+      readOnlyRootFilesystem: false
       capabilities:
         add:
           - NET_BIND_SERVICE
