@@ -181,11 +181,13 @@ function updateVideoBuffer() {
 function draw() {
   clear();
 
+  // Update buffer safely
   if (bufferReady) {
     updateVideoBuffer();
   }
 
-  if (bufferReady && videoReady) {
+  // Draw buffer canvas into p5
+  if (bufferReady && videoReady && videoBufferCanvas instanceof HTMLCanvasElement) {
     let alpha = 255;
 
     if (videoFadeStart !== null) {
@@ -195,17 +197,40 @@ function draw() {
 
     push();
     tint(255, alpha);
-
-    if (videoBufferCanvas) {
-      image(videoBufferCanvas, 0, 0, width, height);
-    }
-
+    image(videoBufferCanvas, 0, 0, width, height);
     pop();
   }
 
   drawEmail();
   drawSocialIcons();
   drawDeploymentInfo();
+}
+
+// ---------------------------------------------------
+// SAFE video → buffer canvas
+// ---------------------------------------------------
+function updateVideoBuffer() {
+  if (!bgVideoEl) return;
+  if (!videoReady || !bufferReady) return;
+  if (!videoBufferCanvas || !videoBufferCtx) return;
+  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
+
+  const w = bgVideoEl.videoWidth;
+  const h = bgVideoEl.videoHeight;
+
+  if (!bufferCanvasInitialized || w !== bufferCanvasWidth || h !== bufferCanvasHeight) {
+    videoBufferCanvas.width = w;
+    videoBufferCanvas.height = h;
+    bufferCanvasWidth = w;
+    bufferCanvasHeight = h;
+    bufferCanvasInitialized = true;
+  }
+
+  try {
+    videoBufferCtx.drawImage(bgVideoEl, 0, 0);
+  } catch (err) {
+    console.warn("Video frame skipped:", err);
+  }
 }
 
 // ----------------------------
