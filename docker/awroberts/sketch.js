@@ -4,13 +4,16 @@ let videoReady = false;
 let videoFadeStart = null;
 let videoFadeDuration = 1200;
 
-// Buffer canvas + context
+// Debug buffer canvas + context
 let videoBufferCanvas = null;
 let videoBufferCtx = null;
 let bufferReady = false;
 let bufferCanvasInitialized = false;
 let bufferCanvasWidth = 0;
 let bufferCanvasHeight = 0;
+
+// p5 render/effects layer
+let videoLayer = null;
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -53,20 +56,28 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
+  videoLayer = createGraphics(windowWidth, windowHeight);
+  videoLayer.pixelDensity(1);
+
   bgVideoEl = document.getElementById("bg-video");
   waitForBufferCanvas();
 
   if (bgVideoEl && "requestVideoFrameCallback" in bgVideoEl) {
-    bgVideoEl.requestVideoFrameCallback(() => {
+    const onFirstFrame = () => {
       console.log("First decoded frame detected");
       videoReady = true;
-      videoFadeStart = millis();
-    });
+      if (videoFadeStart === null) {
+        videoFadeStart = millis();
+      }
+    };
+    bgVideoEl.requestVideoFrameCallback(onFirstFrame);
   } else if (bgVideoEl) {
     bgVideoEl.addEventListener("canplay", () => {
       console.log("Video canplay fired");
       videoReady = true;
-      videoFadeStart = millis();
+      if (videoFadeStart === null) {
+        videoFadeStart = millis();
+      }
     });
   }
 
@@ -89,7 +100,7 @@ function setup() {
         if (!data.fatal && data.details === "bufferStalledError") {
           if (bgVideoEl.buffered && bgVideoEl.buffered.length) {
             const end = bgVideoEl.buffered.end(bgVideoEl.buffered.length - 1);
-            const target = Math.max(end - 1.0, 0);
+            const target = Math.max(end - 1.5, 0);
             bgVideoEl.currentTime = target;
             bgVideoEl.play().catch(err => console.warn("play() failed:", err));
           }
@@ -153,7 +164,7 @@ function waitForBufferCanvas() {
 }
 
 // ---------------------------------------------------
-// Safe video → buffer canvas
+// Copy video frame to debug buffer canvas
 // ---------------------------------------------------
 function updateVideoBuffer() {
   if (!bgVideoEl) return;
@@ -179,6 +190,30 @@ function updateVideoBuffer() {
   }
 }
 
+// ---------------------------------------------------
+// Copy debug canvas into p5.Graphics for effects/rendering
+// ---------------------------------------------------
+function updateVideoLayerFromBuffer() {
+  if (!videoLayer) return;
+  if (!videoBufferCanvas) return;
+  if (videoBufferCanvas.width <= 0 || videoBufferCanvas.height <= 0) return;
+
+  const targetW = width;
+  const targetH = height;
+
+  if (videoLayer.width !== targetW || videoLayer.height !== targetH) {
+    videoLayer.resizeCanvas(targetW, targetH);
+    videoLayer.pixelDensity(1);
+  }
+
+  try {
+    videoLayer.clear();
+    videoLayer.image(videoBufferCanvas, 0, 0, videoLayer.width, videoLayer.height);
+  } catch (err) {
+    console.warn("p5 layer update skipped:", err);
+  }
+}
+
 function draw() {
   clear();
 
@@ -186,23 +221,18 @@ function draw() {
     updateVideoBuffer();
   }
 
-  if (
-    bufferReady &&
-    videoReady &&
-    videoBufferCanvas &&
-    videoBufferCanvas.width > 0 &&
-    videoBufferCanvas.height > 0
-  ) {
-    let alpha = 255;
+  if (videoReady && videoLayer) {
+    updateVideoLayerFromBuffer();
 
+    let alpha = 255;
     if (videoFadeStart !== null) {
-      let t = (millis() - videoFadeStart) / videoFadeDuration;
+      const t = (millis() - videoFadeStart) / videoFadeDuration;
       alpha = constrain(t * 255, 0, 255);
     }
 
     push();
     tint(255, alpha);
-    image(videoBufferCanvas, 0, 0, width, height);
+    image(videoLayer, 0, 0, width, height);
     pop();
   }
 
@@ -274,14 +304,14 @@ function drawSocialIcons() {
 
   hoveringSocial = -1;
 
-  let fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
-  let alpha = fadeProgress * 255;
+  const fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
+  const alpha = fadeProgress * 255;
 
   socialLinks.forEach((item, i) => {
-    let x = xStart + i * spacing;
-    let icon = icons[item.imgKey];
+    const x = xStart + i * spacing;
+    const icon = icons[item.imgKey];
 
-    let isHover =
+    const isHover =
       mouseX > x &&
       mouseX < x + size &&
       mouseY > y &&
@@ -292,7 +322,7 @@ function drawSocialIcons() {
       cursor(HAND);
     }
 
-    let glowAlpha = isHover ? 255 : 0;
+    const glowAlpha = isHover ? 255 : 0;
 
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
@@ -317,7 +347,7 @@ function drawDeploymentInfo() {
   fill(255);
 
   const margin = 30;
-  let x = margin;
+  const x = margin;
 
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
@@ -357,13 +387,13 @@ function mousePressed() {
 
 function touchStarted() {
   if (touches.length > 0) {
-    let tx = touches[0].x;
-    let ty = touches[0].y;
+    const tx = touches[0].x;
+    const ty = touches[0].y;
 
-    let margin = 30;
-    let x = width - margin;
-    let y = margin;
-    let textW = textWidth(emailText);
+    const margin = 30;
+    const x = width - margin;
+    const y = margin;
+    const textW = textWidth(emailText);
 
     if (tx > x - textW && tx < x && ty > y && ty < y + emailSize) {
       window.location.href = 'mailto:info@awroberts.co.uk';
@@ -374,6 +404,12 @@ function touchStarted() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+
+  if (videoLayer) {
+    videoLayer.resizeCanvas(windowWidth, windowHeight);
+    videoLayer.pixelDensity(1);
+  }
+
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
   textSize(emailSize);
 }
