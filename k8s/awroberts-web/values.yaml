@@ -70,7 +70,7 @@ backgroundVideo:
 
   hls:
     segmentDuration: 2
-    playlistSize: 15
+    playlistSize: 20
 
   volume:
     hostPath: "/var/www/html/awroberts/awroberts-media"
