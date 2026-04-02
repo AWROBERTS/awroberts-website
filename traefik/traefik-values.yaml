@@ -6,7 +6,8 @@ logs:
     format: json
 
 additionalArguments:
-  - "--entryPoints.traefik.address=:9000"
+  - "--entryPoints.traefik.address="
+  - "--entryPoints.metrics.address="
   - "--entryPoints.web.address=:8080"
   - "--entryPoints.websecure.address=:8443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
