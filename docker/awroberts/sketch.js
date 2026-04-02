@@ -6,6 +6,7 @@ let videoFadeDuration = 1200;
 
 // p5 render/effects layer
 let videoLayer = null;
+let lastVideoTime = -1;
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -141,12 +142,17 @@ function setup() {
 
 // ---------------------------------------------------
 // Copy video directly into p5.Graphics background layer
+// Only update when the video time advances so the last
+// good frame stays visible during stalls.
 // ---------------------------------------------------
 function updateVideoLayer() {
   if (!bgVideoEl) return;
   if (!videoReady) return;
   if (!videoLayer) return;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
+
+  const currentTime = bgVideoEl.currentTime;
+  if (currentTime === lastVideoTime) return;
 
   if (videoLayer.width !== width || videoLayer.height !== height) {
     videoLayer.resizeCanvas(width, height);
@@ -160,6 +166,8 @@ function updateVideoLayer() {
     ctx.clearRect(0, 0, videoLayer.width, videoLayer.height);
     ctx.drawImage(bgVideoEl, 0, 0, videoLayer.width, videoLayer.height);
     ctx.restore();
+
+    lastVideoTime = currentTime;
   } catch (err) {
     console.warn("Video layer update skipped:", err);
   }
@@ -296,19 +304,39 @@ function drawDeploymentInfo() {
   const margin = 30;
   const x = margin;
 
+  const awrobertsPods = Array.isArray(diag.pods)
+    ? diag.pods.filter(p => p.namespace === 'awroberts')
+    : [];
+
+  const traefikPods = Array.isArray(diag.pods)
+    ? diag.pods.filter(p => p.namespace === 'traefik')
+    : [];
+
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
-    `traefik: ${diag.traefik?.version ?? 'N/A'}`,
-    `deployment: ${diag.deployment?.name ?? 'N/A'}`,
-    `pod: ${diag.pod?.name ?? 'N/A'}`,
-    `pod ip: ${diag.pod?.ip ?? 'N/A'}`,
-    `service cluster ip: ${diag.service?.clusterIP ?? 'N/A'}`,
-    `awroberts: ${diag.build?.awroberts?.name ?? 'N/A'}:${diag.build?.awroberts?.tag ?? 'N/A'}`,
-    `awroberts sha: ${diag.build?.awroberts?.sha ?? 'N/A'}`,
-    `background-video: ${diag.build?.backgroundVideo?.name ?? 'N/A'}:${diag.build?.backgroundVideo?.tag ?? 'N/A'}`,
-    `background-video sha: ${diag.build?.backgroundVideo?.sha ?? 'N/A'}`
+    `awroberts cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
+    `awroberts port: ${diag.awroberts?.service?.port ?? 'N/A'}`,
+    `awroberts image: ${diag.awroberts?.build?.image ?? 'N/A'}`,
+    `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
+    `traefik cluster ip: ${diag.traefik?.service?.clusterIP ?? 'N/A'}`,
+    `traefik port: ${diag.traefik?.service?.port ?? 'N/A'}`,
+    `traefik image: ${diag.traefik?.build?.image ?? 'N/A'}`,
+    `traefik version: ${diag.traefik?.build?.version ?? 'N/A'}`,
+    `traefik sha: ${diag.traefik?.build?.sha ?? 'N/A'}`
   ];
+
+  lines.push('');
+  lines.push('awroberts pods:');
+  awrobertsPods.forEach((pod, index) => {
+    lines.push(`  ${index + 1}. ${pod.name ?? 'N/A'} | ${pod.status ?? 'N/A'} | ${pod.ip ?? 'N/A'} | restarts ${pod.restarts ?? 'N/A'}`);
+  });
+
+  lines.push('');
+  lines.push('traefik pods:');
+  traefikPods.forEach((pod, index) => {
+    lines.push(`  ${index + 1}. ${pod.name ?? 'N/A'} | ${pod.status ?? 'N/A'} | ${pod.ip ?? 'N/A'} | restarts ${pod.restarts ?? 'N/A'}`);
+  });
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
 
