@@ -35,6 +35,8 @@ build_image_generic() {
   local IMAGE="$1"
   local LATEST="$2"
   local CONTEXT="$3"
+  local TAG="$4"
+  local SOURCE_URL="$5"
 
   echo "🔨 Building ${IMAGE}"
   echo "   → Context: ${CONTEXT}"
@@ -44,6 +46,11 @@ build_image_generic() {
 
   docker build \
     --no-cache \
+    --build-arg BUILD_SHA="${TAG}" \
+    --label "org.opencontainers.image.revision=${TAG}" \
+    --label "org.opencontainers.image.version=${TAG}" \
+    --label "org.opencontainers.image.title=${IMAGE_NAME_BASE}" \
+    ${SOURCE_URL:+--label "org.opencontainers.image.source=${SOURCE_URL}"} \
     -t "${IMAGE}" \
     -t "${LATEST}" \
     "${CONTEXT}"
@@ -72,7 +79,12 @@ build_all_images() {
   APP_LATEST_IMAGE="${LATEST_IMAGE}"
   APP_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
   echo "  → ${APP_FULL_IMAGE}"
-  build_image_generic "${APP_FULL_IMAGE}" "${APP_LATEST_IMAGE}" "${PROJECT_ROOT}/docker/awroberts"
+  build_image_generic \
+    "${APP_FULL_IMAGE}" \
+    "${APP_LATEST_IMAGE}" \
+    "${PROJECT_ROOT}/docker/awroberts" \
+    "${TAG}" \
+    "${GIT_REMOTE_URL:-}"
 
   # BACKGROUND VIDEO
   echo "🎞️ Building BACKGROUND VIDEO image..."
@@ -81,7 +93,12 @@ build_all_images() {
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
   BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
   echo "  → ${BG_FULL_IMAGE}"
-  build_image_generic "${BG_FULL_IMAGE}" "${BG_LATEST_IMAGE}" "${PROJECT_ROOT}/docker/background-video"
+  build_image_generic \
+    "${BG_FULL_IMAGE}" \
+    "${BG_LATEST_IMAGE}" \
+    "${PROJECT_ROOT}/docker/background-video" \
+    "${TAG}" \
+    "${GIT_REMOTE_URL:-}"
 
   end_all=$(date +%s)
   duration_all=$(( end_all - start_all ))
