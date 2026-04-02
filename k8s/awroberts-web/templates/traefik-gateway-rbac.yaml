@@ -17,6 +17,8 @@ rules:
     resources:
       - gatewayclasses/status
       - gateways/status
+      - httproutes/status
+      - grpcroutes/status
     verbs: ["update", "patch"]
 
 ---
