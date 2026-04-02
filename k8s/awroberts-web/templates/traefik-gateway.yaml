@@ -7,10 +7,6 @@ metadata:
 spec:
   gatewayClassName: traefik
 
-  addresses:
-    - type: IPAddress
-      value: {{ .Values.traefik.loadBalancerIP }}
-
   listeners:
     - name: https-root
       protocol: HTTPS
