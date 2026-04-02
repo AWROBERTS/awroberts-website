@@ -188,7 +188,7 @@ function draw() {
   if (videoReady && videoLayer) {
     const frameAvailable = updateVideoLayer();
 
-    if (frameAvailable) {
+    if (frameAvailable || hasVideoFrame) {
       let alpha = 255;
       if (videoFadeStart !== null) {
         const t = (millis() - videoFadeStart) / videoFadeDuration;
@@ -315,13 +315,9 @@ function drawDeploymentInfo() {
   const margin = 30;
   const x = margin;
 
-  const awrobertsPods = Array.isArray(diag.pods)
-    ? diag.pods.filter(p => p.namespace === 'awroberts')
-    : [];
-
-  const traefikPods = Array.isArray(diag.pods)
-    ? diag.pods.filter(p => p.namespace === 'traefik')
-    : [];
+  const pods = Array.isArray(diag.pods) ? diag.pods : [];
+  const awrobertsPods = pods.filter(p => p.namespace === 'awroberts');
+  const traefikPods = pods.filter(p => p.namespace === 'traefik');
 
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
