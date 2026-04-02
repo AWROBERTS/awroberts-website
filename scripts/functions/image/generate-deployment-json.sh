@@ -5,20 +5,10 @@ generate_deployment_json() {
 
   resolve_image_sha() {
     local image_ref="$1"
-    local label_sha=""
     local repo_digest=""
     local image_id=""
+    local label_sha=""
     local tag_sha=""
-
-    label_sha="$(
-      docker image inspect "$image_ref" \
-        --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null
-    )"
-
-    if [[ -n "$label_sha" && "$label_sha" != "<no value>" ]]; then
-      echo "$label_sha"
-      return 0
-    fi
 
     repo_digest="$(
       docker image inspect "$image_ref" \
@@ -36,7 +26,17 @@ generate_deployment_json() {
     )"
 
     if [[ -n "$image_id" && "$image_id" != "<no value>" ]]; then
-      echo "${image_id#sha256:}"
+      echo "$image_id"
+      return 0
+    fi
+
+    label_sha="$(
+      docker image inspect "$image_ref" \
+        --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null
+    )"
+
+    if [[ -n "$label_sha" && "$label_sha" != "<no value>" ]]; then
+      echo "$label_sha"
       return 0
     fi
 
