@@ -1,4 +1,4 @@
-podSecurity:
+podSecurityPolicy:
   enabled: false
 
 podSecurityContext:
