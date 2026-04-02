@@ -12,6 +12,10 @@ additionalArguments:
   - "--entryPoints.web.address=:8000"
   - "--entryPoints.websecure.address=:8443"
 
+providers:
+  kubernetesGateway:
+    enabled: true
+
 gateway:
   enabled: true
 
