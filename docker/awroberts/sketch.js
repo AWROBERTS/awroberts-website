@@ -140,7 +140,6 @@ function setup() {
       console.log("Loading HLS source:", VIDEO_URL);
       hlsInstance.loadSource(VIDEO_URL);
       hlsInstance.attachMedia(bgVideoEl);
-
     } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
       console.log("Native HLS supported");
       bgVideoEl.src = VIDEO_URL;
@@ -157,11 +156,6 @@ function setup() {
   fadeStartTime = millis();
 }
 
-// ---------------------------------------------------
-// Copy video frame into the source canvas, then only
-// promote it to the visible layer when a new frame arrives.
-// The visible layer keeps the last good frame.
-// ---------------------------------------------------
 function updateVideoFrame() {
   if (!bgVideoEl) return false;
   if (!videoReady) return false;
@@ -235,9 +229,6 @@ function draw() {
   drawDeploymentInfo();
 }
 
-// ----------------------------
-// GLOW HELPER
-// ----------------------------
 function drawGlow(x, y, w, h, alpha) {
   push();
   noStroke();
@@ -247,9 +238,6 @@ function drawGlow(x, y, w, h, alpha) {
   pop();
 }
 
-// ----------------------------
-// EMAIL
-// ----------------------------
 function drawEmail() {
   const margin = 30;
   const x = width - margin;
@@ -286,9 +274,6 @@ function drawEmail() {
   text(emailText, x, y);
 }
 
-// ----------------------------
-// SOCIAL ICONS
-// ----------------------------
 function drawSocialIcons() {
   const size = emailSize * 0.8;
   const margin = 30;
@@ -329,9 +314,6 @@ function drawSocialIcons() {
   });
 }
 
-// ----------------------------
-// DEPLOYMENT INFO
-// ----------------------------
 function drawDeploymentInfo() {
   if (!diag) return;
 
@@ -344,21 +326,19 @@ function drawDeploymentInfo() {
   const x = margin;
 
   const pods = Array.isArray(diag.pods) ? diag.pods : [];
-  const awrobertsPods = pods.filter(p => p.namespace === 'awroberts');
-  const traefikPods = pods.filter(p => p.namespace === 'traefik');
+  const awrobertsPods = pods.awroberts ?? [];
+  const backgroundVideoPods = pods.backgroundVideo ?? [];
 
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
+    `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
     `awroberts cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
     `awroberts port: ${diag.awroberts?.service?.port ?? 'N/A'}`,
     `awroberts image: ${diag.awroberts?.build?.image ?? 'N/A'}`,
     `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
-    `traefik cluster ip: ${diag.traefik?.service?.clusterIP ?? 'N/A'}`,
-    `traefik port: ${diag.traefik?.service?.port ?? 'N/A'}`,
-    `traefik image: ${diag.traefik?.build?.image ?? 'N/A'}`,
-    `traefik version: ${diag.traefik?.build?.version ?? 'N/A'}`,
-    `traefik sha: ${diag.traefik?.build?.sha ?? 'N/A'}`
+    `background-video image: ${diag.backgroundVideo?.build?.image ?? 'N/A'}`,
+    `background-video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
   ];
 
   lines.push('');
@@ -368,8 +348,8 @@ function drawDeploymentInfo() {
   });
 
   lines.push('');
-  lines.push('traefik pods:');
-  traefikPods.forEach((pod, index) => {
+  lines.push('background-video pods:');
+  backgroundVideoPods.forEach((pod, index) => {
     lines.push(`  ${index + 1}. ${pod.name ?? 'N/A'} | ${pod.status ?? 'N/A'} | ${pod.ip ?? 'N/A'} | restarts ${pod.restarts ?? 'N/A'}`);
   });
 
@@ -381,9 +361,6 @@ function drawDeploymentInfo() {
   }
 }
 
-// ----------------------------
-// INTERACTION
-// ----------------------------
 function mousePressed() {
   if (isHoveringEmail) {
     window.location.href = 'mailto:info@awroberts.co.uk';

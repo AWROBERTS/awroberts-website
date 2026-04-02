@@ -56,11 +56,6 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_all_pods_json() {
-    local namespace="$1"
-    kubectl get pods -n "$namespace" -o json 2>/dev/null
-  }
-
   get_first_deployment_name() {
     kubectl get deploy -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
@@ -71,6 +66,12 @@ generate_deployment_json() {
     kubectl get svc -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  }
+
+  get_workload_pods_json() {
+    local namespace="$1"
+    local selector="$2"
+    kubectl get pods -n "$namespace" -l "$selector" -o json 2>/dev/null
   }
 
   get_traefik_deployment_name() {
@@ -215,31 +216,29 @@ generate_deployment_json() {
   helm_version="$(helm version --short 2>/dev/null || echo "")"
 
   local app_pods_json
-  app_pods_json="$(get_all_pods_json "${NAMESPACE}")"
+  app_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app.kubernetes.io/instance=${HELM_RELEASE}")"
 
-  local traefik_pods_json
-  traefik_pods_json="$(get_all_pods_json "traefik")"
+  local bg_pods_json
+  bg_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app=awroberts-web-background")"
 
-  local pods_array="[]"
-  pods_array="$(
-    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${traefik_pods_json:-{\"items\":[]}}" | jq -s '
-      [
-        (.[0].items[]? | {
-          namespace: "awroberts",
+  local pods_json
+  pods_json="$(
+    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${bg_pods_json:-{\"items\":[]}}" | jq -s '
+      {
+        awroberts: [.[0].items[]? | {
           name: .metadata.name,
           status: .status.phase,
           restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
           ip: .status.podIP
-        }),
-        (.[1].items[]? | {
-          namespace: "traefik",
+        }],
+        backgroundVideo: [.[1].items[]? | {
           name: .metadata.name,
           status: .status.phase,
           restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
           ip: .status.podIP
-        })
-      ]
-    ' 2>/dev/null || echo "[]"
+        }]
+      }
+    ' 2>/dev/null || echo '{"awroberts":[],"backgroundVideo":[]}'
   )"
 
   cat > "$output_file" <<EOF
@@ -260,6 +259,13 @@ generate_deployment_json() {
       "sha": "${app_sha}"
     }
   },
+  "backgroundVideo": {
+    "build": {
+      "image": "${bg_image}",
+      "tag": "${bg_image##*:}",
+      "sha": "${bg_sha}"
+    }
+  },
   "traefik": {
     "deployment": {
       "name": "${traefik_deployment_name}",
@@ -277,7 +283,7 @@ generate_deployment_json() {
       "sha": "${traefik_sha}"
     }
   },
-  "pods": ${pods_array},
+  "pods": ${pods_json},
   "pod": {
     "name": "${pod_name}",
     "status": "${pod_status}",
