@@ -4,14 +4,6 @@ let videoReady = false;
 let videoFadeStart = null;
 let videoFadeDuration = 1200;
 
-// Debug buffer canvas + context
-let videoBufferCanvas = null;
-let videoBufferCtx = null;
-let bufferReady = false;
-let bufferCanvasInitialized = false;
-let bufferCanvasWidth = 0;
-let bufferCanvasHeight = 0;
-
 // p5 render/effects layer
 let videoLayer = null;
 
@@ -60,7 +52,6 @@ function setup() {
   videoLayer.pixelDensity(1);
 
   bgVideoEl = document.getElementById("bg-video");
-  waitForBufferCanvas();
 
   if (bgVideoEl && "requestVideoFrameCallback" in bgVideoEl) {
     const onFirstFrame = () => {
@@ -149,80 +140,36 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// Wait for buffer canvas to exist
+// Copy video directly into p5.Graphics background layer
 // ---------------------------------------------------
-function waitForBufferCanvas() {
-  videoBufferCanvas = document.getElementById("video-buffer");
-
-  if (!videoBufferCanvas) {
-    requestAnimationFrame(waitForBufferCanvas);
-    return;
-  }
-
-  videoBufferCtx = videoBufferCanvas.getContext("2d");
-  bufferReady = true;
-}
-
-// ---------------------------------------------------
-// Copy video frame to debug buffer canvas
-// ---------------------------------------------------
-function updateVideoBuffer() {
+function updateVideoLayer() {
   if (!bgVideoEl) return;
-  if (!videoReady || !bufferReady) return;
-  if (!videoBufferCanvas || !videoBufferCtx) return;
+  if (!videoReady) return;
+  if (!videoLayer) return;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
 
-  const w = bgVideoEl.videoWidth;
-  const h = bgVideoEl.videoHeight;
-
-  if (!bufferCanvasInitialized || w !== bufferCanvasWidth || h !== bufferCanvasHeight) {
-    videoBufferCanvas.width = w;
-    videoBufferCanvas.height = h;
-    bufferCanvasWidth = w;
-    bufferCanvasHeight = h;
-    bufferCanvasInitialized = true;
-  }
-
-  try {
-    videoBufferCtx.drawImage(bgVideoEl, 0, 0);
-  } catch (err) {
-    console.warn("Video frame skipped:", err);
-  }
-}
-
-// ---------------------------------------------------
-// Copy debug canvas into p5.Graphics for effects/rendering
-// ---------------------------------------------------
-function updateVideoLayerFromBuffer() {
-  if (!videoLayer) return;
-  if (!videoBufferCanvas) return;
-  if (videoBufferCanvas.width <= 0 || videoBufferCanvas.height <= 0) return;
-
-  const targetW = width;
-  const targetH = height;
-
-  if (videoLayer.width !== targetW || videoLayer.height !== targetH) {
-    videoLayer.resizeCanvas(targetW, targetH);
+  if (videoLayer.width !== width || videoLayer.height !== height) {
+    videoLayer.resizeCanvas(width, height);
     videoLayer.pixelDensity(1);
   }
 
+  const ctx = videoLayer.drawingContext;
+
   try {
-    videoLayer.clear();
-    videoLayer.image(videoBufferCanvas, 0, 0, videoLayer.width, videoLayer.height);
+    ctx.save();
+    ctx.clearRect(0, 0, videoLayer.width, videoLayer.height);
+    ctx.drawImage(bgVideoEl, 0, 0, videoLayer.width, videoLayer.height);
+    ctx.restore();
   } catch (err) {
-    console.warn("p5 layer update skipped:", err);
+    console.warn("Video layer update skipped:", err);
   }
 }
 
 function draw() {
   clear();
 
-  if (bufferReady) {
-    updateVideoBuffer();
-  }
-
   if (videoReady && videoLayer) {
-    updateVideoLayerFromBuffer();
+    updateVideoLayer();
 
     let alpha = 255;
     if (videoFadeStart !== null) {
@@ -353,14 +300,14 @@ function drawDeploymentInfo() {
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
     `traefik: ${diag.traefik?.version ?? 'N/A'}`,
-    `deployment: ${diag.deployment.name}`,
-    `pod: ${diag.pod.name}`,
-    `pod ip: ${diag.pod.ip}`,
-    `service cluster ip: ${diag.service.clusterIP}`,
-    `awroberts: ${diag.build.awroberts.name}:${diag.build.awroberts.tag}`,
-    `awroberts sha: ${diag.build.awroberts.sha}`,
-    `background-video: ${diag.build.backgroundVideo.name}:${diag.build.backgroundVideo.tag}`,
-    `background-video sha: ${diag.build.backgroundVideo.sha}`
+    `deployment: ${diag.deployment?.name ?? 'N/A'}`,
+    `pod: ${diag.pod?.name ?? 'N/A'}`,
+    `pod ip: ${diag.pod?.ip ?? 'N/A'}`,
+    `service cluster ip: ${diag.service?.clusterIP ?? 'N/A'}`,
+    `awroberts: ${diag.build?.awroberts?.name ?? 'N/A'}:${diag.build?.awroberts?.tag ?? 'N/A'}`,
+    `awroberts sha: ${diag.build?.awroberts?.sha ?? 'N/A'}`,
+    `background-video: ${diag.build?.backgroundVideo?.name ?? 'N/A'}:${diag.build?.backgroundVideo?.tag ?? 'N/A'}`,
+    `background-video sha: ${diag.build?.backgroundVideo?.sha ?? 'N/A'}`
   ];
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
