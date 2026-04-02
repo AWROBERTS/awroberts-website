@@ -1,121 +1,146 @@
+#!/usr/bin/env bash
+
 generate_deployment_json() {
+  local output_file="${1:-deployment.json}"
 
-  echo "=============================="
-  echo "📦 Generating deployment.json"
-  echo "=============================="
+  resolve_image_sha() {
+    local image_ref="$1"
+    local label_sha=""
+    local repo_digest=""
+    local image_id=""
+    local tag_sha=""
 
-  # Escape helper
-  json_escape() {
-    printf '%s' "$1" | jq -R .
+    # Try OCI revision label first
+    label_sha="$(
+      docker image inspect "$image_ref" \
+        --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null
+    )"
+
+    if [[ -n "$label_sha" && "$label_sha" != "<no value>" ]]; then
+      echo "$label_sha"
+      return 0
+    fi
+
+    # Try repo digest if available
+    repo_digest="$(
+      docker image inspect "$image_ref" \
+        --format '{{index .RepoDigests 0}}' 2>/dev/null
+    )"
+
+    if [[ -n "$repo_digest" && "$repo_digest" != "<no value>" ]]; then
+      echo "$repo_digest"
+      return 0
+    fi
+
+    # Try image ID as a fallback
+    image_id="$(
+      docker image inspect "$image_ref" \
+        --format '{{.Id}}' 2>/dev/null
+    )"
+
+    if [[ -n "$image_id" && "$image_id" != "<no value>" ]]; then
+      echo "${image_id#sha256:}"
+      return 0
+    fi
+
+    # Final fallback: use the tag portion of the image reference
+    tag_sha="${image_ref##*:}"
+    if [[ -n "$tag_sha" && "$tag_sha" != "$image_ref" ]]; then
+      echo "$tag_sha"
+      return 0
+    fi
+
+    echo "unknown"
   }
 
-  # Image object helper
-  json_image_obj() {
-    local NAME="$1"
-    local TAG="$2"
-    local SHA="$3"
+  get_image_id_for_pod_container() {
+    local pod_name="$1"
+    local container_name="$2"
 
-    cat <<EOF
-{
-      "name": $(json_escape "$NAME"),
-      "tag": $(json_escape "$TAG"),
-      "sha": $(json_escape "$SHA")
-}
-EOF
+    kubectl get pod "$pod_name" -n "$NAMESPACE" \
+      -o jsonpath="{.status.containerStatuses[?(@.name==\"${container_name}\")].imageID}" 2>/dev/null \
+      | sed 's#^docker-pullable://##; s#^containerd://##'
   }
 
-  # -----------------------------
-  # Kubernetes metadata
-  # -----------------------------
-  DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" \
+  local deployment_name
+  deployment_name="$(kubectl get deploy -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -o jsonpath='{.items[0].metadata.name}')
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
 
-  POD_NAME=$(kubectl get pods -n "$NAMESPACE" \
+  if [[ -z "$deployment_name" ]]; then
+    echo "❌ No deployment found for Helm release '$HELM_RELEASE' in namespace '$NAMESPACE'" >&2
+    return 1
+  fi
+
+  local pod_name
+  pod_name="$(kubectl get pod -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -o jsonpath='{.items[0].metadata.name}')
+    --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
 
-  SERVICE_NAME=$(kubectl -n "$NAMESPACE" get svc \
+  if [[ -z "$pod_name" ]]; then
+    echo "❌ No running pod found for Helm release '$HELM_RELEASE' in namespace '$NAMESPACE'" >&2
+    return 1
+  fi
+
+  local service_name
+  service_name="$(kubectl get svc -n "$NAMESPACE" \
     -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -o jsonpath='{.items[0].metadata.name}')
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
 
-  DEPLOY_READY=$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.status.readyReplicas}/{.status.replicas}')
-  DEPLOY_AGE=$(kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o jsonpath='{.metadata.creationTimestamp}')
+  local app_image="${APP_FULL_IMAGE:-awroberts:unknown}"
+  local bg_image="${BG_FULL_IMAGE:-background-video:unknown}"
 
-  POD_STATUS=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" -o jsonpath='{.status.phase}')
-  POD_RESTARTS=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" -o jsonpath='{.status.containerStatuses[0].restartCount}')
-  POD_IP=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" -o jsonpath='{.status.podIP}')
+  local app_sha
+  local bg_sha
 
-  SERVICE_CLUSTER_IP=$(kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o jsonpath='{.spec.clusterIP}')
-  SERVICE_PORT=$(kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" -o jsonpath='{.spec.ports[0].port}')
+  app_sha="$(resolve_image_sha "$app_image")"
+  bg_sha="$(resolve_image_sha "$bg_image")"
 
-  NODE_INTERNAL_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+  local pod_image_id
+  pod_image_id="$(get_image_id_for_pod_container "$pod_name" "awroberts-web" || true)"
 
-  K8S_VERSION=$(kubectl version -o json | jq -r '.serverVersion.gitVersion')
-  HELM_VERSION=$(helm version --short --client)
-
-  TRAEFIK_IMAGE=$(kubectl -n traefik get deploy traefik \
-    -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)
-  TRAEFIK_VERSION="${TRAEFIK_IMAGE##*:}"
-
-  # -----------------------------
-  # Image SHAs (Kubernetes-native)
-  # -----------------------------
-  # SHA for main awroberts container
-  APP_SHA=$(kubectl -n "$NAMESPACE" get pod "$POD_NAME" \
-    -o jsonpath='{.status.containerStatuses[?(@.name=="awroberts")].imageID}' \
-    | sed 's/.*@sha256://')
-
-  # Find the background video pod using the correct label
-  BG_POD_NAME=$(kubectl -n "$NAMESPACE" get pods \
-    -l "app=awroberts-web-deploy-background" \
-    -o jsonpath='{.items[0].metadata.name}')
-
-  # Extract SHA from the ffmpeg container
-  BG_SHA=$(kubectl -n "$NAMESPACE" get pod "$BG_POD_NAME" \
-    -o jsonpath='{.status.containerStatuses[?(@.name=="ffmpeg")].imageID}' \
-    | sed 's/.*@sha256://')
-
-  # Fallbacks to avoid invalid JSON
-  [ -z "$APP_SHA" ] && APP_SHA="unknown"
-  [ -z "$BG_SHA" ] && BG_SHA="unknown"
-
-  # -----------------------------
-  # Generate JSON
-  # -----------------------------
-  cat <<EOF > deployment.json
+  cat > "$output_file" <<EOF
 {
   "deployment": {
-    "name": $(json_escape "$DEPLOYMENT_NAME"),
-    "ready": $(json_escape "$DEPLOY_READY"),
+    "name": "${deployment_name}",
+    "ready": "$(kubectl get deploy "$deployment_name" -n "$NAMESPACE" -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null)",
     "images": {
-      "awroberts": $(json_escape "${APP_IMAGE_NAME_BASE}:${IMAGE_TAG}"),
-      "backgroundVideo": $(json_escape "${BG_IMAGE_NAME_BASE}:${IMAGE_TAG}")
+      "awroberts": "${app_image}",
+      "backgroundVideo": "${bg_image}"
     },
-    "age": $(json_escape "$DEPLOY_AGE")
+    "age": "$(kubectl get deploy "$deployment_name" -n "$NAMESPACE" -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null)"
   },
   "pod": {
-    "name": $(json_escape "$POD_NAME"),
-    "status": $(json_escape "$POD_STATUS"),
-    "restarts": $POD_RESTARTS,
-    "ip": $(json_escape "$POD_IP")
+    "name": "${pod_name}",
+    "status": "$(kubectl get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null)",
+    "restarts": "$(kubectl get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null)",
+    "ip": "$(kubectl get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.status.podIP}' 2>/dev/null)"
   },
   "service": {
-    "clusterIP": $(json_escape "$SERVICE_CLUSTER_IP"),
-    "port": $SERVICE_PORT
+    "clusterIP": "$(kubectl get svc "$service_name" -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)",
+    "port": "$(kubectl get svc "$service_name" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)"
   },
   "node": {
-    "internal": $(json_escape "$NODE_INTERNAL_IP")
+    "internal": "$(kubectl get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.spec.nodeName}' 2>/dev/null | xargs -r kubectl get node -o jsonpath='{.items[?(@.metadata.name=="'"$(kubectl get pod "$pod_name" -n "$NAMESPACE" -o jsonpath='{.spec.nodeName}' 2>/dev/null)"'")].status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null)"
   },
   "build": {
-    "awroberts": $(json_image_obj "$APP_IMAGE_NAME_BASE" "$IMAGE_TAG" "$APP_SHA"),
-    "backgroundVideo": $(json_image_obj "$BG_IMAGE_NAME_BASE" "$IMAGE_TAG" "$BG_SHA")
+    "awroberts": {
+      "name": "awroberts",
+      "tag": "${app_image##*:}",
+      "sha": "${app_sha}"
+    },
+    "backgroundVideo": {
+      "name": "background-video",
+      "tag": "${bg_image##*:}",
+      "sha": "${bg_sha}"
+    }
   },
   "kubernetes": {
-    "version": $(json_escape "$K8S_VERSION")
+    "version": "$(kubectl version --client --short 2>/dev/null | awk '{print $3}')"
   },
   "helm": {
-    "version": $(json_escape "$HELM_VERSION")
+    "version": "$(helm version --short 2>/dev/null)"
   },
   "traefik": {
     "image": $(json_escape "$TRAEFIK_IMAGE"),
