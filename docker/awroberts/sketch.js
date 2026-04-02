@@ -153,61 +153,7 @@ function waitForBufferCanvas() {
 }
 
 // ---------------------------------------------------
-// video → buffer canvas
-// ---------------------------------------------------
-function updateVideoBuffer() {
-  if (!bgVideoEl) return;
-  if (!videoReady || !bufferReady) return;
-  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
-
-  const w = bgVideoEl.videoWidth;
-  const h = bgVideoEl.videoHeight;
-
-  if (!bufferCanvasInitialized || w !== bufferCanvasWidth || h !== bufferCanvasHeight) {
-    videoBufferCanvas.width = w;
-    videoBufferCanvas.height = h;
-    bufferCanvasWidth = w;
-    bufferCanvasHeight = h;
-    bufferCanvasInitialized = true;
-  }
-
-  try {
-    videoBufferCtx.drawImage(bgVideoEl, 0, 0);
-  } catch (err) {
-    console.warn("Video frame skipped:", err);
-  }
-}
-
-function draw() {
-  clear();
-
-  // Update buffer safely
-  if (bufferReady) {
-    updateVideoBuffer();
-  }
-
-  // Draw buffer canvas into p5
-  if (bufferReady && videoReady && videoBufferCanvas instanceof HTMLCanvasElement) {
-    let alpha = 255;
-
-    if (videoFadeStart !== null) {
-      let t = (millis() - videoFadeStart) / videoFadeDuration;
-      alpha = constrain(t * 255, 0, 255);
-    }
-
-    push();
-    tint(255, alpha);
-    image(videoBufferCanvas, 0, 0, width, height);
-    pop();
-  }
-
-  drawEmail();
-  drawSocialIcons();
-  drawDeploymentInfo();
-}
-
-// ---------------------------------------------------
-// SAFE video → buffer canvas
+// Safe video → buffer canvas
 // ---------------------------------------------------
 function updateVideoBuffer() {
   if (!bgVideoEl) return;
@@ -231,6 +177,38 @@ function updateVideoBuffer() {
   } catch (err) {
     console.warn("Video frame skipped:", err);
   }
+}
+
+function draw() {
+  clear();
+
+  if (bufferReady) {
+    updateVideoBuffer();
+  }
+
+  if (
+    bufferReady &&
+    videoReady &&
+    videoBufferCanvas &&
+    videoBufferCanvas.width > 0 &&
+    videoBufferCanvas.height > 0
+  ) {
+    let alpha = 255;
+
+    if (videoFadeStart !== null) {
+      let t = (millis() - videoFadeStart) / videoFadeDuration;
+      alpha = constrain(t * 255, 0, 255);
+    }
+
+    push();
+    tint(255, alpha);
+    image(videoBufferCanvas, 0, 0, width, height);
+    pop();
+  }
+
+  drawEmail();
+  drawSocialIcons();
+  drawDeploymentInfo();
 }
 
 // ----------------------------
@@ -318,7 +296,7 @@ function drawSocialIcons() {
 
     drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
 
-    if (icon instanceof p5.Image && icon.width > 0 && icon.height > 0) {
+    if (icon && icon.width > 0 && icon.height > 0) {
       push();
       tint(255, alpha);
       image(icon, x, y, size, size);
