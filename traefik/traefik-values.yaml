@@ -6,15 +6,10 @@ logs:
     format: json
 
 additionalArguments:
-  - "--providers.kubernetesgateway=true"
   - "--api.dashboard=true"
   - "--ping=true"
   - "--entryPoints.web.address=:8000"
   - "--entryPoints.websecure.address=:8443"
-
-providers:
-  kubernetesGateway:
-    enabled: true
 
 gateway:
   enabled: true
