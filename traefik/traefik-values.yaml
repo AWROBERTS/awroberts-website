@@ -6,13 +6,18 @@ logs:
     format: json
 
 additionalArguments:
-  - "--entryPoints.traefik.address=:9000"
-  - "--entryPoints.metrics.address=:9001"
+  - "--providers.kubernetesgateway=true"
   - "--entryPoints.web.address=:8080"
   - "--entryPoints.websecure.address=:8443"
+  - "--entryPoints.websecure.http.tls=true"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
-  - "--providers.kubernetesgateway=true"
+  - "--api.dashboard=true"
+  - "--ping=true"
+  - "--entryPoints.traefik.address=:9000"
+  - "--entryPoints.metrics.address=:9001"
+  - "--metrics.prometheus=true"
+  - "--metrics.prometheus.entrypoint=metrics"
 
 gateway:
   enabled: true
@@ -25,6 +30,20 @@ podSecurityContext:
   runAsNonRoot: true
 
 ports:
+  web:
+    port: 8080
+    hostPort: 80
+    expose:
+      default: true
+    exposedPort: 80
+
+  websecure:
+    port: 8443
+    hostPort: 443
+    expose:
+      default: true
+    exposedPort: 443
+
   traefik:
     port: 9000
     expose:
@@ -34,18 +53,6 @@ ports:
     port: 9001
     expose:
       default: false
-
-  web:
-    port: 8080
-    expose:
-      default: true
-    exposedPort: 80
-
-  websecure:
-    port: 8443
-    expose:
-      default: true
-    exposedPort: 443
 
 service:
   enabled: true
