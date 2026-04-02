@@ -15,6 +15,9 @@ traefik:
     maxAge: 31536000
     includeSubdomains: true
 
+gateway:
+  namespace: traefik
+
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
   mountPath: /usr/share/nginx/html/awroberts-media
