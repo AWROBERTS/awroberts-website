@@ -20,6 +20,11 @@ deployment:
   kind: Deployment
   dnsPolicy: ClusterFirstWithHostNet
 
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+
 ports:
   web:
     port: 80
