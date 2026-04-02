@@ -7,6 +7,7 @@ let videoFadeDuration = 1200;
 // p5 render/effects layer
 let videoLayer = null;
 let lastVideoTime = -1;
+let hasVideoFrame = false;
 
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
@@ -51,6 +52,7 @@ function setup() {
 
   videoLayer = createGraphics(windowWidth, windowHeight);
   videoLayer.pixelDensity(1);
+  videoLayer.clear();
 
   bgVideoEl = document.getElementById("bg-video");
 
@@ -142,17 +144,21 @@ function setup() {
 
 // ---------------------------------------------------
 // Copy video directly into p5.Graphics background layer
-// Only update when the video time advances so the last
-// good frame stays visible during stalls.
+// Only clear/draw when a new frame is actually copied.
+// If no new frame arrives, keep the last good frame visible.
 // ---------------------------------------------------
 function updateVideoLayer() {
-  if (!bgVideoEl) return;
-  if (!videoReady) return;
-  if (!videoLayer) return;
-  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return;
+  if (!bgVideoEl) return false;
+  if (!videoReady) return false;
+  if (!videoLayer) return false;
+  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
 
   const currentTime = bgVideoEl.currentTime;
-  if (currentTime === lastVideoTime) return;
+  const hasAdvanced = currentTime !== lastVideoTime;
+
+  if (!hasAdvanced && hasVideoFrame) {
+    return true;
+  }
 
   if (videoLayer.width !== width || videoLayer.height !== height) {
     videoLayer.resizeCanvas(width, height);
@@ -168,8 +174,11 @@ function updateVideoLayer() {
     ctx.restore();
 
     lastVideoTime = currentTime;
+    hasVideoFrame = true;
+    return true;
   } catch (err) {
     console.warn("Video layer update skipped:", err);
+    return hasVideoFrame;
   }
 }
 
@@ -177,18 +186,20 @@ function draw() {
   clear();
 
   if (videoReady && videoLayer) {
-    updateVideoLayer();
+    const frameAvailable = updateVideoLayer();
 
-    let alpha = 255;
-    if (videoFadeStart !== null) {
-      const t = (millis() - videoFadeStart) / videoFadeDuration;
-      alpha = constrain(t * 255, 0, 255);
+    if (frameAvailable) {
+      let alpha = 255;
+      if (videoFadeStart !== null) {
+        const t = (millis() - videoFadeStart) / videoFadeDuration;
+        alpha = constrain(t * 255, 0, 255);
+      }
+
+      push();
+      tint(255, alpha);
+      image(videoLayer, 0, 0, width, height);
+      pop();
     }
-
-    push();
-    tint(255, alpha);
-    image(videoLayer, 0, 0, width, height);
-    pop();
   }
 
   drawEmail();
