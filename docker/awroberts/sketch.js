@@ -325,9 +325,9 @@ function drawDeploymentInfo() {
   const margin = 30;
   const x = margin;
 
-  const pods = Array.isArray(diag.pods) ? diag.pods : [];
-  const awrobertsPods = pods.awroberts ?? [];
-  const backgroundVideoPods = pods.backgroundVideo ?? [];
+  const pods = diag.pods || {};
+  const awrobertsPods = Array.isArray(pods.awroberts) ? pods.awroberts : [];
+  const backgroundVideoPods = Array.isArray(pods.backgroundVideo) ? pods.backgroundVideo : [];
 
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
