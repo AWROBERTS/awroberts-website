@@ -229,7 +229,7 @@ EOF
   echo
   echo "📤 Copying JSON into running pod"
 
-  kubectl cp deployment.json "$NAMESPACE/$POD_NAME":/usr/share/nginx/html/deployment.json
+  kubectl cp deployment.json "$NAMESPACE/$pod_name":/usr/share/nginx/html/deployment.json
 
-  echo "deployment.json copied to pod: $POD_NAME"
+  echo "deployment.json copied to pod: $pod_name"
 }
