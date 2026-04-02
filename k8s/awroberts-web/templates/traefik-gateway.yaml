@@ -16,6 +16,9 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: https-wildcard
       protocol: HTTPS
@@ -25,7 +28,13 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+      allowedRoutes:
+        namespaces:
+          from: All
 
     - name: http
       protocol: HTTP
       port: 8000
+      allowedRoutes:
+        namespaces:
+          from: All
