@@ -6,8 +6,8 @@ logs:
     format: json
 
 additionalArguments:
-  - "--entryPoints.traefik.address="
-  - "--entryPoints.metrics.address="
+  - "--entryPoints.traefik.address=:9000"
+  - "--entryPoints.metrics.address=:9001"
   - "--entryPoints.web.address=:8080"
   - "--entryPoints.websecure.address=:8443"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
@@ -26,12 +26,12 @@ podSecurityContext:
 
 ports:
   traefik:
-    port: 0
+    port: 9000
     expose:
       default: false
 
   metrics:
-    port: 0
+    port: 9001
     expose:
       default: false
 
