@@ -7,17 +7,8 @@ logs:
 
 additionalArguments:
   - "--providers.kubernetesgateway=true"
-  - "--entryPoints.web.address=:80"
-  - "--entryPoints.websecure.address=:443"
-  - "--entryPoints.websecure.http.tls=true"
-  - "--entryPoints.web.forwardedHeaders.insecure=true"
-  - "--entryPoints.websecure.forwardedHeaders.insecure=true"
   - "--api.dashboard=true"
   - "--ping=true"
-  - "--entryPoints.traefik.address=:9000"
-  - "--entryPoints.metrics.address=:9001"
-  - "--metrics.prometheus=true"
-  - "--metrics.prometheus.entrypoint=metrics"
 
 gateway:
   enabled: true
