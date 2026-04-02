@@ -219,7 +219,7 @@ generate_deployment_json() {
   app_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app.kubernetes.io/instance=${HELM_RELEASE}")"
 
   local bg_pods_json
-  bg_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app=awroberts-web-background")"
+  bg_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app=awroberts-web-deploy-background")"
 
   local pods_json
   pods_json="$(
