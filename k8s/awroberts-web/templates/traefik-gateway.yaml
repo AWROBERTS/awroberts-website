@@ -2,7 +2,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: {{ include "awroberts.fullname" . }}-gateway
-  namespace: traefik
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    "helm.sh/resource-policy": keep
 
 spec:
   gatewayClassName: traefik
