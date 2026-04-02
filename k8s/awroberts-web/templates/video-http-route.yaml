@@ -4,15 +4,17 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background
 spec:
   parentRefs:
-    - name: awroberts-web-deploy-gateway
-      namespace: awroberts
+---    - name: {{ .Values.gateway.name | default "awroberts-web-deploy-gateway" }}
+      namespace: {{ .Values.gateway.namespace | default "traefik" }}
   hostnames:
-    - awroberts.co.uk
+    {{- range .Values.traefik.hostnames }}
+    - {{ . }}
+    {{- end }}
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: /stream
+            value: {{ .Values.stream.pathPrefix | default "/stream" }}
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}-background
-          port: 80
+          port: {{ .Values.service.port | default 80 }}
