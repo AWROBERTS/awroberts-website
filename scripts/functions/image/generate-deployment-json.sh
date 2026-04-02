@@ -56,6 +56,11 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
+  get_all_pods_json() {
+    local namespace="$1"
+    kubectl get pods -n "$namespace" -o json 2>/dev/null
+  }
+
   get_first_deployment_name() {
     kubectl get deploy -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
@@ -70,6 +75,12 @@ generate_deployment_json() {
 
   get_traefik_deployment_name() {
     kubectl get deploy -n traefik \
+      -l "app.kubernetes.io/name=traefik" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  }
+
+  get_traefik_service_name() {
+    kubectl get svc -n traefik \
       -l "app.kubernetes.io/name=traefik" \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
@@ -118,8 +129,12 @@ generate_deployment_json() {
   local traefik_deployment_name
   traefik_deployment_name="$(get_traefik_deployment_name)"
 
+  local traefik_service_name
+  traefik_service_name="$(get_traefik_service_name)"
+
   local traefik_image="docker.io/traefik:v3.6.12"
   local traefik_version="v3.6.12"
+  local traefik_sha="unknown"
 
   if [[ -n "${traefik_deployment_name:-}" ]]; then
     local live_traefik_image
@@ -128,6 +143,7 @@ generate_deployment_json() {
     if [[ -n "${live_traefik_image:-}" ]]; then
       traefik_image="$live_traefik_image"
       traefik_version="$(get_traefik_version_from_image "$live_traefik_image")"
+      traefik_sha="$(resolve_image_sha "$live_traefik_image")"
     fi
   fi
 
@@ -170,6 +186,30 @@ generate_deployment_json() {
   local service_port
   service_port="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
 
+  local traefik_deploy_ready
+  traefik_deploy_ready="0/0"
+  if [[ -n "${traefik_deployment_name:-}" ]]; then
+    traefik_deploy_ready="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || echo "0/0")"
+  fi
+
+  local traefik_deploy_age
+  traefik_deploy_age=""
+  if [[ -n "${traefik_deployment_name:-}" ]]; then
+    traefik_deploy_age="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")"
+  fi
+
+  local traefik_service_cluster_ip
+  traefik_service_cluster_ip=""
+  if [[ -n "${traefik_service_name:-}" ]]; then
+    traefik_service_cluster_ip="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
+  fi
+
+  local traefik_service_port
+  traefik_service_port=""
+  if [[ -n "${traefik_service_name:-}" ]]; then
+    traefik_service_port="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
+  fi
+
   local kubernetes_version
   kubernetes_version="$(
     kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
@@ -178,51 +218,93 @@ generate_deployment_json() {
   local helm_version
   helm_version="$(helm version --short 2>/dev/null || echo "")"
 
+  local app_pods_json
+  app_pods_json="$(get_all_pods_json "${NAMESPACE}")"
+
+  local traefik_pods_json
+  traefik_pods_json="$(get_all_pods_json "traefik")"
+
+  local pods_array="[]"
+  if [[ -n "${app_pods_json:-}" || -n "${traefik_pods_json:-}" ]]; then
+    pods_array="$(
+      jq -nc \
+        --argjson appPods "${app_pods_json:-{\"items\":[]}}" \
+        --argjson traefikPods "${traefik_pods_json:-{\"items\":[]}}" \
+        '
+        {
+          pods: (
+            [
+              $appPods.items[]? | {
+                namespace: "awroberts",
+                name: .metadata.name,
+                status: .status.phase,
+                restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+                ip: .status.podIP
+              },
+              $traefikPods.items[]? | {
+                namespace: "traefik",
+                name: .metadata.name,
+                status: .status.phase,
+                restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+                ip: .status.podIP
+              }
+            ]
+          )
+        } | .pods
+        '
+    )"
+  fi
+
   cat > "$output_file" <<EOF
 {
-  "deployment": {
-    "name": "${deployment_name}",
-    "ready": "${deploy_ready}",
-    "images": {
-      "awroberts": "${app_image}",
-      "backgroundVideo": "${bg_image}"
+  "awroberts": {
+    "deployment": {
+      "name": "${deployment_name}",
+      "ready": "${deploy_ready}",
+      "age": "${deploy_age}"
     },
-    "age": "${deploy_age}"
+    "service": {
+      "clusterIP": "${service_cluster_ip}",
+      "port": ${service_port}
+    },
+    "build": {
+      "image": "${app_image}",
+      "tag": "${app_image##*:}",
+      "sha": "${app_sha}"
+    }
   },
+  "traefik": {
+    "deployment": {
+      "name": "${traefik_deployment_name}",
+      "ready": "${traefik_deploy_ready}",
+      "age": "${traefik_deploy_age}"
+    },
+    "service": {
+      "name": "${traefik_service_name}",
+      "clusterIP": "${traefik_service_cluster_ip}",
+      "port": ${traefik_service_port}
+    },
+    "build": {
+      "image": "${traefik_image}",
+      "version": "${traefik_version}",
+      "sha": "${traefik_sha}"
+    }
+  },
+  "pods": ${pods_array},
   "pod": {
     "name": "${pod_name}",
     "status": "${pod_status}",
     "restarts": ${pod_restarts},
     "ip": "${pod_ip}"
   },
-  "service": {
-    "clusterIP": "${service_cluster_ip}",
-    "port": ${service_port}
-  },
   "node": {
     "internal": "${node_internal_ip}"
-  },
-  "build": {
-    "awroberts": {
-      "name": "awroberts",
-      "tag": "${app_image##*:}",
-      "sha": "${app_sha}"
-    },
-    "backgroundVideo": {
-      "name": "background-video",
-      "tag": "${bg_image##*:}",
-      "sha": "${bg_sha}"
-    }
   },
   "kubernetes": {
     "version": "${kubernetes_version}"
   },
   "helm": {
     "version": "${helm_version}"
-  },
-  "traefik": {
-    "image": "${traefik_image}",
-    "version": "${traefik_version}"
   }
 }
 EOF
