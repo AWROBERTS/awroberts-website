@@ -25,9 +25,9 @@ gateway:
 hostNetwork: true
 
 podSecurityContext:
-  runAsUser: 65532
-  runAsGroup: 65532
-  runAsNonRoot: true
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
 
 ports:
   web:
