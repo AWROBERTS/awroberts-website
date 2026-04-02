@@ -14,7 +14,7 @@ spec:
   listeners:
     - name: https-root
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: "awroberts.co.uk"
       tls:
         mode: Terminate
@@ -23,7 +23,7 @@ spec:
 
     - name: https-wildcard
       protocol: HTTPS
-      port: 443
+      port: 8443
       hostname: "*.awroberts.co.uk"
       tls:
         mode: Terminate
@@ -32,4 +32,4 @@ spec:
 
     - name: http
       protocol: HTTP
-      port: 80
+      port: 8000
