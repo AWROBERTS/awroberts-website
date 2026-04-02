@@ -25,11 +25,11 @@ deployment:
     runAsGroup: 0
     runAsNonRoot: false
 
-securityContext:
-  runAsUser: 0
-  runAsGroup: 0
-  runAsNonRoot: false
-  allowPrivilegeEscalation: true
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: true
 
 ports:
   web:
