@@ -16,7 +16,7 @@ generate_deployment_json() {
     )"
 
     if [[ -n "$repo_digest" && "$repo_digest" != "<no value>" ]]; then
-      echo "$repo_digest"
+      echo "${repo_digest#sha256:}"
       return 0
     fi
 
@@ -26,7 +26,7 @@ generate_deployment_json() {
     )"
 
     if [[ -n "$image_id" && "$image_id" != "<no value>" ]]; then
-      echo "$image_id"
+      echo "${image_id#sha256:}"
       return 0
     fi
 
