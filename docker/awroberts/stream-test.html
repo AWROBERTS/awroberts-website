@@ -32,32 +32,58 @@
   </div>
 
   <script>
-    const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
-    const video = document.getElementById('test-video');
+  const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+  const video = document.getElementById('test-video');
 
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.warn("HLS.js error:", data);
-      });
-      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-        console.log("MEDIA_ATTACHED");
-        video.play().catch(err => console.warn("play() failed:", err));
-      });
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log("MANIFEST_PARSED");
-        video.play().catch(err => console.warn("play() failed:", err));
-      });
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      liveSyncDurationCount: 1,
+      liveMaxLatencyDurationCount: 3,
+      maxLiveSyncPlaybackRate: 2,
+      backBufferLength: 0,
+      enableWorker: true
+    });
+
+    hls.on(Hls.Events.ERROR, (event, data) => {
+      console.warn("HLS.js error:", data);
+
+      if (data.fatal) {
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hls.recoverMediaError();
+        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hls.startLoad();
+        } else {
+          hls.destroy();
+        }
+      } else if (data.details === "bufferStalledError") {
+        if (video.buffered.length) {
+          const end = video.buffered.end(video.buffered.length - 1);
+          const target = Math.max(end - 0.5, 0);
+          video.currentTime = target;
+          video.play().catch(err => console.warn("play() failed:", err));
+        }
+      }
+    });
+
+    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+      console.log("MEDIA_ATTACHED");
       hls.loadSource(VIDEO_URL);
-      hls.attachMedia(video);
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      console.log("Native HLS path");
-      video.src = VIDEO_URL;
+    });
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      console.log("MANIFEST_PARSED");
       video.play().catch(err => console.warn("play() failed:", err));
-    } else {
-      console.log("HLS not supported in this browser");
-    }
-  </script>
+    });
+
+    hls.attachMedia(video);
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    console.log("Native HLS path");
+    video.src = VIDEO_URL;
+    video.play().catch(err => console.warn("play() failed:", err));
+  } else {
+    console.log("HLS not supported in this browser");
+  }
+</script>
 
 </body>
 </html>
