@@ -25,6 +25,11 @@ podSecurityContext:
   runAsNonRoot: true
 
 ports:
+  traefik:
+    expose: false
+  metrics:
+    expose: false
+
   web:
     port: 8080
     expose:
