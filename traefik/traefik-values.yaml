@@ -15,15 +15,15 @@ gateway:
 
 hostNetwork: true
 
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+
 deployment:
   enabled: true
   kind: Deployment
   dnsPolicy: ClusterFirstWithHostNet
-
-  podSecurityContext:
-    runAsUser: 0
-    runAsGroup: 0
-    runAsNonRoot: false
 
   securityContext:
     runAsUser: 0
