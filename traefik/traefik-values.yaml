@@ -7,8 +7,8 @@ logs:
 
 additionalArguments:
   - "--providers.kubernetesgateway=true"
-  - "--entryPoints.web.address=:8080"
-  - "--entryPoints.websecure.address=:8443"
+  - "--entryPoints.web.address=:80"
+  - "--entryPoints.websecure.address=:443"
   - "--entryPoints.websecure.http.tls=true"
   - "--entryPoints.web.forwardedHeaders.insecure=true"
   - "--entryPoints.websecure.forwardedHeaders.insecure=true"
@@ -31,14 +31,14 @@ podSecurityContext:
 
 ports:
   web:
-    port: 8080
+    port: 80
     hostPort: 80
     expose:
       default: true
     exposedPort: 80
 
   websecure:
-    port: 8443
+    port: 443
     hostPort: 443
     expose:
       default: true
