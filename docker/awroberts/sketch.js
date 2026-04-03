@@ -402,13 +402,14 @@ function drawDeploymentInfo() {
   const x = margin;
 
   const lines = [
-    `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
-    `helm: ${diag.helm?.version ?? 'N/A'}`,
-    `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
-    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
-    `traefik ip: ${diag.traefik?.service?.clusterIP ?? 'N/A'}`,
-    `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
-    `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
+      `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
+      `helm: ${diag.helm?.version ?? 'N/A'}`,
+      `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
+      `pod name: ${diag.pod?.name ?? 'N/A'}`,
+      `pod ip: ${diag.pod?.ip ?? 'N/A'}`,
+      `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
+      `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
+      `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
   ];
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
