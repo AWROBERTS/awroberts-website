@@ -49,11 +49,12 @@ generate_deployment_json() {
     echo "unknown"
   }
 
-  get_first_running_pod_name() {
-    kubectl get pod -n "${NAMESPACE}" \
-      -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
-      --field-selector=status.phase=Running \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  get_kubernetes_version() {
+    kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
+  }
+
+  get_helm_version() {
+    helm version --short 2>/dev/null || echo ""
   }
 
   get_first_deployment_name() {
@@ -65,6 +66,13 @@ generate_deployment_json() {
   get_first_service_name() {
     kubectl get svc -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  }
+
+  get_first_running_pod_name() {
+    kubectl get pod -n "${NAMESPACE}" \
+      -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+      --field-selector=status.phase=Running \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
@@ -202,15 +210,19 @@ generate_deployment_json() {
   fi
 
   local kubernetes_version
-  kubernetes_version="$(
-    kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
-  )"
+  kubernetes_version="$(get_kubernetes_version)"
 
   local helm_version
-  helm_version="$(helm version --short 2>/dev/null || echo "")"
+  helm_version="$(get_helm_version)"
 
   cat > "$output_file" <<EOF
 {
+  "kubernetes": {
+    "version": "${kubernetes_version}"
+  },
+  "helm": {
+    "version": "${helm_version}"
+  },
   "awroberts": {
     "deployment": {
       "name": "${deployment_name}",
@@ -225,13 +237,6 @@ generate_deployment_json() {
       "image": "${app_image}",
       "tag": "${app_image##*:}",
       "sha": "${app_sha}"
-    }
-  },
-  "backgroundVideo": {
-    "build": {
-      "image": "${bg_image}",
-      "tag": "${bg_image##*:}",
-      "sha": "${bg_sha}"
     }
   },
   "traefik": {
@@ -260,11 +265,12 @@ generate_deployment_json() {
   "node": {
     "internal": "${node_internal_ip}"
   },
-  "kubernetes": {
-    "version": "${kubernetes_version}"
-  },
-  "helm": {
-    "version": "${helm_version}"
+  "backgroundVideo": {
+    "build": {
+      "image": "${bg_image}",
+      "tag": "${bg_image##*:}",
+      "sha": "${bg_sha}"
+    }
   }
 }
 EOF
