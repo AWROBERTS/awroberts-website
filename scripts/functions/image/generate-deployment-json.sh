@@ -68,11 +68,6 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_all_pods_json() {
-    local namespace="$1"
-    kubectl get pods -n "$namespace" -o json 2>/dev/null
-  }
-
   get_traefik_deployment_name() {
     kubectl get deploy -n traefik \
       -l "app.kubernetes.io/name=traefik" \
@@ -214,45 +209,6 @@ generate_deployment_json() {
   local helm_version
   helm_version="$(helm version --short 2>/dev/null || echo "")"
 
-  local app_pods_json
-  app_pods_json="$(get_all_pods_json "${NAMESPACE}")"
-
-  local bg_pods_json
-  bg_pods_json="$(get_all_pods_json "${NAMESPACE}")"
-
-  local pods_json
-  pods_json="$(
-    printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${bg_pods_json:-{\"items\":[]}}" | jq -s '
-      {
-        awroberts: [
-          .[0].items[]?
-          | select(
-              .metadata.labels["app.kubernetes.io/instance"] == "awroberts-web"
-              and .metadata.name | startswith("awroberts-web-deploy-")
-            )
-          | {
-              name: .metadata.name,
-              status: .status.phase,
-              restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-              ip: .status.podIP
-            }
-        ],
-        backgroundVideo: [
-          .[1].items[]?
-          | select(
-              .metadata.labels.app == "awroberts-web-deploy-background"
-            )
-          | {
-              name: .metadata.name,
-              status: .status.phase,
-              restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-              ip: .status.podIP
-            }
-        ]
-      }
-    ' 2>/dev/null || echo '{"awroberts":[],"backgroundVideo":[]}'
-  )"
-
   cat > "$output_file" <<EOF
 {
   "awroberts": {
@@ -295,7 +251,6 @@ generate_deployment_json() {
       "sha": "${traefik_sha}"
     }
   },
-  "pods": ${pods_json},
   "pod": {
     "name": "${pod_name}",
     "status": "${pod_status}",
