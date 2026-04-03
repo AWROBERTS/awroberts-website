@@ -87,23 +87,32 @@ function setup() {
 
   bgVideoEl = document.getElementById("bg-video");
 
-  if (bgVideoEl && "requestVideoFrameCallback" in bgVideoEl) {
-    const onFirstFrame = () => {
-      console.log("First decoded frame detected");
-      videoReady = true;
-      if (videoFadeStart === null) {
-        videoFadeStart = millis();
-      }
-    };
-    bgVideoEl.requestVideoFrameCallback(onFirstFrame);
-  } else if (bgVideoEl) {
-    bgVideoEl.addEventListener("canplay", () => {
-      console.log("Video canplay fired");
-      videoReady = true;
-      if (videoFadeStart === null) {
-        videoFadeStart = millis();
-      }
+  if (bgVideoEl) {
+    bgVideoEl.loop = false;
+    bgVideoEl.addEventListener("ended", () => {
+      console.log("Video ended; restarting VOD loop");
+      bgVideoEl.currentTime = 0;
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
     });
+
+    if ("requestVideoFrameCallback" in bgVideoEl) {
+      const onFirstFrame = () => {
+        console.log("First decoded frame detected");
+        videoReady = true;
+        if (videoFadeStart === null) {
+          videoFadeStart = millis();
+        }
+      };
+      bgVideoEl.requestVideoFrameCallback(onFirstFrame);
+    } else {
+      bgVideoEl.addEventListener("canplay", () => {
+        console.log("Video canplay fired");
+        videoReady = true;
+        if (videoFadeStart === null) {
+          videoFadeStart = millis();
+        }
+      });
+    }
   }
 
   if (bgVideoEl) {
@@ -111,26 +120,13 @@ function setup() {
       hlsInstance = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 8,
-        maxLiveSyncPlaybackRate: 1.25,
-        backBufferLength: 30,
-        maxBufferLength: 20,
-        maxMaxBufferLength: 40
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        backBufferLength: 0
       });
 
       hlsInstance.on(Hls.Events.ERROR, (event, data) => {
         console.warn("HLS.js error:", data);
-
-        if (!data.fatal && data.details === "bufferStalledError") {
-          if (bgVideoEl.buffered && bgVideoEl.buffered.length) {
-            const end = bgVideoEl.buffered.end(bgVideoEl.buffered.length - 1);
-            const target = Math.max(end - 1.5, 0);
-            bgVideoEl.currentTime = target;
-            bgVideoEl.play().catch(err => console.warn("play() failed:", err));
-          }
-          return;
-        }
 
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
