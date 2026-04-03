@@ -229,16 +229,10 @@ function draw() {
   drawDeploymentInfo();
 }
 
-function drawGlow(x, y, w, h, alpha) {
-  push();
-  noStroke();
-  fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
-  drawingContext.filter = 'blur(12px)';
-  rect(x, y, w, h, 6);
-  pop();
-}
-
-function drawEmail() {
+// ----------------------------
+// Shared hit testing
+// ----------------------------
+function getEmailHitRect() {
   const margin = 30;
   const x = width - margin;
   const y = margin;
@@ -250,30 +244,90 @@ function drawEmail() {
   const padRight = emailSize * 0.2;
   const padY = emailSize * 0.25;
 
-  const hitLeft = x - textW - padLeft;
-  const hitRight = x + padRight;
-  const hitTop = y - padY;
-  const hitBottom = y + emailSize + padY;
+  return {
+    left: x - textW - padLeft,
+    right: x + padRight,
+    top: y - padY,
+    bottom: y + emailSize + padY,
+    x,
+    y
+  };
+}
+
+function getSocialHitRects() {
+  const size = emailSize * 0.8;
+  const margin = 30;
+  const spacing = size + 20;
+  const xStart = margin;
+  const y = margin;
+
+  return socialLinks.map((item, i) => ({
+    index: i,
+    x: xStart + i * spacing,
+    y,
+    size,
+    url: item.url
+  }));
+}
+
+function pointInRect(px, py, rect) {
+  return (
+    px >= rect.left &&
+    px <= rect.right &&
+    py >= rect.top &&
+    py <= rect.bottom
+  );
+}
+
+function pointInBox(px, py, x, y, size) {
+  return (
+    px >= x &&
+    px <= x + size &&
+    py >= y &&
+    py <= y + size
+  );
+}
+
+// ----------------------------
+// GLOW HELPER
+// ----------------------------
+function drawGlow(x, y, w, h, alpha) {
+  push();
+  noStroke();
+  fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
+  drawingContext.filter = 'blur(12px)';
+  rect(x, y, w, h, 6);
+  pop();
+}
+
+// ----------------------------
+// EMAIL
+// ----------------------------
+function drawEmail() {
+  const hit = getEmailHitRect();
 
   isHoveringEmail =
-    mouseX >= hitLeft &&
-    mouseX <= hitRight &&
-    mouseY >= hitTop &&
-    mouseY <= hitBottom;
+    mouseX >= hit.left &&
+    mouseX <= hit.right &&
+    mouseY >= hit.top &&
+    mouseY <= hit.bottom;
 
   if (isHoveringEmail) {
-    drawGlow(hitLeft, hitTop, hitRight - hitLeft, hitBottom - hitTop, 255);
+    drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 255);
     cursor(HAND);
   } else {
-    drawGlow(hitLeft, hitTop, hitRight - hitLeft, hitBottom - hitTop, 0);
+    drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 0);
   }
 
   textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
   fill(255);
   textAlign(RIGHT, TOP);
-  text(emailText, x, y);
+  text(emailText, hit.x, hit.y);
 }
 
+// ----------------------------
+// SOCIAL ICONS
+// ----------------------------
 function drawSocialIcons() {
   const size = emailSize * 0.8;
   const margin = 30;
@@ -314,6 +368,9 @@ function drawSocialIcons() {
   });
 }
 
+// ----------------------------
+// DEPLOYMENT INFO
+// ----------------------------
 function drawDeploymentInfo() {
   if (!diag) return;
 
@@ -361,30 +418,43 @@ function drawDeploymentInfo() {
   }
 }
 
-function mousePressed() {
-  if (isHoveringEmail) {
-    window.location.href = 'mailto:info@awroberts.co.uk';
-    return;
+// ----------------------------
+// INTERACTION
+// ----------------------------
+function openEmail() {
+  window.location.href = 'mailto:info@awroberts.co.uk';
+}
+
+function openSocial(index) {
+  if (index < 0 || index >= socialLinks.length) return;
+  window.open(socialLinks[index].url, '_blank', 'noopener,noreferrer');
+}
+
+function handlePointerActivation(px, py) {
+  const emailHit = getEmailHitRect();
+  if (pointInRect(px, py, emailHit)) {
+    openEmail();
+    return true;
   }
 
-  if (hoveringSocial !== -1) {
-    window.open(socialLinks[hoveringSocial].url, '_blank');
+  const socialRects = getSocialHitRects();
+  for (const rect of socialRects) {
+    if (pointInBox(px, py, rect.x, rect.y, rect.size)) {
+      openSocial(rect.index);
+      return true;
+    }
   }
+
+  return false;
+}
+
+function mousePressed() {
+  handlePointerActivation(mouseX, mouseY);
 }
 
 function touchStarted() {
   if (touches.length > 0) {
-    const tx = touches[0].x;
-    const ty = touches[0].y;
-
-    const margin = 30;
-    const x = width - margin;
-    const y = margin;
-    const textW = textWidth(emailText);
-
-    if (tx > x - textW && tx < x && ty > y && ty < y + emailSize) {
-      window.location.href = 'mailto:info@awroberts.co.uk';
-    }
+    handlePointerActivation(touches[0].x, touches[0].y);
   }
   return false;
 }
