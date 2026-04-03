@@ -69,8 +69,8 @@ backgroundVideo:
     filename: "background.mp4"
 
   hls:
-    segmentDuration: 2
-    playlistSize: 20
+    segmentDuration: 4
+    playlistSize: 12
 
   volume:
     hostPath: "/var/www/html/awroberts/awroberts-media"
