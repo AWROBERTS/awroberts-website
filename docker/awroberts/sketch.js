@@ -40,6 +40,15 @@ const glowColor = [127, 203, 255];
 // Cache-buster to force fresh HLS session
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function getOverlayPixelDensity() {
+  if (!isMobileDevice()) return 1;
+  return Math.min(window.devicePixelRatio || 1, 2);
+}
+
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
@@ -50,7 +59,7 @@ function preload() {
 }
 
 function setup() {
-  pixelDensity(1);
+  pixelDensity(getOverlayPixelDensity());
 
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
@@ -58,6 +67,13 @@ function setup() {
   canvas.style('top', '0');
   canvas.style('left', '0');
   canvas.style('z-index', '1');
+
+  // Helps mobile browsers treat the canvas as a touch surface
+  const elt = canvas.elt;
+  if (elt) {
+    elt.style.touchAction = 'none';
+    elt.style.webkitTapHighlightColor = 'transparent';
+  }
 
   videoSourceCanvas = document.createElement("canvas");
   videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
@@ -156,6 +172,9 @@ function setup() {
   fadeStartTime = millis();
 }
 
+// ---------------------------------------------------
+// Full-res frame copy with persistent last-good-frame behavior
+// ---------------------------------------------------
 function updateVideoFrame() {
   if (!bgVideoEl) return false;
   if (!videoReady) return false;
