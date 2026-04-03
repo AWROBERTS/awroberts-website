@@ -41,14 +41,15 @@ spec:
             - >
               ffmpeg -re -stream_loop -1
               -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
-              -c:v libx264 -preset veryfast -tune zerolatency -b:v 3000k
-              -g 60 -keyint_min 60 -sc_threshold 0
-              -force_key_frames "expr:gte(t,n_forced*2)"
-              -c:a aac -ar 44100 -b:a 128k
+              -c:v libx264 -preset slow -profile:v high -level 5.1
+              -crf 17 -maxrate 25M -bufsize 50M
+              -g 120 -keyint_min 120 -sc_threshold 0
+              -c:a aac -ar 48000 -b:a 192k
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
               -hls_list_size {{ .Values.backgroundVideo.hls.playlistSize }}
               -hls_flags delete_segments+program_date_time+independent_segments
+              -hls_segment_filename /output/seg_%05d.ts
               /output/index.m3u8
           volumeMounts:
             - name: hls
@@ -72,7 +73,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - test $(ls -1 /output/index*.ts 2>/dev/null | wc -l) -gt 0
+                - test -f /output/index.m3u8 && test "$(ls -1 /output/seg_*.ts 2>/dev/null | wc -l)" -gt 0
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 2
