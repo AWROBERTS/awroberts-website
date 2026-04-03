@@ -14,21 +14,7 @@ spec:
       labels:
         app: {{ include "awroberts.fullname" . }}-background
     spec:
-      containers:
-        # -------------------------
-        # NGINX (serves HLS output)
-        # -------------------------
-        - name: nginx
-          image: "{{ .Values.backgroundVideo.image.repository }}:{{ .Values.backgroundVideo.image.tag }}"
-          imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: hls
-              mountPath: /usr/share/nginx/html/stream
-            - name: media-volume
-              mountPath: /var/www/html/awroberts/awroberts-media
-
+      initContainers:
         # -------------------------
         # FFMPEG (generates VOD HLS)
         # -------------------------
@@ -38,7 +24,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              ffmpeg -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
+              ffmpeg -y -i /var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}
               -c:v libx264 -preset slow -profile:v high -level 5.1
               -crf 17 -maxrate 25M -bufsize 50M
               -g 120 -keyint_min 120 -sc_threshold 0
@@ -53,24 +39,27 @@ spec:
               mountPath: /output
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
+
+      containers:
+        # -------------------------
+        # NGINX (serves HLS output)
+        # -------------------------
+        - name: nginx
+          image: "{{ .Values.backgroundVideo.image.repository }}:{{ .Values.backgroundVideo.image.tag }}"
+          imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: hls
+              mountPath: /usr/share/nginx/html/stream
+            - name: media-volume
+              mountPath: /var/www/html/awroberts/awroberts-media
           readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - test -f /output/index.m3u8 && test "$(grep -c '^#EXTINF:' /output/index.m3u8 2>/dev/null)" -gt 0
-            initialDelaySeconds: 5
+            httpGet:
+              path: /stream/index.m3u8
+              port: 80
+            initialDelaySeconds: 2
             periodSeconds: 5
-            timeoutSeconds: 2
-            failureThreshold: 3
-          livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - test -f /output/index.m3u8 && test "$(grep -c '^#EXTINF:' /output/index.m3u8 2>/dev/null)" -gt 0
-            initialDelaySeconds: 10
-            periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
 
