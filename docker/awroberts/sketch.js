@@ -18,15 +18,6 @@ let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
-// Retro-digital effect buffers
-let retroBaseLayer = null;
-let retroBaseCtx = null;
-let retroBaseReady = false;
-
-let retroFocusLayer = null;
-let retroFocusCtx = null;
-let retroFocusReady = false;
-
 let curwenFont;
 let emailText = 'info@awroberts.co.uk';
 let emailSize;
@@ -48,19 +39,6 @@ const glowColor = [127, 203, 255];
 
 // Cache-buster to force fresh HLS session
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
-
-// Retro digital tuning
-const RETRO = {
-  basePixelSize: 10,
-  hoverPixelSize: 22,
-  focusRadius: 220,
-  posterizeLevels: 6,
-  scanlineSpacing: 3,
-  scanlineAlpha: 18,
-  jitterMax: 2,
-  rgbSplitMax: 2,
-  sharpenStrength: 0.95
-};
 
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -90,6 +68,7 @@ function setup() {
   canvas.style('left', '0');
   canvas.style('z-index', '1');
 
+  // Helps mobile browsers treat the canvas as a touch surface
   const elt = canvas.elt;
   if (elt) {
     elt.style.touchAction = 'none';
@@ -106,25 +85,10 @@ function setup() {
   videoLayerReady = true;
   videoLayerCtx = videoLayer.drawingContext;
 
-  retroBaseLayer = createGraphics(windowWidth, windowHeight);
-  retroBaseLayer.pixelDensity(1);
-  retroBaseLayer.clear();
-  retroBaseReady = true;
-  retroBaseCtx = retroBaseLayer.drawingContext;
-
-  retroFocusLayer = createGraphics(windowWidth, windowHeight);
-  retroFocusLayer.pixelDensity(1);
-  retroFocusLayer.clear();
-  retroFocusReady = true;
-  retroFocusCtx = retroFocusLayer.drawingContext;
-
   bgVideoEl = document.getElementById("bg-video");
 
   if (bgVideoEl) {
     bgVideoEl.loop = false;
-    bgVideoEl.playsInline = true;
-    bgVideoEl.muted = true;
-
     bgVideoEl.addEventListener("ended", () => {
       console.log("Video ended; restarting VOD loop");
       bgVideoEl.currentTime = 0;
@@ -140,7 +104,7 @@ function setup() {
         }
       };
       bgVideoEl.requestVideoFrameCallback(onFirstFrame);
-    } else {
+    } else if (bgVideoEl) {
       bgVideoEl.addEventListener("canplay", () => {
         console.log("Video canplay fired");
         videoReady = true;
@@ -207,25 +171,25 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// Frame capture + retro-digital processing
+// Full-res frame copy
 // ---------------------------------------------------
-function ensureLayerSize(layer) {
-  if (layer.width !== width || layer.height !== height) {
-    layer.resizeCanvas(width, height);
-    layer.pixelDensity(1);
-  }
-}
-
-function copyVideoToBaseLayer() {
+function updateVideoFrame() {
   if (!bgVideoEl) return false;
   if (!videoReady) return false;
-  if (!videoSourceReady || !retroBaseReady) return false;
+  if (!videoSourceReady || !videoLayerReady) return false;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
+
+  const currentTime = bgVideoEl.currentTime;
+  const hasAdvanced = currentTime !== lastVideoTime;
+
+  if (hasVideoFrame && !hasAdvanced) {
+    return true;
+  }
 
   const sourceW = bgVideoEl.videoWidth;
   const sourceH = bgVideoEl.videoHeight;
 
-  if (!sourceW || !sourceH) return false;
+  if (!sourceW || !sourceH) return hasVideoFrame;
 
   if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
     videoSourceCanvas.width = sourceW;
@@ -234,15 +198,21 @@ function copyVideoToBaseLayer() {
     videoSourceHeight = sourceH;
   }
 
-  ensureLayerSize(retroBaseLayer);
+  if (videoLayer.width !== width || videoLayer.height !== height) {
+    videoLayer.resizeCanvas(width, height);
+    videoLayer.pixelDensity(1);
+    videoLayerCtx = videoLayer.drawingContext;
+  }
 
   try {
     videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
 
-    const basePixelSize = mouseIsPressed || isHoveringAnyInteractive() ? RETRO.hoverPixelSize : RETRO.basePixelSize;
-    renderRetroPixelatedFrame(videoSourceCanvas, retroBaseCtx, width, height, basePixelSize, RETRO.posterizeLevels);
+    videoLayerCtx.save();
+    videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.restore();
 
-    lastVideoTime = bgVideoEl.currentTime;
+    lastVideoTime = currentTime;
     hasVideoFrame = true;
     return true;
   } catch (err) {
@@ -251,53 +221,40 @@ function copyVideoToBaseLayer() {
   }
 }
 
-function isHoveringAnyInteractive() {
-  return isHoveringEmail || hoveringSocial >= 0;
-}
+function draw() {
+  clear();
 
-function renderRetroPixelatedFrame(sourceCanvas, targetCtx, targetW, targetH, pixelSize, posterizeLevels) {
-  if (!sourceCanvas || !targetCtx) return;
+  if (videoReady && videoLayerReady) {
+    const frameAvailable = updateVideoFrame();
 
-  targetCtx.save();
-  targetCtx.imageSmoothingEnabled = false;
-  targetCtx.clearRect(0, 0, targetW, targetH);
+    if (frameAvailable || hasVideoFrame) {
+      let alpha = 255;
+      if (videoFadeStart !== null) {
+        const t = (millis() - videoFadeStart) / videoFadeDuration;
+        alpha = constrain(t * 255, 0, 255);
+      }
 
-  const sampleW = Math.max(1, Math.floor(targetW / pixelSize));
-  const sampleH = Math.max(1, Math.floor(targetH / pixelSize));
+      push();
+      tint(255, alpha);
+      image(videoLayer, 0, 0, width, height);
+      pop();
 
-  const lowRes = document.createElement("canvas");
-  lowRes.width = sampleW;
-  lowRes.height = sampleH;
-  const lowCtx = lowRes.getContext("2d", { alpha: false });
-  lowCtx.imageSmoothingEnabled = true;
-  lowCtx.drawImage(sourceCanvas, 0, 0, sampleW, sampleH);
-
-  const img = lowCtx.getImageData(0, 0, sampleW, sampleH);
-  const d = img.data;
-
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = posterize(d[i], posterizeLevels);
-    d[i + 1] = posterize(d[i + 1], posterizeLevels);
-    d[i + 2] = posterize(d[i + 2], posterizeLevels);
+      // Global sharpen / retro-digital crisping
+      applyCanvasSharpen(0.55);
+      drawScanlines();
+      drawVignette();
+    }
   }
 
-  lowCtx.putImageData(img, 0, 0);
-
-  targetCtx.drawImage(lowRes, 0, 0, targetW, targetH);
-  targetCtx.restore();
+  drawEmail();
+  drawSocialIcons();
+  drawDeploymentInfo();
 }
 
-function posterize(v, levels) {
-  const step = 255 / Math.max(2, levels - 1);
-  return Math.round(v / step) * step;
-}
-
-function applySharpenToCanvas(graphics, strength) {
-  if (!graphics || strength <= 0) return;
-
-  const ctx = graphics.drawingContext;
-  const w = graphics.width;
-  const h = graphics.height;
+function applyCanvasSharpen(strength) {
+  const ctx = drawingContext;
+  const w = width;
+  const h = height;
 
   const src = ctx.getImageData(0, 0, w, h);
   const dst = ctx.createImageData(w, h);
@@ -312,27 +269,27 @@ function applySharpenToCanvas(graphics, strength) {
   const data = src.data;
   const out = dst.data;
 
-  const getIndex = (x, y) => (y * w + x) * 4;
+  const idx = (x, y) => (y * w + x) * 4;
 
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
       let r = 0, g = 0, b = 0;
 
-      const positions = [
+      const pos = [
         [x - 1, y - 1], [x, y - 1], [x + 1, y - 1],
         [x - 1, y],     [x, y],     [x + 1, y],
         [x - 1, y + 1], [x, y + 1], [x + 1, y + 1]
       ];
 
       for (let k = 0; k < 9; k++) {
-        const idx = getIndex(positions[k][0], positions[k][1]);
+        const i = idx(pos[k][0], pos[k][1]);
         const wgt = kernel[k];
-        r += data[idx] * wgt;
-        g += data[idx + 1] * wgt;
-        b += data[idx + 2] * wgt;
+        r += data[i] * wgt;
+        g += data[i + 1] * wgt;
+        b += data[i + 2] * wgt;
       }
 
-      const i = getIndex(x, y);
+      const i = idx(x, y);
       out[i] = constrain(r, 0, 255);
       out[i + 1] = constrain(g, 0, 255);
       out[i + 2] = constrain(b, 0, 255);
@@ -343,140 +300,25 @@ function applySharpenToCanvas(graphics, strength) {
   ctx.putImageData(dst, 0, 0);
 }
 
-function drawScanlines(targetGraphics, alpha = RETRO.scanlineAlpha) {
-  targetGraphics.push();
-  targetGraphics.noStroke();
-  targetGraphics.fill(0, 0, 0, alpha);
-  for (let y = 0; y < targetGraphics.height; y += RETRO.scanlineSpacing) {
-    targetGraphics.rect(0, y, targetGraphics.width, 1);
+function drawScanlines() {
+  push();
+  noStroke();
+  fill(0, 0, 0, 18);
+  for (let y = 0; y < height; y += 3) {
+    rect(0, y, width, 1);
   }
-  targetGraphics.pop();
+  pop();
 }
 
-function drawVignette(targetGraphics) {
-  targetGraphics.push();
-  targetGraphics.noFill();
+function drawVignette() {
+  push();
+  noFill();
   for (let i = 0; i < 6; i++) {
-    const a = 18 - i * 2;
-    targetGraphics.stroke(0, 0, 0, a);
-    targetGraphics.strokeWeight(40);
-    targetGraphics.rect(
-      i * 14,
-      i * 14,
-      targetGraphics.width - i * 28,
-      targetGraphics.height - i * 28,
-      18
-    );
+    stroke(0, 0, 0, 18 - i * 2);
+    strokeWeight(40);
+    rect(i * 14, i * 14, width - i * 28, height - i * 28, 18);
   }
-  targetGraphics.pop();
-}
-
-function drawRGBSplit(sourceGraphics) {
-  const jitter = isHoveringAnyInteractive() ? RETRO.rgbSplitMax : 1;
-  push();
-  blendMode(SCREEN);
-  tint(255, 120, 120, 70);
-  image(sourceGraphics, jitter, 0, width, height);
-  tint(120, 255, 120, 50);
-  image(sourceGraphics, -jitter, 0, width, height);
-  tint(120, 120, 255, 50);
-  image(sourceGraphics, 0, jitter, width, height);
   pop();
-}
-
-function drawFocusSharpenOverlay() {
-  if (!mouseX && !mouseY) return;
-
-  const d = dist(mouseX, mouseY, width / 2, height / 2);
-  const hoverBoost = isHoveringAnyInteractive() ? 1 : 0;
-  const focusRadius = RETRO.focusRadius + (hoverBoost * 80);
-
-  if (d > focusRadius) return;
-
-  const t = 1 - constrain(d / focusRadius, 0, 1);
-  const alpha = 70 * t;
-  const size = map(t, 0, 1, RETRO.hoverPixelSize, 6);
-
-  if (!retroFocusReady) return;
-  ensureLayerSize(retroFocusLayer);
-
-  retroFocusCtx.save();
-  retroFocusCtx.clearRect(0, 0, retroFocusLayer.width, retroFocusLayer.height);
-  retroFocusCtx.imageSmoothingEnabled = true;
-  retroFocusCtx.drawImage(retroBaseLayer.elt, 0, 0, width, height);
-
-  const regionSize = Math.max(90, Math.floor(220 * t));
-  const sx = constrain(mouseX - regionSize / 2, 0, width - regionSize);
-  const sy = constrain(mouseY - regionSize / 2, 0, height - regionSize);
-  const sw = regionSize;
-  const sh = regionSize;
-
-  const temp = document.createElement("canvas");
-  temp.width = sw;
-  temp.height = sh;
-  const tctx = temp.getContext("2d", { alpha: false });
-  tctx.imageSmoothingEnabled = false;
-  tctx.drawImage(retroBaseLayer.elt, sx, sy, sw, sh, 0, 0, sw, sh);
-
-  const img = tctx.getImageData(0, 0, sw, sh);
-  const dta = img.data;
-  for (let i = 0; i < dta.length; i += 4) {
-    dta[i] = posterize(dta[i], 8);
-    dta[i + 1] = posterize(dta[i + 1], 8);
-    dta[i + 2] = posterize(dta[i + 2], 8);
-  }
-  tctx.putImageData(img, 0, 0);
-
-  retroFocusCtx.image(temp, sx, sy, sw, sh);
-  retroFocusCtx.restore();
-
-  push();
-  tint(255, 255, 255, 255);
-  image(retroFocusLayer, 0, 0, width, height);
-  pop();
-
-  drawGlow(mouseX - 20, mouseY - 20, 40, 40, alpha);
-  drawingContext.filter = 'blur(0px)';
-}
-
-function draw() {
-  clear();
-
-  if (videoReady && retroBaseReady) {
-    const frameAvailable = copyVideoToBaseLayer();
-
-    if (frameAvailable || hasVideoFrame) {
-      const shouldJitter = frameCount % 9 === 0 && !isHoveringAnyInteractive();
-      const jx = shouldJitter ? random(-RETRO.jitterMax, RETRO.jitterMax) : 0;
-      const jy = shouldJitter ? random(-RETRO.jitterMax, RETRO.jitterMax) : 0;
-
-      let alpha = 255;
-      if (videoFadeStart !== null) {
-        const t = (millis() - videoFadeStart) / videoFadeDuration;
-        alpha = constrain(t * 255, 0, 255);
-      }
-
-      push();
-      translate(jx, jy);
-      tint(255, alpha);
-      image(retroBaseLayer, 0, 0, width, height);
-      pop();
-
-      drawRGBSplit(retroBaseLayer);
-      drawScanlines(this, RETRO.scanlineAlpha);
-      drawVignette(this);
-
-      if (isHoveringAnyInteractive()) {
-        applySharpenToCanvas(retroBaseLayer, RETRO.sharpenStrength * 0.6);
-      }
-
-      drawFocusSharpenOverlay();
-    }
-  }
-
-  drawEmail();
-  drawSocialIcons();
-  drawDeploymentInfo();
 }
 
 // ----------------------------
@@ -699,16 +541,6 @@ function windowResized() {
   if (videoLayer) {
     videoLayer.resizeCanvas(windowWidth, windowHeight);
     videoLayer.pixelDensity(1);
-  }
-
-  if (retroBaseLayer) {
-    retroBaseLayer.resizeCanvas(windowWidth, windowHeight);
-    retroBaseLayer.pixelDensity(1);
-  }
-
-  if (retroFocusLayer) {
-    retroFocusLayer.resizeCanvas(windowWidth, windowHeight);
-    retroFocusLayer.pixelDensity(1);
   }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
