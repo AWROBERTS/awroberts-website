@@ -104,7 +104,7 @@ function setup() {
         }
       };
       bgVideoEl.requestVideoFrameCallback(onFirstFrame);
-    } else {
+    } else if (bgVideoEl) {
       bgVideoEl.addEventListener("canplay", () => {
         console.log("Video canplay fired");
         videoReady = true;
@@ -120,9 +120,11 @@ function setup() {
       hlsInstance = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        backBufferLength: 0
+        maxBufferLength: 60,
+        maxBufferSize: 120 * 1000 * 1000,
+        maxMaxBufferLength: 120,
+        backBufferLength: 0,
+        startPosition: 0
       });
 
       hlsInstance.on(Hls.Events.ERROR, (event, data) => {
