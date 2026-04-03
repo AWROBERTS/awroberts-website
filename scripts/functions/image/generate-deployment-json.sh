@@ -68,10 +68,9 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_workload_pods_json() {
+  get_all_pods_json() {
     local namespace="$1"
-    local selector="$2"
-    kubectl get pods -n "$namespace" -l "$selector" -o json 2>/dev/null
+    kubectl get pods -n "$namespace" -o json 2>/dev/null
   }
 
   get_traefik_deployment_name() {
@@ -216,27 +215,40 @@ generate_deployment_json() {
   helm_version="$(helm version --short 2>/dev/null || echo "")"
 
   local app_pods_json
-  app_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app.kubernetes.io/instance=${HELM_RELEASE}")"
+  app_pods_json="$(get_all_pods_json "${NAMESPACE}")"
 
   local bg_pods_json
-  bg_pods_json="$(get_workload_pods_json "${NAMESPACE}" "app=awroberts-web-deploy-background")"
+  bg_pods_json="$(get_all_pods_json "${NAMESPACE}")"
 
   local pods_json
   pods_json="$(
     printf '%s\n%s\n' "${app_pods_json:-{\"items\":[]}}" "${bg_pods_json:-{\"items\":[]}}" | jq -s '
       {
-        awroberts: [.[0].items[]? | {
-          name: .metadata.name,
-          status: .status.phase,
-          restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-          ip: .status.podIP
-        }],
-        backgroundVideo: [.[1].items[]? | {
-          name: .metadata.name,
-          status: .status.phase,
-          restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
-          ip: .status.podIP
-        }]
+        awroberts: [
+          .[0].items[]?
+          | select(
+              .metadata.labels["app.kubernetes.io/instance"] == "awroberts-web"
+              and .metadata.name | startswith("awroberts-web-deploy-")
+            )
+          | {
+              name: .metadata.name,
+              status: .status.phase,
+              restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+              ip: .status.podIP
+            }
+        ],
+        backgroundVideo: [
+          .[1].items[]?
+          | select(
+              .metadata.labels.app == "awroberts-web-deploy-background"
+            )
+          | {
+              name: .metadata.name,
+              status: .status.phase,
+              restarts: ([.status.containerStatuses[]?.restartCount] | add // 0),
+              ip: .status.podIP
+            }
+        ]
       }
     ' 2>/dev/null || echo '{"awroberts":[],"backgroundVideo":[]}'
   )"
