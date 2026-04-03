@@ -401,33 +401,15 @@ function drawDeploymentInfo() {
   const margin = 30;
   const x = margin;
 
-  const pods = diag.pods || {};
-  const awrobertsPods = Array.isArray(pods.awroberts) ? pods.awroberts : [];
-  const backgroundVideoPods = Array.isArray(pods.backgroundVideo) ? pods.backgroundVideo : [];
-
   const lines = [
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
     `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
-    `awroberts cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
-    `awroberts port: ${diag.awroberts?.service?.port ?? 'N/A'}`,
-    `awroberts image: ${diag.awroberts?.build?.image ?? 'N/A'}`,
+    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
+    `traefik ip: ${diag.traefik?.service?.clusterIP ?? 'N/A'}`,
     `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
-    `background-video image: ${diag.backgroundVideo?.build?.image ?? 'N/A'}`,
-    `background-video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
+    `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
   ];
-
-  lines.push('');
-  lines.push('awroberts pods:');
-  awrobertsPods.forEach((pod, index) => {
-    lines.push(`  ${index + 1}. ${pod.name ?? 'N/A'} | ${pod.status ?? 'N/A'} | ${pod.ip ?? 'N/A'} | restarts ${pod.restarts ?? 'N/A'}`);
-  });
-
-  lines.push('');
-  lines.push('background-video pods:');
-  backgroundVideoPods.forEach((pod, index) => {
-    lines.push(`  ${index + 1}. ${pod.name ?? 'N/A'} | ${pod.status ?? 'N/A'} | ${pod.ip ?? 'N/A'} | restarts ${pod.restarts ?? 'N/A'}`);
-  });
 
   let y = height - margin - (baseSize * 1.3 * lines.length);
 
