@@ -171,7 +171,7 @@ function setup() {
 }
 
 // ---------------------------------------------------
-// Full-res frame copy
+// Full-res frame copy with persistent last-good-frame behavior
 // ---------------------------------------------------
 function updateVideoFrame() {
   if (!bgVideoEl) return false;
@@ -238,87 +238,12 @@ function draw() {
       tint(255, alpha);
       image(videoLayer, 0, 0, width, height);
       pop();
-
-      // Global sharpen / retro-digital crisping
-      applyCanvasSharpen(0.55);
-      drawScanlines();
-      drawVignette();
     }
   }
 
   drawEmail();
   drawSocialIcons();
   drawDeploymentInfo();
-}
-
-function applyCanvasSharpen(strength) {
-  const ctx = drawingContext;
-  const w = width;
-  const h = height;
-
-  const src = ctx.getImageData(0, 0, w, h);
-  const dst = ctx.createImageData(w, h);
-
-  const s = constrain(strength, 0, 1.5);
-  const kernel = [
-    0, -1 * s, 0,
-    -1 * s, 1 + 4 * s, -1 * s,
-    0, -1 * s, 0
-  ];
-
-  const data = src.data;
-  const out = dst.data;
-
-  const idx = (x, y) => (y * w + x) * 4;
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      let r = 0, g = 0, b = 0;
-
-      const pos = [
-        [x - 1, y - 1], [x, y - 1], [x + 1, y - 1],
-        [x - 1, y],     [x, y],     [x + 1, y],
-        [x - 1, y + 1], [x, y + 1], [x + 1, y + 1]
-      ];
-
-      for (let k = 0; k < 9; k++) {
-        const i = idx(pos[k][0], pos[k][1]);
-        const wgt = kernel[k];
-        r += data[i] * wgt;
-        g += data[i + 1] * wgt;
-        b += data[i + 2] * wgt;
-      }
-
-      const i = idx(x, y);
-      out[i] = constrain(r, 0, 255);
-      out[i + 1] = constrain(g, 0, 255);
-      out[i + 2] = constrain(b, 0, 255);
-      out[i + 3] = data[i + 3];
-    }
-  }
-
-  ctx.putImageData(dst, 0, 0);
-}
-
-function drawScanlines() {
-  push();
-  noStroke();
-  fill(0, 0, 0, 18);
-  for (let y = 0; y < height; y += 3) {
-    rect(0, y, width, 1);
-  }
-  pop();
-}
-
-function drawVignette() {
-  push();
-  noFill();
-  for (let i = 0; i < 6; i++) {
-    stroke(0, 0, 0, 18 - i * 2);
-    strokeWeight(40);
-    rect(i * 14, i * 14, width - i * 28, height - i * 28, 18);
-  }
-  pop();
 }
 
 // ----------------------------
@@ -389,7 +314,6 @@ function drawGlow(x, y, w, h, alpha) {
   fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
   drawingContext.filter = 'blur(12px)';
   rect(x, y, w, h, 6);
-  drawingContext.filter = 'none';
   pop();
 }
 
