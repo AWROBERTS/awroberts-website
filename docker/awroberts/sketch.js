@@ -99,22 +99,28 @@ function setup() {
       bgVideoEl.play().catch(err => console.warn("play() failed:", err));
     });
 
+    const markVideoReady = () => {
+      if (!videoReady) {
+        console.log("Video ready signal fired");
+      }
+      videoReady = true;
+    };
+
     if ("requestVideoFrameCallback" in bgVideoEl) {
       const onFirstFrame = () => {
         console.log("First decoded frame detected");
-        videoReady = true;
-        if (videoFadeStart === null) {
-          videoFadeStart = millis();
-        }
+        markVideoReady();
       };
       bgVideoEl.requestVideoFrameCallback(onFirstFrame);
-    } else if (bgVideoEl) {
+    } else {
       bgVideoEl.addEventListener("canplay", () => {
         console.log("Video canplay fired");
-        videoReady = true;
-        if (videoFadeStart === null) {
-          videoFadeStart = millis();
-        }
+        markVideoReady();
+      });
+
+      bgVideoEl.addEventListener("loadeddata", () => {
+        console.log("Video loadeddata fired");
+        markVideoReady();
       });
     }
   }
@@ -218,6 +224,12 @@ function updateVideoFrame() {
 
     lastVideoTime = currentTime;
     hasVideoFrame = true;
+
+    if (videoFadeStart === null) {
+      videoFadeStart = millis();
+      console.log("Video fade started after first successful frame copy");
+    }
+
     return true;
   } catch (err) {
     console.warn("Video frame copy skipped:", err);
@@ -241,7 +253,7 @@ function draw() {
   if (videoReady && videoLayerReady) {
     const frameAvailable = updateVideoFrame();
 
-    if (frameAvailable || hasVideoFrame) {
+    if (frameAvailable && hasVideoFrame) {
       let alpha = 255;
       if (videoFadeStart !== null) {
         const t = (millis() - videoFadeStart) / videoFadeDuration;
