@@ -3,18 +3,17 @@ let videoEl;
 let hls;
 
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
-const CANVAS_WIDTH = 3840;
-const CANVAS_HEIGHT = 2160;
 
 function preload() {
   posterImg = loadImage('/awroberts-media/background-poster.png');
 }
 
 function setup() {
-  const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT, WEBGL);
+  const canvas = createCanvas(windowWidth, windowHeight, WEBGL);
   canvas.parent('canvas-container');
   noStroke();
-  pixelDensity(1);
+
+  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 
   videoEl = createVideo('');
   videoEl.hide();
@@ -30,7 +29,11 @@ function setup() {
     videoEl.elt.load();
     videoEl.elt.play().catch(err => console.warn('native HLS play failed:', err));
   } else if (window.Hls && Hls.isSupported()) {
-    hls = new Hls();
+    hls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false
+    });
+
     hls.loadSource(VIDEO_URL);
     hls.attachMedia(videoEl.elt);
 
@@ -46,25 +49,30 @@ function setup() {
   }
 }
 
+function drawBackgroundLayer(tex) {
+  push();
+  resetMatrix();
+  ortho();
+
+  // WEBGL uses the center as origin by default, so we shift the quad
+  // up and left by half the canvas size to cover the screen.
+  translate(-width / 2, -height / 2, 0);
+
+  texture(tex);
+  plane(width, height);
+  pop();
+}
+
 function draw() {
   background(0);
 
-  // Draw the background video full-frame at 4K
   if (videoEl && videoEl.elt && videoEl.elt.readyState >= 2) {
-    push();
-    translate(0, 0, -500);
-    texture(videoEl);
-    plane(width, height);
-    pop();
+    drawBackgroundLayer(videoEl);
   } else if (posterImg && posterImg.width > 0) {
-    push();
-    translate(0, 0, -500);
-    texture(posterImg);
-    plane(width, height);
-    pop();
+    drawBackgroundLayer(posterImg);
   }
 
-  // Simple proof that WEBGL is working
+  // Rotating cube on top
   push();
   rotateY(frameCount * 0.01);
   rotateX(frameCount * 0.008);
@@ -76,6 +84,6 @@ function draw() {
 }
 
 function windowResized() {
-  // Keep the canvas locked to 4K
-  resizeCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+  resizeCanvas(windowWidth, windowHeight);
+  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 }
