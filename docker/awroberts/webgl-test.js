@@ -27,12 +27,10 @@ function setup() {
   videoEl.elt.crossOrigin = 'anonymous';
 
   if (videoEl.elt.canPlayType('application/vnd.apple.mpegurl')) {
-    // Native HLS support (Safari / iOS)
     videoEl.elt.src = VIDEO_URL;
     videoEl.elt.load();
     videoEl.elt.play().catch(err => console.warn('native HLS play failed:', err));
   } else if (window.Hls && Hls.isSupported()) {
-    // hls.js for Chrome / Firefox / Edge
     hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false
@@ -57,9 +55,15 @@ function drawFullscreenTexture(tex) {
   push();
   resetMatrix();
   ortho();
-  translate(-width / 2, -height / 2, 0);
+
+  beginShape();
   texture(tex);
-  plane(width, height);
+  vertex(-width / 2, -height / 2, 0, 0, 0);
+  vertex(width / 2, -height / 2, 0, 1, 0);
+  vertex(width / 2, height / 2, 0, 1, 1);
+  vertex(-width / 2, height / 2, 0, 0, 1);
+  endShape(CLOSE);
+
   pop();
 }
 
