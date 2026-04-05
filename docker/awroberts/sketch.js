@@ -430,9 +430,9 @@ function drawDeploymentInfo() {
     `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
     `helm: ${diag.helm?.version ?? 'N/A'}`,
     `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
-    `pod name: ${diag.pod?.name ?? 'N/A'}`,
     `pod ip: ${diag.pod?.ip ?? 'N/A'}`,
     `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
+    `pod name: ${diag.pod?.name ?? 'N/A'}`,
     `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
     `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
   ];
