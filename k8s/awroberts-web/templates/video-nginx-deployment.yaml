@@ -23,9 +23,11 @@ spec:
           volumeMounts:
             - name: hls
               mountPath: /usr/share/nginx/html/stream
+            - name: media-volume
+              mountPath: /var/www/html/awroberts/awroberts-media
           readinessProbe:
             httpGet:
-              path: /stream/index.m3u8
+              path: /awroberts-media/background-poster.png
               port: 80
             initialDelaySeconds: 2
             periodSeconds: 5
@@ -35,3 +37,7 @@ spec:
         - name: hls
           persistentVolumeClaim:
             claimName: {{ include "awroberts.fullname" . }}-background-hls
+        - name: media-volume
+          hostPath:
+            path: {{ .Values.backgroundVideo.volume.hostPath }}
+            type: DirectoryOrCreate

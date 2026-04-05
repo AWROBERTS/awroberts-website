@@ -3,6 +3,7 @@ let hlsInstance = null;
 let videoReady = false;
 let videoFadeStart = null;
 let videoFadeDuration = 1200;
+let bgPosterImg = null;
 
 // Full-resolution video source buffer
 let videoSourceCanvas = null;
@@ -39,6 +40,7 @@ const glowColor = [127, 203, 255];
 
 // Cache-buster to force fresh HLS session
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+const POSTER_URL = "/awroberts-media/background-poster.png";
 
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -52,6 +54,8 @@ function getOverlayPixelDensity() {
 function preload() {
   curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
+
+  bgPosterImg = loadImage(POSTER_URL);
 
   icons.github = loadImage('/assets/github.png');
   icons.linkedin = loadImage('/assets/linkedin.png');
@@ -221,9 +225,19 @@ function updateVideoFrame() {
   }
 }
 
+function drawBackgroundFallback() {
+  if (!bgPosterImg || !bgPosterImg.width || !bgPosterImg.height) return;
+
+  image(bgPosterImg, 0, 0, width, height);
+}
+
 function draw() {
   clear();
 
+  // Always show the fallback image first
+  drawBackgroundFallback();
+
+  // Then layer video on top if/when it becomes available
   if (videoReady && videoLayerReady) {
     const frameAvailable = updateVideoFrame();
 
