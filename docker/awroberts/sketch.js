@@ -71,6 +71,7 @@ function setup() {
   canvas.style('top', '0');
   canvas.style('left', '0');
   canvas.style('z-index', '1');
+  canvas.style('filter', 'saturate(1.8) contrast(1.08)');
 
   // Helps mobile browsers treat the canvas as a touch surface
   const elt = canvas.elt;
