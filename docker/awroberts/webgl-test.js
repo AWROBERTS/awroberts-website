@@ -11,8 +11,9 @@ function preload() {
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight, WEBGL);
   canvas.parent('canvas-container');
-  noStroke();
+  canvas.position(0, 0);
 
+  noStroke();
   pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 
   videoEl = createVideo('');
@@ -49,13 +50,12 @@ function setup() {
   }
 }
 
-function drawBackgroundLayer(tex) {
+function drawFullscreenTexture(tex) {
   push();
   resetMatrix();
   ortho();
 
-  // WEBGL uses the center as origin by default, so we shift the quad
-  // up and left by half the canvas size to cover the screen.
+  // Move from WEBGL center-origin to top-left screen space
   translate(-width / 2, -height / 2, 0);
 
   texture(tex);
@@ -67,12 +67,12 @@ function draw() {
   background(0);
 
   if (videoEl && videoEl.elt && videoEl.elt.readyState >= 2) {
-    drawBackgroundLayer(videoEl);
+    drawFullscreenTexture(videoEl);
   } else if (posterImg && posterImg.width > 0) {
-    drawBackgroundLayer(posterImg);
+    drawFullscreenTexture(posterImg);
   }
 
-  // Rotating cube on top
+  // Rotating cube overlay
   push();
   rotateY(frameCount * 0.01);
   rotateX(frameCount * 0.008);
