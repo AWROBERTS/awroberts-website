@@ -12,6 +12,7 @@ function setup() {
   const canvas = createCanvas(windowWidth, windowHeight, WEBGL);
   canvas.parent('canvas-container');
   canvas.position(0, 0);
+  canvas.style('display', 'block');
 
   noStroke();
   pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
@@ -26,10 +27,12 @@ function setup() {
   videoEl.elt.crossOrigin = 'anonymous';
 
   if (videoEl.elt.canPlayType('application/vnd.apple.mpegurl')) {
+    // Native HLS support (Safari / iOS)
     videoEl.elt.src = VIDEO_URL;
     videoEl.elt.load();
     videoEl.elt.play().catch(err => console.warn('native HLS play failed:', err));
   } else if (window.Hls && Hls.isSupported()) {
+    // hls.js for Chrome / Firefox / Edge
     hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false
@@ -54,10 +57,7 @@ function drawFullscreenTexture(tex) {
   push();
   resetMatrix();
   ortho();
-
-  // Move from WEBGL center-origin to top-left screen space
   translate(-width / 2, -height / 2, 0);
-
   texture(tex);
   plane(width, height);
   pop();
