@@ -9,6 +9,8 @@
 
 Source code for [awroberts.co.uk](https://awroberts.co.uk).
 
+Currently deployed on a Linux Mint Mini PC in Saddleworth, England.
+
 This repository contains the website frontend, deployment assets, and infrastructure scripts used to build and deploy the site with Docker, Kubernetes, Terraform, and Traefik.
 
 ## Overview
