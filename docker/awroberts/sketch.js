@@ -92,6 +92,35 @@ function setup() {
 
   bgVideoEl = document.getElementById("bg-video");
 
+  const resumeBackgroundVideo = () => {
+    if (!bgVideoEl) return;
+
+    if (bgVideoEl.paused || bgVideoEl.ended) {
+      if (bgVideoEl.ended) {
+        bgVideoEl.currentTime = 0;
+      }
+
+      bgVideoEl.play().catch(err => console.warn("play() failed on resume:", err));
+    }
+
+    if (hlsInstance && Hls.isSupported()) {
+      try {
+        hlsInstance.startLoad();
+      } catch (err) {
+        console.warn("HLS startLoad() failed on resume:", err);
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      resumeBackgroundVideo();
+    }
+  });
+
+  window.addEventListener("focus", resumeBackgroundVideo);
+  window.addEventListener("pageshow", resumeBackgroundVideo);
+
   if (bgVideoEl) {
     bgVideoEl.loop = false;
     bgVideoEl.addEventListener("ended", () => {
