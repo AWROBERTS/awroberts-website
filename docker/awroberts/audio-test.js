@@ -111,6 +111,8 @@ function setup() {
   videoLayerCtx = videoLayer.drawingContext;
 
   bgVideoEl = document.getElementById("bg-video");
+  console.log('[setup] start button:', document.getElementById('start-button'));
+  console.log('[setup] bg-video element:', bgVideoEl);
 
   if (bgVideoEl) {
     bgVideoEl.loop = false;
@@ -194,7 +196,12 @@ function setup() {
 
   const btn = document.getElementById('start-button');
   if (btn) {
-    btn.addEventListener('click', startSound);
+    btn.addEventListener('click', () => {
+      console.log('[ui] start button clicked');
+      startSound();
+    });
+  } else {
+    console.warn('[ui] start-button not found');
   }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
@@ -475,6 +482,7 @@ function touchStarted() {
 }
 
 async function startSound() {
+  console.log('[audio] startSound called');
   if (soundStarted) return;
   soundStarted = true;
 
