@@ -196,8 +196,9 @@ function setup() {
 
   const btn = document.getElementById('start-button');
   if (btn) {
-    btn.addEventListener('click', () => {
-      console.log('[ui] start button clicked');
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      console.log('[ui] start button pressed');
       startSound();
     });
   } else {
@@ -484,19 +485,27 @@ function touchStarted() {
 async function startSound() {
   console.log('[audio] startSound called');
   if (soundStarted) return;
-  soundStarted = true;
 
-  const overlay = document.getElementById('start-overlay');
-  if (overlay) overlay.style.display = 'none';
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  await audioCtx.resume();
+    buildSeeds();
+    buildMelodyFromSha();
+    streamRedSample = sampleStreamRed();
+    buildAudioGraph();
+    startScheduler();
 
-  buildSeeds();
-  buildMelodyFromSha();
-  streamRedSample = sampleStreamRed();
-  buildAudioGraph();
-  startScheduler();
+    soundStarted = true;
+
+    const overlay = document.getElementById('start-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    console.log('[audio] sound started successfully');
+  } catch (err) {
+    console.error('[audio] failed to start sound:', err);
+    soundStarted = false;
+  }
 }
 
 function buildSeeds() {
