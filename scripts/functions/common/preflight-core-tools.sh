@@ -1,9 +1,27 @@
+#!/usr/bin/env bash
+
 preflight_core_tools() {
   echo "🔍 Checking required tools..."
 
   latest_apt_version() {
     local package_name="$1"
     apt-cache policy "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2}'
+  }
+
+  installed_apt_version() {
+    local package_name="$1"
+    dpkg-query -W -f='${Version}' "$package_name" 2>/dev/null
+  }
+
+  version_needs_upgrade() {
+    local current_version="$1"
+    local latest_version="$2"
+
+    if [[ -z "$current_version" || -z "$latest_version" || "$latest_version" == "null" ]]; then
+      return 1
+    fi
+
+    dpkg --compare-versions "$current_version" lt "$latest_version"
   }
 
   latest_helm_version() {
@@ -21,7 +39,12 @@ preflight_core_tools() {
       return 1
     fi
 
-    if [[ "$current_version" == "$latest_version" ]]; then
+    if [[ -z "$current_version" ]]; then
+      echo "ℹ️  $tool_name: installed version unavailable"
+      return 1
+    fi
+
+    if ! version_needs_upgrade "$current_version" "$latest_version"; then
       echo "✅ $tool_name is up to date: $current_version"
       return 1
     fi
@@ -130,7 +153,7 @@ preflight_core_tools() {
   else
     echo "✅ Docker is already installed."
     local docker_current docker_latest
-    docker_current="$(docker --version | awk '{print $3}' | sed 's/,$//')"
+    docker_current="$(installed_apt_version docker.io)"
     docker_latest="$(latest_apt_version docker.io)"
     if prompt_upgrade "Docker" "$docker_current" "$docker_latest"; then
       upgrade_apt_package docker.io
@@ -147,7 +170,7 @@ preflight_core_tools() {
   else
     echo "✅ curl is already installed."
     local curl_current curl_latest
-    curl_current="$(curl --version | head -n1 | awk '{print $2}')"
+    curl_current="$(installed_apt_version curl)"
     curl_latest="$(latest_apt_version curl)"
     if prompt_upgrade "curl" "$curl_current" "$curl_latest"; then
       upgrade_apt_package curl
@@ -164,7 +187,7 @@ preflight_core_tools() {
   else
     echo "✅ jq is already installed."
     local jq_current jq_latest
-    jq_current="$(jq --version | sed 's/^jq-//')"
+    jq_current="$(installed_apt_version jq)"
     jq_latest="$(latest_apt_version jq)"
     if prompt_upgrade "jq" "$jq_current" "$jq_latest"; then
       upgrade_apt_package jq
