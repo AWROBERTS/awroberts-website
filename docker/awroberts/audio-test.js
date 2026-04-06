@@ -157,17 +157,14 @@ function setup() {
         startPosition: 0
       });
 
-      hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
-        console.log("[hls] media attached");
-      });
-
-      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log("[hls] manifest parsed");
-        bgVideoEl.play().catch(err => console.warn("[video] play() failed after manifest:", err));
-      });
-
       hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-        console.warn("[hls] error:", data);
+        console.warn("[hls] error:", {
+          fatal: data.fatal,
+          type: data.type,
+          details: data.details,
+          reason: data.reason
+        });
+
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             console.warn("[hls] recovering media error");
@@ -180,6 +177,16 @@ function setup() {
             hlsInstance.destroy();
           }
         }
+      });
+
+      hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
+        console.log("[hls] media attached");
+        bgVideoEl.play().catch(err => console.warn("[video] play() failed:", err));
+      });
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("[hls] manifest parsed");
+        bgVideoEl.play().catch(err => console.warn("[video] play() failed:", err));
       });
 
       console.log("[hls] loading source:", VIDEO_URL);
@@ -200,6 +207,9 @@ function setup() {
       e.preventDefault();
       console.log('[ui] start button pressed');
       startSound();
+    });
+    btn.addEventListener('click', () => {
+      console.log('[ui] start button clicked');
     });
   } else {
     console.warn('[ui] start-button not found');
@@ -484,16 +494,34 @@ function touchStarted() {
 
 async function startSound() {
   console.log('[audio] startSound called');
-  if (soundStarted) return;
+
+  if (soundStarted) {
+    console.log('[audio] already started; ignoring');
+    return;
+  }
 
   try {
+    console.log('[audio] creating AudioContext');
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
 
+    console.log('[audio] state before resume:', audioCtx.state);
+    await audioCtx.resume();
+    console.log('[audio] state after resume:', audioCtx.state);
+
+    console.log('[audio] building seeds');
     buildSeeds();
+
+    console.log('[audio] building melody');
     buildMelodyFromSha();
+
+    console.log('[audio] sampling video color');
     streamRedSample = sampleStreamRed();
+    console.log('[audio] streamRedSample:', streamRedSample);
+
+    console.log('[audio] building audio graph');
     buildAudioGraph();
+
+    console.log('[audio] starting scheduler');
     startScheduler();
 
     soundStarted = true;
