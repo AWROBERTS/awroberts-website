@@ -20,11 +20,20 @@ let lfo;
 let lfoGain;
 
 let updateTimer = null;
-let redSample = 0.35;
+let streamRedSample = 0.35;
 
 let melodyNotes = [];
 let rhythmSeed = 1;
 let clusterSeed = 1;
+
+let sampleVideoEl = null;
+let sampleVideoReady = false;
+let sampleVideoCanvas = null;
+let sampleVideoCtx = null;
+let sampleVideoWidth = 0;
+let sampleVideoHeight = 0;
+
+const STREAM_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 
 function preload() {
   posterImg = loadImage('/awroberts-media/background-poster.png');
@@ -41,18 +50,16 @@ function setup() {
     btn.addEventListener('click', startSound);
   }
 
-  // visual only: a quiet animated backdrop
+  setupStreamSampler();
 }
 
 function draw() {
   background(0);
 
-  // poster-backed ambience visual
   if (posterImg && posterImg.width > 0) {
     image(posterImg, 0, 0, width, height);
   }
 
-  // subtle overlay
   fill(0, 70);
   rect(0, 0, width, height);
 
@@ -63,7 +70,51 @@ function draw() {
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(18);
-  text(soundStarted ? 'sound running' : 'click the button to start sound', width / 2, height * 0.82);
+  text(
+    soundStarted ? 'sound running' : 'click the button to start sound',
+    width / 2,
+    height * 0.82
+  );
+}
+
+function setupStreamSampler() {
+  sampleVideoEl = document.createElement('video');
+  sampleVideoEl.crossOrigin = 'anonymous';
+  sampleVideoEl.muted = true;
+  sampleVideoEl.playsInline = true;
+  sampleVideoEl.autoplay = true;
+  sampleVideoEl.preload = 'auto';
+  sampleVideoEl.loop = true;
+  sampleVideoEl.style.display = 'none';
+
+  document.body.appendChild(sampleVideoEl);
+
+  sampleVideoCanvas = document.createElement('canvas');
+  sampleVideoCtx = sampleVideoCanvas.getContext('2d', { willReadFrequently: true });
+
+  const markReady = () => {
+    sampleVideoReady = true;
+  };
+
+  sampleVideoEl.addEventListener('loadeddata', markReady);
+  sampleVideoEl.addEventListener('canplay', markReady);
+  sampleVideoEl.addEventListener('playing', markReady);
+
+  if (window.Hls && Hls.isSupported()) {
+    const hls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false,
+      maxBufferLength: 30,
+      backBufferLength: 0
+    });
+
+    hls.loadSource(STREAM_URL);
+    hls.attachMedia(sampleVideoEl);
+  } else if (sampleVideoEl.canPlayType('application/vnd.apple.mpegurl')) {
+    sampleVideoEl.src = STREAM_URL;
+  } else {
+    console.warn('No HLS support available for stream sampler');
+  }
 }
 
 async function startSound() {
@@ -78,7 +129,7 @@ async function startSound() {
 
   buildSeeds();
   buildMelodyFromSha();
-  redSample = samplePosterRed();
+  streamRedSample = sampleStreamRed();
   buildAudioGraph();
   startScheduler();
 }
@@ -95,7 +146,6 @@ function buildSeeds() {
 function buildMelodyFromSha() {
   const sha = String(diag?.awroberts?.build?.sha ?? 'abcdef0123456789');
 
-  // Convert hex chars into stable note degrees
   const degrees = [];
   for (let i = 0; i < sha.length; i++) {
     const c = sha[i].toLowerCase();
@@ -103,7 +153,7 @@ function buildMelodyFromSha() {
     if (Number.isFinite(v)) degrees.push(v);
   }
 
-  const scale = [0, 2, 3, 5, 7, 10, 12, 14]; // minor-ish ambient
+  const scale = [0, 2, 3, 5, 7, 10, 12, 14];
   melodyNotes = [];
 
   for (let i = 0; i < degrees.length; i += 2) {
@@ -133,7 +183,6 @@ function buildAudioGraph() {
   wetGain.gain.value = 0.38;
   wetGain.connect(masterGain);
 
-  // delay / echo layer
   delayNode = audioCtx.createDelay(2.0);
   delayNode.delayTime.value = 0.24 + (clusterSeed % 7) * 0.03;
 
@@ -144,12 +193,10 @@ function buildAudioGraph() {
   delayFeedback.connect(delayNode);
   delayNode.connect(wetGain);
 
-  // convolver reverb
   convolver = audioCtx.createConvolver();
-  convolver.buffer = makeImpulseResponse(audioCtx, 2.8, 2.2, redSample);
+  convolver.buffer = makeImpulseResponse(audioCtx, 2.8, 2.2, streamRedSample);
   convolver.connect(wetGain);
 
-  // melodic voice
   melodyOsc = audioCtx.createOscillator();
   melodyOsc.type = 'sine';
 
@@ -166,7 +213,6 @@ function buildAudioGraph() {
   voiceGain.connect(delayNode);
   voiceGain.connect(convolver);
 
-  // bass layer
   bassOsc = audioCtx.createOscillator();
   bassOsc.type = 'sine';
 
@@ -176,7 +222,6 @@ function buildAudioGraph() {
   bassOsc.connect(bassGain);
   bassGain.connect(dryGain);
 
-  // slow wobble
   lfo = audioCtx.createOscillator();
   lfo.type = 'sine';
   lfo.frequency.value = 0.05 + (clusterSeed % 4) * 0.01;
@@ -188,7 +233,6 @@ function buildAudioGraph() {
   lfoGain.connect(melodyOsc.frequency);
   lfoGain.connect(harmonyOsc.frequency);
 
-  // start
   melodyOsc.start();
   harmonyOsc.start();
   bassOsc.start();
@@ -200,12 +244,10 @@ function buildAudioGraph() {
   bassGain.gain.setValueAtTime(0.0, now);
   bassGain.gain.linearRampToValueAtTime(0.08, now + 4.0);
 
-  // initial notes
   setMelodyStep(0);
 }
 
 function startScheduler() {
-  // rhythmic interval derived from IPs
   const baseMs = 700 + (rhythmSeed % 7) * 90 + (clusterSeed % 5) * 25;
   const jitter = 120 + (clusterSeed % 3) * 40;
   let step = 0;
@@ -213,12 +255,11 @@ function startScheduler() {
   updateTimer = setInterval(() => {
     if (!soundStarted || !audioCtx) return;
 
-    redSample = samplePosterRed();
-    updateReverbFromRed(redSample);
+    streamRedSample = sampleStreamRed();
+    updateReverbFromRed(streamRedSample);
 
     setMelodyStep(step);
 
-    // rhythmic pulse
     const now = audioCtx.currentTime;
     const pulse = 0.10 + (rhythmSeed % 9) * 0.006 + Math.random() * 0.03;
 
@@ -255,7 +296,6 @@ function setMelodyStep(step) {
 function updateReverbFromRed(redAmount) {
   if (!audioCtx || !convolver || !wetGain) return;
 
-  // redAmount is 0..1
   const wet = clamp(0.08 + redAmount * 0.62, 0.06, 0.78);
   const decay = 1.5 + redAmount * 3.5;
 
@@ -265,26 +305,35 @@ function updateReverbFromRed(redAmount) {
   convolver.buffer = makeImpulseResponse(audioCtx, 2.6, decay, redAmount);
 }
 
-function samplePosterRed() {
-  if (!posterImg || !posterImg.width || !posterImg.height) return 0.35;
+function sampleStreamRed() {
+  if (!sampleVideoEl || !sampleVideoReady) return 0.35;
+  if (!sampleVideoEl.videoWidth || !sampleVideoEl.videoHeight) return 0.35;
 
-  const c = document.createElement('canvas');
-  c.width = Math.min(96, posterImg.width);
-  c.height = Math.min(96, posterImg.height);
-  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const w = Math.min(96, sampleVideoEl.videoWidth);
+  const h = Math.min(96, sampleVideoEl.videoHeight);
 
-  ctx.drawImage(posterImg.canvas || posterImg.elt || posterImg, 0, 0, c.width, c.height);
-
-  const data = ctx.getImageData(0, 0, c.width, c.height).data;
-  let sumR = 0;
-  let count = 0;
-
-  for (let i = 0; i < data.length; i += 4) {
-    sumR += data[i];
-    count++;
+  if (sampleVideoCanvas.width !== w || sampleVideoCanvas.height !== h) {
+    sampleVideoCanvas.width = w;
+    sampleVideoCanvas.height = h;
   }
 
-  return count ? (sumR / count) / 255 : 0.35;
+  try {
+    sampleVideoCtx.drawImage(sampleVideoEl, 0, 0, w, h);
+    const data = sampleVideoCtx.getImageData(0, 0, w, h).data;
+
+    let sumR = 0;
+    let count = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      sumR += data[i];
+      count++;
+    }
+
+    return count ? (sumR / count) / 255 : 0.35;
+  } catch (err) {
+    console.warn('Could not sample stream frame red channel:', err);
+    return 0.35;
+  }
 }
 
 function makeImpulseResponse(ctx, duration, decay, redAmount = 0.35) {
