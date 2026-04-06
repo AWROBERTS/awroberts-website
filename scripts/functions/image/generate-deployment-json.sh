@@ -57,9 +57,10 @@ generate_deployment_json() {
     helm version --short 2>/dev/null || echo ""
   }
 
-  get_first_deployment_name() {
-    kubectl get deploy -n "${NAMESPACE}" \
+  get_first_running_pod_name() {
+    kubectl get pod -n "${NAMESPACE}" \
       -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+      --field-selector=status.phase=Running \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
@@ -69,21 +70,8 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_first_running_pod_name() {
-    kubectl get pod -n "${NAMESPACE}" \
-      -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
-      --field-selector=status.phase=Running \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
-  }
-
   get_traefik_deployment_name() {
     kubectl get deploy -n traefik \
-      -l "app.kubernetes.io/name=traefik" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
-  }
-
-  get_traefik_service_name() {
-    kubectl get svc -n traefik \
       -l "app.kubernetes.io/name=traefik" \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
@@ -105,14 +93,6 @@ generate_deployment_json() {
     fi
   }
 
-  local deployment_name
-  deployment_name="$(get_first_deployment_name)"
-
-  if [[ -z "${deployment_name:-}" ]]; then
-    echo "❌ No deployment found for Helm release '${HELM_RELEASE}' in namespace '${NAMESPACE}'" >&2
-    return 1
-  fi
-
   local pod_name
   pod_name="$(get_first_running_pod_name)"
 
@@ -132,21 +112,12 @@ generate_deployment_json() {
   local traefik_deployment_name
   traefik_deployment_name="$(get_traefik_deployment_name)"
 
-  local traefik_service_name
-  traefik_service_name="$(get_traefik_service_name)"
-
-  local traefik_image="docker.io/traefik:v3.6.12"
-  local traefik_version="v3.6.12"
-  local traefik_sha="unknown"
-
+  local traefik_version="unknown"
   if [[ -n "${traefik_deployment_name:-}" ]]; then
     local live_traefik_image
     live_traefik_image="$(get_traefik_image "$traefik_deployment_name")"
-
     if [[ -n "${live_traefik_image:-}" ]]; then
-      traefik_image="$live_traefik_image"
       traefik_version="$(get_traefik_version_from_image "$live_traefik_image")"
-      traefik_sha="$(resolve_image_sha "$live_traefik_image")"
     fi
   fi
 
@@ -158,56 +129,11 @@ generate_deployment_json() {
   app_sha="$(resolve_image_sha "$app_image")"
   bg_sha="$(resolve_image_sha "$bg_image")"
 
-  local pod_status
-  pod_status="$(kubectl get pod "$pod_name" -n "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")"
-
-  local pod_restarts
-  pod_restarts="$(kubectl get pod "$pod_name" -n "${NAMESPACE}" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")"
-
   local pod_ip
   pod_ip="$(kubectl get pod "$pod_name" -n "${NAMESPACE}" -o jsonpath='{.status.podIP}' 2>/dev/null || echo "")"
 
-  local node_name
-  node_name="$(kubectl get pod "$pod_name" -n "${NAMESPACE}" -o jsonpath='{.spec.nodeName}' 2>/dev/null || echo "")"
-
-  local node_internal_ip=""
-  if [[ -n "${node_name:-}" ]]; then
-    node_internal_ip="$(
-      kubectl get node "$node_name" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || echo ""
-    )"
-  fi
-
-  local deploy_ready
-  deploy_ready="$(kubectl get deploy "$deployment_name" -n "${NAMESPACE}" -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || echo "0/0")"
-
-  local deploy_age
-  deploy_age="$(kubectl get deploy "$deployment_name" -n "${NAMESPACE}" -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")"
-
   local service_cluster_ip
   service_cluster_ip="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
-
-  local service_port
-  service_port="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
-
-  local traefik_deploy_ready="0/0"
-  if [[ -n "${traefik_deployment_name:-}" ]]; then
-    traefik_deploy_ready="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || echo "0/0")"
-  fi
-
-  local traefik_deploy_age=""
-  if [[ -n "${traefik_deployment_name:-}" ]]; then
-    traefik_deploy_age="$(kubectl get deploy "$traefik_deployment_name" -n traefik -o jsonpath='{.metadata.creationTimestamp}' 2>/dev/null || echo "")"
-  fi
-
-  local traefik_service_cluster_ip=""
-  if [[ -n "${traefik_service_name:-}" ]]; then
-    traefik_service_cluster_ip="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
-  fi
-
-  local traefik_service_port=""
-  if [[ -n "${traefik_service_name:-}" ]]; then
-    traefik_service_port="$(kubectl get svc "$traefik_service_name" -n traefik -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")"
-  fi
 
   local kubernetes_version
   kubernetes_version="$(get_kubernetes_version)"
@@ -224,51 +150,23 @@ generate_deployment_json() {
     "version": "${helm_version}"
   },
   "awroberts": {
-    "deployment": {
-      "name": "${deployment_name}",
-      "ready": "${deploy_ready}",
-      "age": "${deploy_age}"
-    },
     "service": {
-      "clusterIP": "${service_cluster_ip}",
-      "port": ${service_port}
+      "clusterIP": "${service_cluster_ip}"
     },
     "build": {
-      "image": "${app_image}",
-      "tag": "${app_image##*:}",
       "sha": "${app_sha}"
     }
   },
   "traefik": {
-    "deployment": {
-      "name": "${traefik_deployment_name}",
-      "ready": "${traefik_deploy_ready}",
-      "age": "${traefik_deploy_age}"
-    },
-    "service": {
-      "name": "${traefik_service_name}",
-      "clusterIP": "${traefik_service_cluster_ip}",
-      "port": ${traefik_service_port}
-    },
     "build": {
-      "image": "${traefik_image}",
-      "version": "${traefik_version}",
-      "sha": "${traefik_sha}"
+      "version": "${traefik_version}"
     }
   },
   "pod": {
-    "name": "${pod_name}",
-    "status": "${pod_status}",
-    "restarts": ${pod_restarts},
     "ip": "${pod_ip}"
-  },
-  "node": {
-    "internal": "${node_internal_ip}"
   },
   "backgroundVideo": {
     "build": {
-      "image": "${bg_image}",
-      "tag": "${bg_image##*:}",
       "sha": "${bg_sha}"
     }
   }
