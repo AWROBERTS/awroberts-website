@@ -163,6 +163,7 @@ generate_deployment_json() {
     }
   },
   "pod": {
+    "name": "${pod_name}",
     "ip": "${pod_ip}"
   },
   "backgroundVideo": {
