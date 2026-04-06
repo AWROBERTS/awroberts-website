@@ -1,6 +1,35 @@
 preflight_core_tools() {
   echo "🔍 Checking required tools..."
 
+  latest_apt_version() {
+    local package_name="$1"
+    apt-cache policy "$package_name" 2>/dev/null | awk '/Candidate:/ {print $2}'
+  }
+
+  latest_helm_version() {
+    curl -fsSL https://api.github.com/repos/helm/helm/releases/latest 2>/dev/null \
+      | jq -r '.tag_name // empty'
+  }
+
+  compare_versions() {
+    local tool_name="$1"
+    local current_version="$2"
+    local latest_version="$3"
+
+    if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
+      echo "ℹ️  $tool_name: current=$current_version (latest unavailable)"
+      return 0
+    fi
+
+    if [[ "$current_version" == "$latest_version" ]]; then
+      echo "✅ $tool_name is up to date: $current_version"
+      return 0
+    fi
+
+    echo "⚠️  $tool_name update available: current=$current_version latest=$latest_version"
+    return 0
+  }
+
   # Docker check and install
   if ! command -v docker &>/dev/null; then
     echo "🐳 Docker not found. Installing Docker..."
@@ -11,6 +40,10 @@ preflight_core_tools() {
     echo "✅ Docker installed."
   else
     echo "✅ Docker is already installed."
+    compare_versions \
+      "Docker" \
+      "$(docker --version | awk '{print $3}' | sed 's/,$//')" \
+      "$(latest_apt_version docker.io)"
   fi
 
   # Curl check and install
@@ -21,6 +54,10 @@ preflight_core_tools() {
     echo "✅ curl installed."
   else
     echo "✅ curl is already installed."
+    compare_versions \
+      "curl" \
+      "$(curl --version | head -n1 | awk '{print $2}')" \
+      "$(latest_apt_version curl)"
   fi
 
   # jq check and install
@@ -31,6 +68,10 @@ preflight_core_tools() {
     echo "✅ jq installed."
   else
     echo "✅ jq is already installed."
+    compare_versions \
+      "jq" \
+      "$(jq --version | sed 's/^jq-//')" \
+      "$(latest_apt_version jq)"
   fi
 
   # Docker Buildx check
@@ -77,5 +118,9 @@ preflight_core_tools() {
     rm get_helm.sh
   else
     echo "✅ Helm is already installed."
+    compare_versions \
+      "Helm" \
+      "$(helm version --short 2>/dev/null | sed 's/^v//; s/+.*//')" \
+      "$(latest_helm_version | sed 's/^v//; s/+.*//')"
   fi
 }
