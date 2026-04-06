@@ -1,384 +1,499 @@
-let soundStarted = false;
+let bgVideoEl;
+let hlsInstance = null;
+let videoReady = false;
+let videoFadeStart = null;
+let videoFadeDuration = 1200;
+let bgPosterImg = null;
+
+// Full-resolution video source buffer
+let videoSourceCanvas = null;
+let videoSourceCtx = null;
+let videoSourceReady = false;
+let videoSourceWidth = 0;
+let videoSourceHeight = 0;
+
+// Persistent display buffer to keep the last good frame visible
+let videoLayer = null;
+let videoLayerCtx = null;
+let videoLayerReady = false;
+let lastVideoTime = -1;
+let hasVideoFrame = false;
+
+let curwenFont;
+let emailText = 'info@awroberts.co.uk';
+let emailSize;
+let isHoveringEmail = false;
 
 let diag;
 
-let audioCtx;
-let masterGain;
-let dryGain;
-let wetGain;
-let convolver;
-let delayNode;
-let delayFeedback;
-let voiceGain;
-let bassGain;
+let icons = {};
+let socialLinks = [
+  { imgKey: 'github', url: 'https://github.com/awroberts' },
+  { imgKey: 'linkedin', url: 'https://www.linkedin.com/in/alexander-roberts-53563312b/' },
+  { imgKey: 'bandcamp', url: 'https://chewvalleytapes.bandcamp.com/' }
+];
+let hoveringSocial = -1;
 
-let melodyOsc;
-let harmonyOsc;
-let bassOsc;
-let lfo;
-let lfoGain;
+let fadeStartTime;
 
-let updateTimer = null;
-let streamRedSample = 0.35;
+const glowColor = [127, 203, 255];
 
-let melodyNotes = [];
-let rhythmSeed = 1;
-let clusterSeed = 1;
+// Cache-buster to force fresh HLS session
+const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+const POSTER_URL = "/awroberts-media/background-poster.png";
 
-let sampleVideoEl = null;
-let sampleVideoReady = false;
-let sampleVideoCanvas = null;
-let sampleVideoCtx = null;
+function isMobileDevice() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
-let sampleHls = null;
-
-const STREAM_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+function getOverlayPixelDensity() {
+  if (!isMobileDevice()) return 1;
+  return Math.min(window.devicePixelRatio || 1, 2);
+}
 
 function preload() {
+  curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = loadJSON('/deployment.json');
+
+  bgPosterImg = loadImage(POSTER_URL);
+
+  icons.github = loadImage('/assets/github.png');
+  icons.linkedin = loadImage('/assets/linkedin.png');
+  icons.bandcamp = loadImage('/assets/bandcamp.png');
 }
 
 function setup() {
+  pixelDensity(getOverlayPixelDensity());
+
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent('canvas-container');
-  noStroke();
+  canvas.style('position', 'absolute');
+  canvas.style('top', '0');
+  canvas.style('left', '0');
+  canvas.style('z-index', '1');
+  canvas.style('filter', 'saturate(1.8) contrast(1.08)');
 
-  const btn = document.getElementById('start-button');
-  if (btn) {
-    btn.addEventListener('click', startSound);
+  // Helps mobile browsers treat the canvas as a touch surface
+  const elt = canvas.elt;
+  if (elt) {
+    elt.style.touchAction = 'none';
+    elt.style.webkitTapHighlightColor = 'transparent';
   }
 
-  setupStreamSampler();
-}
+  videoSourceCanvas = document.createElement("canvas");
+  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
+  videoSourceReady = true;
 
-function draw() {
-  background(0);
+  videoLayer = createGraphics(windowWidth, windowHeight);
+  videoLayer.pixelDensity(1);
+  videoLayer.clear();
+  videoLayerReady = true;
+  videoLayerCtx = videoLayer.drawingContext;
 
-  // subtle live backdrop
-  fill(0, 50);
-  rect(0, 0, width, height);
+  bgVideoEl = document.getElementById("bg-video");
 
-  const t = millis() * 0.001;
-  fill(127, 203, 255);
-  circle(width / 2 + sin(t * 0.8) * 70, height / 2 + cos(t * 1.1) * 40, 38);
-
-  fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(18);
-  text(
-    soundStarted ? 'sound running' : 'click the button to start sound',
-    width / 2,
-    height * 0.82
-  );
-}
-
-function setupStreamSampler() {
-  sampleVideoEl = document.createElement('video');
-  sampleVideoEl.crossOrigin = 'anonymous';
-  sampleVideoEl.muted = true;
-  sampleVideoEl.playsInline = true;
-  sampleVideoEl.autoplay = true;
-  sampleVideoEl.preload = 'auto';
-  sampleVideoEl.loop = true;
-  sampleVideoEl.style.display = 'none';
-
-  document.body.appendChild(sampleVideoEl);
-
-  sampleVideoCanvas = document.createElement('canvas');
-  sampleVideoCtx = sampleVideoCanvas.getContext('2d', { willReadFrequently: true });
-
-  const markReady = () => {
-    sampleVideoReady = true;
-  };
-
-  sampleVideoEl.addEventListener('loadeddata', markReady);
-  sampleVideoEl.addEventListener('canplay', markReady);
-  sampleVideoEl.addEventListener('playing', markReady);
-
-  if (window.Hls && Hls.isSupported()) {
-    sampleHls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: false,
-      maxBufferLength: 30,
-      backBufferLength: 0
+  if (bgVideoEl) {
+    bgVideoEl.loop = false;
+    bgVideoEl.addEventListener("ended", () => {
+      console.log("Video ended; restarting VOD loop");
+      bgVideoEl.currentTime = 0;
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
     });
 
-    sampleHls.loadSource(STREAM_URL);
-    sampleHls.attachMedia(sampleVideoEl);
-  } else if (sampleVideoEl.canPlayType('application/vnd.apple.mpegurl')) {
-    sampleVideoEl.src = STREAM_URL;
-  } else {
-    console.warn('No HLS support available for stream sampler');
-  }
-}
+    const markVideoReady = () => {
+      if (!videoReady) {
+        console.log("Video ready signal fired");
+      }
+      videoReady = true;
+    };
 
-async function startSound() {
-  if (soundStarted) return;
-  soundStarted = true;
+    if ("requestVideoFrameCallback" in bgVideoEl) {
+      const onFirstFrame = () => {
+        console.log("First decoded frame detected");
+        markVideoReady();
+      };
+      bgVideoEl.requestVideoFrameCallback(onFirstFrame);
+    } else {
+      bgVideoEl.addEventListener("canplay", () => {
+        console.log("Video canplay fired");
+        markVideoReady();
+      });
 
-  const overlay = document.getElementById('start-overlay');
-  if (overlay) overlay.style.display = 'none';
-
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  await audioCtx.resume();
-
-  buildSeeds();
-  buildMelodyFromSha();
-  streamRedSample = sampleStreamRed();
-  buildAudioGraph();
-  startScheduler();
-}
-
-function buildSeeds() {
-  const sha = String(diag?.awroberts?.build?.sha ?? 'abcdef0123456789');
-  const podIp = String(diag?.pod?.ip ?? '10.0.0.1');
-  const clusterIp = String(diag?.awroberts?.service?.clusterIP ?? '10.96.0.1');
-
-  rhythmSeed = numericSeedFromString(podIp);
-  clusterSeed = numericSeedFromString(clusterIp) ^ numericSeedFromString(sha);
-}
-
-function buildMelodyFromSha() {
-  const sha = String(diag?.awroberts?.build?.sha ?? 'abcdef0123456789');
-
-  const degrees = [];
-  for (let i = 0; i < sha.length; i++) {
-    const c = sha[i].toLowerCase();
-    const v = parseInt(c, 16);
-    if (Number.isFinite(v)) degrees.push(v);
-  }
-
-  const scale = [0, 2, 3, 5, 7, 10, 12, 14];
-  melodyNotes = [];
-
-  for (let i = 0; i < degrees.length; i += 2) {
-    const a = degrees[i] ?? 0;
-    const b = degrees[i + 1] ?? 0;
-    const degree = scale[(a + b) % scale.length];
-    const octave = 2 + ((a ^ b) % 3);
-    const midi = 48 + degree + octave * 12;
-    const freq = midiToFreq(midi);
-
-    if (Number.isFinite(freq)) {
-      melodyNotes.push(freq);
+      bgVideoEl.addEventListener("loadeddata", () => {
+        console.log("Video loadeddata fired");
+        markVideoReady();
+      });
     }
   }
 
-  if (melodyNotes.length < 4) {
-    melodyNotes = [110, 130.81, 146.83, 164.81, 196, 220];
-  }
-}
+  if (bgVideoEl) {
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        maxBufferLength: 60,
+        maxBufferSize: 120 * 1000 * 1000,
+        maxMaxBufferLength: 120,
+        backBufferLength: 0,
+        startPosition: 0
+      });
 
-function buildAudioGraph() {
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.8;
-  masterGain.connect(audioCtx.destination);
+      hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+        console.warn("HLS.js error:", data);
 
-  dryGain = audioCtx.createGain();
-  dryGain.gain.value = 0.62;
-  dryGain.connect(masterGain);
+        if (data.fatal) {
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hlsInstance.recoverMediaError();
+          } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hlsInstance.startLoad();
+          } else {
+            hlsInstance.destroy();
+          }
+        }
+      });
 
-  wetGain = audioCtx.createGain();
-  wetGain.gain.value = 0.38;
-  wetGain.connect(masterGain);
+      hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
+        console.log("HLS.js media attached");
+        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+      });
 
-  delayNode = audioCtx.createDelay(2.0);
-  delayNode.delayTime.value = 0.24 + (clusterSeed % 7) * 0.03;
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log("HLS.js manifest parsed");
+        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+      });
 
-  delayFeedback = audioCtx.createGain();
-  delayFeedback.gain.value = 0.28 + (rhythmSeed % 5) * 0.03;
-
-  delayNode.connect(delayFeedback);
-  delayFeedback.connect(delayNode);
-  delayNode.connect(wetGain);
-
-  convolver = audioCtx.createConvolver();
-  convolver.buffer = makeImpulseResponse(audioCtx, 2.8, 2.2, streamRedSample);
-  convolver.connect(wetGain);
-
-  melodyOsc = audioCtx.createOscillator();
-  melodyOsc.type = 'sine';
-
-  harmonyOsc = audioCtx.createOscillator();
-  harmonyOsc.type = 'triangle';
-
-  voiceGain = audioCtx.createGain();
-  voiceGain.gain.value = 0.0;
-
-  melodyOsc.connect(voiceGain);
-  harmonyOsc.connect(voiceGain);
-
-  voiceGain.connect(dryGain);
-  voiceGain.connect(delayNode);
-  voiceGain.connect(convolver);
-
-  bassOsc = audioCtx.createOscillator();
-  bassOsc.type = 'sine';
-
-  bassGain = audioCtx.createGain();
-  bassGain.gain.value = 0.0;
-
-  bassOsc.connect(bassGain);
-  bassGain.connect(dryGain);
-
-  lfo = audioCtx.createOscillator();
-  lfo.type = 'sine';
-  lfo.frequency.value = 0.05 + (clusterSeed % 4) * 0.01;
-
-  lfoGain = audioCtx.createGain();
-  lfoGain.gain.value = 14 + (rhythmSeed % 6) * 2;
-
-  lfo.connect(lfoGain);
-  lfoGain.connect(melodyOsc.frequency);
-  lfoGain.connect(harmonyOsc.frequency);
-
-  melodyOsc.start();
-  harmonyOsc.start();
-  bassOsc.start();
-  lfo.start();
-
-  const now = audioCtx.currentTime;
-  voiceGain.gain.setValueAtTime(0.0, now);
-  voiceGain.gain.linearRampToValueAtTime(0.18, now + 2.5);
-  bassGain.gain.setValueAtTime(0.0, now);
-  bassGain.gain.linearRampToValueAtTime(0.08, now + 4.0);
-
-  setMelodyStep(0);
-}
-
-function startScheduler() {
-  const baseMs = 700 + (rhythmSeed % 7) * 90 + (clusterSeed % 5) * 25;
-  const jitter = 120 + (clusterSeed % 3) * 40;
-  let step = 0;
-
-  updateTimer = setInterval(() => {
-    if (!soundStarted || !audioCtx) return;
-
-    streamRedSample = sampleStreamRed();
-    updateReverbFromRed(streamRedSample);
-
-    setMelodyStep(step);
-
-    const now = audioCtx.currentTime;
-    const pulse = 0.10 + (rhythmSeed % 9) * 0.006 + Math.random() * 0.03;
-
-    voiceGain.gain.cancelScheduledValues(now);
-    voiceGain.gain.setTargetAtTime(pulse, now, 0.05);
-    voiceGain.gain.setTargetAtTime(0.18, now + 0.18, 0.12);
-
-    bassGain.gain.cancelScheduledValues(now);
-    bassGain.gain.setTargetAtTime(0.06 + ((clusterSeed + step) % 4) * 0.01, now, 0.08);
-
-    step++;
-  }, baseMs + Math.floor(Math.random() * jitter));
-}
-
-function setMelodyStep(step) {
-  if (!audioCtx || melodyNotes.length === 0) return;
-
-  const safeLen = melodyNotes.length;
-  const idx = (((step * 3) + rhythmSeed + clusterSeed) % safeLen + safeLen) % safeLen;
-  const noteRaw = melodyNotes[idx];
-  const note = Number.isFinite(noteRaw) ? noteRaw : 110;
-  const harmony = Number.isFinite(note * 2) ? note * 2 : 220;
-
-  const bassChoices = [55, 61.74, 65.41, 73.42];
-  const bassIdx = (((step + clusterSeed) % bassChoices.length) + bassChoices.length) % bassChoices.length;
-  const bassFreqRaw = bassChoices[bassIdx];
-  const bassFreq = Number.isFinite(bassFreqRaw) ? bassFreqRaw : 55;
-
-  if (![note, harmony, bassFreq].every(Number.isFinite)) {
-    console.warn('Non-finite frequency detected', { step, idx, noteRaw, note, harmony, bassFreqRaw, bassFreq });
-    return;
+      console.log("Loading HLS source:", VIDEO_URL);
+      hlsInstance.loadSource(VIDEO_URL);
+      hlsInstance.attachMedia(bgVideoEl);
+    } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
+      console.log("Native HLS supported");
+      bgVideoEl.src = VIDEO_URL;
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+    }
   }
 
-  const now = audioCtx.currentTime;
-  melodyOsc.frequency.cancelScheduledValues(now);
-  harmonyOsc.frequency.cancelScheduledValues(now);
-  bassOsc.frequency.cancelScheduledValues(now);
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
 
-  melodyOsc.frequency.linearRampToValueAtTime(note, now + 0.25);
-  harmonyOsc.frequency.linearRampToValueAtTime(harmony, now + 0.25);
-  bassOsc.frequency.linearRampToValueAtTime(bassFreq, now + 0.35);
+  textFont(curwenFont);
+  textSize(emailSize);
+  textAlign(RIGHT, TOP);
+
+  fadeStartTime = millis();
 }
 
-function updateReverbFromRed(redAmount) {
-  if (!audioCtx || !convolver || !wetGain) return;
+// ---------------------------------------------------
+// Full-res frame copy with persistent last-good-frame behavior
+// ---------------------------------------------------
+function updateVideoFrame() {
+  if (!bgVideoEl) return false;
+  if (!videoReady) return false;
+  if (!videoSourceReady || !videoLayerReady) return false;
+  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
 
-  const safeRed = Number.isFinite(redAmount) ? clamp(redAmount, 0, 1) : 0.35;
-  const wet = clamp(0.08 + safeRed * 0.62, 0.06, 0.78);
-  const decay = 1.5 + safeRed * 3.5;
+  const currentTime = bgVideoEl.currentTime;
+  const hasAdvanced = currentTime !== lastVideoTime;
 
-  wetGain.gain.cancelScheduledValues(audioCtx.currentTime);
-  wetGain.gain.setTargetAtTime(wet, audioCtx.currentTime, 0.15);
+  if (hasVideoFrame && !hasAdvanced) {
+    return true;
+  }
 
-  convolver.buffer = makeImpulseResponse(audioCtx, 2.6, decay, safeRed);
-}
+  const sourceW = bgVideoEl.videoWidth;
+  const sourceH = bgVideoEl.videoHeight;
 
-function sampleStreamRed() {
-  if (!sampleVideoEl || !sampleVideoReady) return 0.35;
-  if (!sampleVideoEl.videoWidth || !sampleVideoEl.videoHeight) return 0.35;
+  if (!sourceW || !sourceH) return hasVideoFrame;
 
-  const w = Math.min(96, sampleVideoEl.videoWidth);
-  const h = Math.min(96, sampleVideoEl.videoHeight);
+  if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
+    videoSourceCanvas.width = sourceW;
+    videoSourceCanvas.height = sourceH;
+    videoSourceWidth = sourceW;
+    videoSourceHeight = sourceH;
+  }
 
-  if (sampleVideoCanvas.width !== w || sampleVideoCanvas.height !== h) {
-    sampleVideoCanvas.width = w;
-    sampleVideoCanvas.height = h;
+  if (videoLayer.width !== width || videoLayer.height !== height) {
+    videoLayer.resizeCanvas(width, height);
+    videoLayer.pixelDensity(1);
+    videoLayerCtx = videoLayer.drawingContext;
   }
 
   try {
-    sampleVideoCtx.drawImage(sampleVideoEl, 0, 0, w, h);
-    const data = sampleVideoCtx.getImageData(0, 0, w, h).data;
+    videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
 
-    let sumR = 0;
-    let count = 0;
+    videoLayerCtx.save();
+    videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.restore();
 
-    for (let i = 0; i < data.length; i += 4) {
-      sumR += data[i];
-      count++;
+    lastVideoTime = currentTime;
+    hasVideoFrame = true;
+
+    if (videoFadeStart === null) {
+      videoFadeStart = millis();
+      console.log("Video fade started after first successful frame copy");
     }
 
-    return count ? (sumR / count) / 255 : 0.35;
+    return true;
   } catch (err) {
-    console.warn('Could not sample stream frame red channel:', err);
-    return 0.35;
+    console.warn("Video frame copy skipped:", err);
+    return hasVideoFrame;
   }
 }
 
-function makeImpulseResponse(ctx, duration, decay, redAmount = 0.35) {
-  const sampleRate = ctx.sampleRate;
-  const length = Math.floor(sampleRate * duration);
-  const buffer = ctx.createBuffer(2, length, sampleRate);
+function drawBackgroundFallback() {
+  if (!bgPosterImg || !bgPosterImg.width || !bgPosterImg.height) return;
 
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i++) {
-      const n = i / length;
-      const colorWeight = 0.7 + redAmount * 0.6;
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay * colorWeight);
+  image(bgPosterImg, 0, 0, width, height);
+}
+
+function draw() {
+  clear();
+
+  // Always show the fallback image first
+  drawBackgroundFallback();
+
+  // Then layer video on top if/when it becomes available
+  if (videoReady && videoLayerReady) {
+    const frameAvailable = updateVideoFrame();
+
+    if (frameAvailable && hasVideoFrame) {
+      let alpha = 255;
+      if (videoFadeStart !== null) {
+        const t = (millis() - videoFadeStart) / videoFadeDuration;
+        alpha = constrain(t * 255, 0, 255);
+      }
+
+      push();
+      tint(255, alpha);
+      image(videoLayer, 0, 0, width, height);
+      pop();
     }
   }
 
-  return buffer;
+  drawEmail();
+  drawSocialIcons();
+  drawDeploymentInfo();
 }
 
-function numericSeedFromString(str) {
-  let out = 0;
-  for (let i = 0; i < str.length; i++) {
-    out = (out * 31 + str.charCodeAt(i)) >>> 0;
+// ----------------------------
+// Shared hit testing
+// ----------------------------
+function getEmailHitRect() {
+  const margin = 30;
+  const x = width - margin;
+  const y = margin;
+
+  textSize(emailSize);
+  const textW = textWidth(emailText);
+
+  const padLeft = emailSize * 0.8;
+  const padRight = emailSize * 0.2;
+  const padY = emailSize * 0.25;
+
+  return {
+    left: x - textW - padLeft,
+    right: x + padRight,
+    top: y - padY,
+    bottom: y + emailSize + padY,
+    x,
+    y
+  };
+}
+
+function getSocialHitRects() {
+  const size = emailSize * 0.8;
+  const margin = 30;
+  const spacing = size + 20;
+  const xStart = margin;
+  const y = margin;
+
+  return socialLinks.map((item, i) => ({
+    index: i,
+    x: xStart + i * spacing,
+    y,
+    size,
+    url: item.url
+  }));
+}
+
+function pointInRect(px, py, rect) {
+  return (
+    px >= rect.left &&
+    px <= rect.right &&
+    py >= rect.top &&
+    py <= rect.bottom
+  );
+}
+
+function pointInBox(px, py, x, y, size) {
+  return (
+    px >= x &&
+    px <= x + size &&
+    py >= y &&
+    py <= y + size
+  );
+}
+
+// ----------------------------
+// GLOW HELPER
+// ----------------------------
+function drawGlow(x, y, w, h, alpha) {
+  push();
+  noStroke();
+  fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
+  drawingContext.filter = 'blur(12px)';
+  rect(x, y, w, h, 6);
+  pop();
+}
+
+// ----------------------------
+// EMAIL
+// ----------------------------
+function drawEmail() {
+  const hit = getEmailHitRect();
+
+  isHoveringEmail =
+    mouseX >= hit.left &&
+    mouseX <= hit.right &&
+    mouseY >= hit.top &&
+    mouseY <= hit.bottom;
+
+  if (isHoveringEmail) {
+    drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 255);
+    cursor(HAND);
+  } else {
+    drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 0);
   }
-  return out;
+
+  textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
+  fill(255);
+  textAlign(RIGHT, TOP);
+  text(emailText, hit.x, hit.y);
 }
 
-function midiToFreq(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
+// ----------------------------
+// SOCIAL ICONS
+// ----------------------------
+function drawSocialIcons() {
+  const size = emailSize * 0.8;
+  const margin = 30;
+  const spacing = size + 20;
+  const xStart = margin;
+  const y = margin;
+
+  hoveringSocial = -1;
+
+  const fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
+  const alpha = fadeProgress * 255;
+
+  socialLinks.forEach((item, i) => {
+    const x = xStart + i * spacing;
+    const icon = icons[item.imgKey];
+
+    const isHover =
+      mouseX > x &&
+      mouseX < x + size &&
+      mouseY > y &&
+      mouseY < y + size;
+
+    if (isHover) {
+      hoveringSocial = i;
+      cursor(HAND);
+    }
+
+    const glowAlpha = isHover ? 255 : 0;
+
+    drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
+
+    if (icon && icon.width > 0 && icon.height > 0) {
+      push();
+      tint(255, alpha);
+      image(icon, x, y, size, size);
+      pop();
+    }
+  });
 }
 
-function clamp(v, minV, maxV) {
-  return Math.max(minV, Math.min(maxV, v));
+// ----------------------------
+// DEPLOYMENT INFO
+// ----------------------------
+function drawDeploymentInfo() {
+  if (!diag) return;
+
+  const baseSize = min(windowWidth, windowHeight) * 0.02;
+  textSize(baseSize);
+  textAlign(LEFT);
+  fill(255);
+
+  const margin = 30;
+  const x = margin;
+
+  const lines = [
+    `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
+    `helm: ${diag.helm?.version ?? 'N/A'}`,
+    `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
+    `pod ip: ${diag.pod?.ip ?? 'N/A'}`,
+    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
+    `pod name: ${diag.pod?.name ?? 'N/A'}`,
+    `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
+    `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
+  ];
+
+  let y = height - margin - (baseSize * 1.3 * lines.length);
+
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], x, y);
+    y += baseSize * 1.3;
+  }
+}
+
+// ----------------------------
+// INTERACTION
+// ----------------------------
+function openEmail() {
+  window.location.href = 'mailto:info@awroberts.co.uk';
+}
+
+function openSocial(index) {
+  if (index < 0 || index >= socialLinks.length) return;
+  window.open(socialLinks[index].url, '_blank', 'noopener,noreferrer');
+}
+
+function handlePointerActivation(px, py) {
+  const emailHit = getEmailHitRect();
+  if (pointInRect(px, py, emailHit)) {
+    openEmail();
+    return true;
+  }
+
+  const socialRects = getSocialHitRects();
+  for (const rect of socialRects) {
+    if (pointInBox(px, py, rect.x, rect.y, rect.size)) {
+      openSocial(rect.index);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function mousePressed() {
+  handlePointerActivation(mouseX, mouseY);
+}
+
+function touchStarted() {
+  if (touches.length > 0) {
+    handlePointerActivation(touches[0].x, touches[0].y);
+  }
+  return false;
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+
+  if (videoLayer) {
+    videoLayer.resizeCanvas(windowWidth, windowHeight);
+    videoLayer.pixelDensity(1);
+  }
+
+  emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
+  textSize(emailSize);
 }
