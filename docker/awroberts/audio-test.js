@@ -73,7 +73,6 @@ function setup() {
   canvas.style('z-index', '1');
   canvas.style('filter', 'saturate(1.8) contrast(1.08)');
 
-  // Helps mobile browsers treat the canvas as a touch surface
   const elt = canvas.elt;
   if (elt) {
     elt.style.touchAction = 'none';
@@ -94,6 +93,9 @@ function setup() {
 
   if (bgVideoEl) {
     bgVideoEl.loop = false;
+    bgVideoEl.muted = true;
+    bgVideoEl.playsInline = true;
+
     bgVideoEl.addEventListener("ended", () => {
       console.log("Video ended; restarting VOD loop");
       bgVideoEl.currentTime = 0;
@@ -127,7 +129,7 @@ function setup() {
   }
 
   if (bgVideoEl) {
-    if (Hls.isSupported()) {
+    if (window.Hls && Hls.isSupported()) {
       hlsInstance = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
@@ -154,12 +156,10 @@ function setup() {
 
       hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
         console.log("HLS.js media attached");
-        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
       });
 
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
         console.log("HLS.js manifest parsed");
-        bgVideoEl.play().catch(err => console.warn("play() failed:", err));
       });
 
       console.log("Loading HLS source:", VIDEO_URL);
@@ -168,8 +168,14 @@ function setup() {
     } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
       console.log("Native HLS supported");
       bgVideoEl.src = VIDEO_URL;
-      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+    } else {
+      console.warn("No HLS support available");
     }
+  }
+
+  const btn = document.getElementById('start-button');
+  if (btn) {
+    btn.addEventListener('click', startSound);
   }
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
@@ -181,9 +187,35 @@ function setup() {
   fadeStartTime = millis();
 }
 
-// ---------------------------------------------------
-// Full-res frame copy with persistent last-good-frame behavior
-// ---------------------------------------------------
+function draw() {
+  clear();
+
+  // Always show fallback image first
+  drawBackgroundFallback();
+
+  // Then layer video on top if/when it becomes available
+  if (videoReady && videoLayerReady) {
+    const frameAvailable = updateVideoFrame();
+
+    if (frameAvailable && hasVideoFrame) {
+      let alpha = 255;
+      if (videoFadeStart !== null) {
+        const t = (millis() - videoFadeStart) / videoFadeDuration;
+        alpha = constrain(t * 255, 0, 255);
+      }
+
+      push();
+      tint(255, alpha);
+      image(videoLayer, 0, 0, width, height);
+      pop();
+    }
+  }
+
+  drawEmail();
+  drawSocialIcons();
+  drawDeploymentInfo();
+}
+
 function updateVideoFrame() {
   if (!bgVideoEl) return false;
   if (!videoReady) return false;
@@ -244,38 +276,6 @@ function drawBackgroundFallback() {
   image(bgPosterImg, 0, 0, width, height);
 }
 
-function draw() {
-  clear();
-
-  // Always show the fallback image first
-  drawBackgroundFallback();
-
-  // Then layer video on top if/when it becomes available
-  if (videoReady && videoLayerReady) {
-    const frameAvailable = updateVideoFrame();
-
-    if (frameAvailable && hasVideoFrame) {
-      let alpha = 255;
-      if (videoFadeStart !== null) {
-        const t = (millis() - videoFadeStart) / videoFadeDuration;
-        alpha = constrain(t * 255, 0, 255);
-      }
-
-      push();
-      tint(255, alpha);
-      image(videoLayer, 0, 0, width, height);
-      pop();
-    }
-  }
-
-  drawEmail();
-  drawSocialIcons();
-  drawDeploymentInfo();
-}
-
-// ----------------------------
-// Shared hit testing
-// ----------------------------
 function getEmailHitRect() {
   const margin = 30;
   const x = width - margin;
@@ -332,9 +332,6 @@ function pointInBox(px, py, x, y, size) {
   );
 }
 
-// ----------------------------
-// GLOW HELPER
-// ----------------------------
 function drawGlow(x, y, w, h, alpha) {
   push();
   noStroke();
@@ -344,9 +341,6 @@ function drawGlow(x, y, w, h, alpha) {
   pop();
 }
 
-// ----------------------------
-// EMAIL
-// ----------------------------
 function drawEmail() {
   const hit = getEmailHitRect();
 
@@ -369,9 +363,6 @@ function drawEmail() {
   text(emailText, hit.x, hit.y);
 }
 
-// ----------------------------
-// SOCIAL ICONS
-// ----------------------------
 function drawSocialIcons() {
   const size = emailSize * 0.8;
   const margin = 30;
@@ -412,9 +403,6 @@ function drawSocialIcons() {
   });
 }
 
-// ----------------------------
-// DEPLOYMENT INFO
-// ----------------------------
 function drawDeploymentInfo() {
   if (!diag) return;
 
@@ -445,9 +433,6 @@ function drawDeploymentInfo() {
   }
 }
 
-// ----------------------------
-// INTERACTION
-// ----------------------------
 function openEmail() {
   window.location.href = 'mailto:info@awroberts.co.uk';
 }
@@ -484,6 +469,14 @@ function touchStarted() {
     handlePointerActivation(touches[0].x, touches[0].y);
   }
   return false;
+}
+
+async function startSound() {
+  const overlay = document.getElementById('start-overlay');
+  if (overlay) overlay.style.display = 'none';
+
+  // if you have your audio graph code elsewhere, call it here
+  console.log('Start Sound clicked');
 }
 
 function windowResized() {
