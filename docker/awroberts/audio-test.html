@@ -54,6 +54,22 @@
 </head>
 
 <body>
+  <video id="bg-video"
+         muted
+         playsinline
+         autoplay
+         crossorigin="anonymous"
+         style="
+           position: absolute;
+           left: -9999px;
+           top: -9999px;
+           width: 320px;
+           height: 180px;
+           opacity: 0;
+           pointer-events: none;
+         ">
+  </video>
+
   <div id="canvas-container"></div>
 
   <div id="start-overlay">
