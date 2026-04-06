@@ -11,23 +11,54 @@ preflight_core_tools() {
       | jq -r '.tag_name // empty'
   }
 
-  compare_versions() {
+  prompt_upgrade() {
     local tool_name="$1"
     local current_version="$2"
     local latest_version="$3"
 
     if [[ -z "$latest_version" || "$latest_version" == "null" ]]; then
       echo "ℹ️  $tool_name: current=$current_version (latest unavailable)"
-      return 0
+      return 1
     fi
 
     if [[ "$current_version" == "$latest_version" ]]; then
       echo "✅ $tool_name is up to date: $current_version"
-      return 0
+      return 1
     fi
 
     echo "⚠️  $tool_name update available: current=$current_version latest=$latest_version"
-    return 0
+    read -r -p "Upgrade $tool_name now? [y/N] " response
+    case "${response,,}" in
+      y|yes)
+        return 0
+        ;;
+      *)
+        echo "⏭️  Skipping $tool_name upgrade."
+        return 1
+        ;;
+    esac
+  }
+
+  upgrade_apt_package() {
+    local package_name="$1"
+    sudo_if_needed apt update
+    sudo_if_needed apt install -y --only-upgrade "$package_name"
+  }
+
+  upgrade_helm() {
+    local latest_version="$1"
+    local tmp_dir
+    tmp_dir="$(mktemp -d)"
+
+    curl -fsSL -o "$tmp_dir/get_helm.sh" https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 "$tmp_dir/get_helm.sh"
+
+    if [[ -n "$latest_version" && "$latest_version" != "null" ]]; then
+      export DESIRED_VERSION="$latest_version"
+    fi
+
+    "$tmp_dir/get_helm.sh"
+    rm -rf "$tmp_dir"
   }
 
   # Docker check and install
@@ -40,10 +71,13 @@ preflight_core_tools() {
     echo "✅ Docker installed."
   else
     echo "✅ Docker is already installed."
-    compare_versions \
-      "Docker" \
-      "$(docker --version | awk '{print $3}' | sed 's/,$//')" \
-      "$(latest_apt_version docker.io)"
+    local docker_current docker_latest
+    docker_current="$(docker --version | awk '{print $3}' | sed 's/,$//')"
+    docker_latest="$(latest_apt_version docker.io)"
+    if prompt_upgrade "Docker" "$docker_current" "$docker_latest"; then
+      upgrade_apt_package docker.io
+      echo "✅ Docker upgraded."
+    fi
   fi
 
   # Curl check and install
@@ -54,10 +88,13 @@ preflight_core_tools() {
     echo "✅ curl installed."
   else
     echo "✅ curl is already installed."
-    compare_versions \
-      "curl" \
-      "$(curl --version | head -n1 | awk '{print $2}')" \
-      "$(latest_apt_version curl)"
+    local curl_current curl_latest
+    curl_current="$(curl --version | head -n1 | awk '{print $2}')"
+    curl_latest="$(latest_apt_version curl)"
+    if prompt_upgrade "curl" "$curl_current" "$curl_latest"; then
+      upgrade_apt_package curl
+      echo "✅ curl upgraded."
+    fi
   fi
 
   # jq check and install
@@ -68,10 +105,13 @@ preflight_core_tools() {
     echo "✅ jq installed."
   else
     echo "✅ jq is already installed."
-    compare_versions \
-      "jq" \
-      "$(jq --version | sed 's/^jq-//')" \
-      "$(latest_apt_version jq)"
+    local jq_current jq_latest
+    jq_current="$(jq --version | sed 's/^jq-//')"
+    jq_latest="$(latest_apt_version jq)"
+    if prompt_upgrade "jq" "$jq_current" "$jq_latest"; then
+      upgrade_apt_package jq
+      echo "✅ jq upgraded."
+    fi
   fi
 
   # Docker Buildx check
@@ -118,9 +158,12 @@ preflight_core_tools() {
     rm get_helm.sh
   else
     echo "✅ Helm is already installed."
-    compare_versions \
-      "Helm" \
-      "$(helm version --short 2>/dev/null | sed 's/^v//; s/+.*//')" \
-      "$(latest_helm_version | sed 's/^v//; s/+.*//')"
+    local helm_current helm_latest
+    helm_current="$(helm version --short 2>/dev/null | sed 's/^v//; s/+.*//')"
+    helm_latest="$(latest_helm_version | sed 's/^v//; s/+.*//')"
+    if prompt_upgrade "Helm" "$helm_current" "$helm_latest"; then
+      upgrade_helm "$helm_latest"
+      echo "✅ Helm upgraded."
+    fi
   fi
 }
