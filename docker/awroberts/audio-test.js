@@ -1,6 +1,5 @@
 let soundStarted = false;
 
-let posterImg;
 let diag;
 
 let audioCtx;
@@ -30,13 +29,12 @@ let sampleVideoEl = null;
 let sampleVideoReady = false;
 let sampleVideoCanvas = null;
 let sampleVideoCtx = null;
-let sampleVideoWidth = 0;
-let sampleVideoHeight = 0;
+
+let sampleHls = null;
 
 const STREAM_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 
 function preload() {
-  posterImg = loadImage('/awroberts-media/background-poster.png');
   diag = loadJSON('/deployment.json');
 }
 
@@ -56,11 +54,8 @@ function setup() {
 function draw() {
   background(0);
 
-  if (posterImg && posterImg.width > 0) {
-    image(posterImg, 0, 0, width, height);
-  }
-
-  fill(0, 70);
+  // subtle live backdrop
+  fill(0, 50);
   rect(0, 0, width, height);
 
   const t = millis() * 0.001;
@@ -101,15 +96,15 @@ function setupStreamSampler() {
   sampleVideoEl.addEventListener('playing', markReady);
 
   if (window.Hls && Hls.isSupported()) {
-    const hls = new Hls({
+    sampleHls = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
       maxBufferLength: 30,
       backBufferLength: 0
     });
 
-    hls.loadSource(STREAM_URL);
-    hls.attachMedia(sampleVideoEl);
+    sampleHls.loadSource(STREAM_URL);
+    sampleHls.attachMedia(sampleVideoEl);
   } else if (sampleVideoEl.canPlayType('application/vnd.apple.mpegurl')) {
     sampleVideoEl.src = STREAM_URL;
   } else {
@@ -162,7 +157,11 @@ function buildMelodyFromSha() {
     const degree = scale[(a + b) % scale.length];
     const octave = 2 + ((a ^ b) % 3);
     const midi = 48 + degree + octave * 12;
-    melodyNotes.push(midiToFreq(midi));
+    const freq = midiToFreq(midi);
+
+    if (Number.isFinite(freq)) {
+      melodyNotes.push(freq);
+    }
   }
 
   if (melodyNotes.length < 4) {
@@ -277,11 +276,21 @@ function startScheduler() {
 function setMelodyStep(step) {
   if (!audioCtx || melodyNotes.length === 0) return;
 
-  const idx = (step * 3 + rhythmSeed + clusterSeed) % melodyNotes.length;
-  const note = melodyNotes[idx];
-  const harmony = note * 2;
+  const safeLen = melodyNotes.length;
+  const idx = (((step * 3) + rhythmSeed + clusterSeed) % safeLen + safeLen) % safeLen;
+  const noteRaw = melodyNotes[idx];
+  const note = Number.isFinite(noteRaw) ? noteRaw : 110;
+  const harmony = Number.isFinite(note * 2) ? note * 2 : 220;
 
-  const bassFreq = [55, 61.74, 65.41, 73.42][(step + clusterSeed) % 4];
+  const bassChoices = [55, 61.74, 65.41, 73.42];
+  const bassIdx = (((step + clusterSeed) % bassChoices.length) + bassChoices.length) % bassChoices.length;
+  const bassFreqRaw = bassChoices[bassIdx];
+  const bassFreq = Number.isFinite(bassFreqRaw) ? bassFreqRaw : 55;
+
+  if (![note, harmony, bassFreq].every(Number.isFinite)) {
+    console.warn('Non-finite frequency detected', { step, idx, noteRaw, note, harmony, bassFreqRaw, bassFreq });
+    return;
+  }
 
   const now = audioCtx.currentTime;
   melodyOsc.frequency.cancelScheduledValues(now);
@@ -296,13 +305,14 @@ function setMelodyStep(step) {
 function updateReverbFromRed(redAmount) {
   if (!audioCtx || !convolver || !wetGain) return;
 
-  const wet = clamp(0.08 + redAmount * 0.62, 0.06, 0.78);
-  const decay = 1.5 + redAmount * 3.5;
+  const safeRed = Number.isFinite(redAmount) ? clamp(redAmount, 0, 1) : 0.35;
+  const wet = clamp(0.08 + safeRed * 0.62, 0.06, 0.78);
+  const decay = 1.5 + safeRed * 3.5;
 
   wetGain.gain.cancelScheduledValues(audioCtx.currentTime);
   wetGain.gain.setTargetAtTime(wet, audioCtx.currentTime, 0.15);
 
-  convolver.buffer = makeImpulseResponse(audioCtx, 2.6, decay, redAmount);
+  convolver.buffer = makeImpulseResponse(audioCtx, 2.6, decay, safeRed);
 }
 
 function sampleStreamRed() {
