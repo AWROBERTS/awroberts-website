@@ -47,18 +47,76 @@ preflight_core_tools() {
 
   upgrade_helm() {
     local latest_version="$1"
+    local version="${latest_version#v}"
+    local arch
+    local os
     local tmp_dir
-    tmp_dir="$(mktemp -d)"
+    local archive
+    local checksum_url
+    local checksum_file
+    local archive_url
+    local expected_sha
+    local actual_sha
 
-    curl -fsSL -o "$tmp_dir/get_helm.sh" https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-    chmod 700 "$tmp_dir/get_helm.sh"
-
-    if [[ -n "$latest_version" && "$latest_version" != "null" ]]; then
-      export DESIRED_VERSION="$latest_version"
+    if [[ -z "$version" || "$version" == "null" ]]; then
+      echo "❌ Cannot upgrade Helm: latest version unavailable."
+      return 1
     fi
 
-    "$tmp_dir/get_helm.sh"
+    os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    arch="$(uname -m)"
+    case "$arch" in
+      x86_64) arch="amd64" ;;
+      aarch64|arm64) arch="arm64" ;;
+    esac
+
+    tmp_dir="$(mktemp -d)"
+    archive="helm-v${version}-${os}-${arch}.tar.gz"
+    archive_url="https://get.helm.sh/${archive}"
+    checksum_url="https://get.helm.sh/helm-v${version}-${os}-${arch}.tar.gz.sha256sum"
+    checksum_file="${tmp_dir}/${archive}.sha256sum"
+
+    echo "⬇️  Downloading Helm ${version}..."
+    curl -fsSL -o "${tmp_dir}/${archive}" "$archive_url" || {
+      echo "❌ Failed to download Helm archive: $archive_url"
+      rm -rf "$tmp_dir"
+      return 1
+    }
+
+    echo "🔐 Downloading checksum..."
+    curl -fsSL -o "$checksum_file" "$checksum_url" || {
+      echo "❌ Failed to download Helm checksum: $checksum_url"
+      rm -rf "$tmp_dir"
+      return 1
+    }
+
+    expected_sha="$(awk '{print $1}' "$checksum_file" | head -n1)"
+    actual_sha="$(sha256sum "${tmp_dir}/${archive}" | awk '{print $1}')"
+
+    if [[ -z "$expected_sha" || "$expected_sha" != "$actual_sha" ]]; then
+      echo "❌ Helm checksum verification failed."
+      echo "   expected: $expected_sha"
+      echo "   actual:   $actual_sha"
+      rm -rf "$tmp_dir"
+      return 1
+    fi
+
+    echo "📦 Extracting Helm..."
+    tar -xzf "${tmp_dir}/${archive}" -C "$tmp_dir" || {
+      echo "❌ Failed to extract Helm archive."
+      rm -rf "$tmp_dir"
+      return 1
+    }
+
+    sudo_if_needed install -m 0755 "$tmp_dir/${os}-${arch}/helm" /usr/local/bin/helm || {
+      echo "❌ Failed to install Helm binary."
+      rm -rf "$tmp_dir"
+      return 1
+    }
+
     rm -rf "$tmp_dir"
+    echo "✅ Helm upgraded to ${version}."
+    helm version --short || true
   }
 
   # Docker check and install
