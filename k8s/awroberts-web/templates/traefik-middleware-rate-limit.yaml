@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  rateLimit:
+    average: 20
+    burst: 40
