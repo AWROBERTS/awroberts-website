@@ -46,9 +46,14 @@ spec:
               protocol: TCP
 
           volumeMounts:
+            # HLS stream mount
             - name: media-volume
               mountPath: /usr/share/nginx/html/stream
               subPath: awroberts-media/hls
+
+            # Poster + font mount
+            - name: media-volume
+              mountPath: /usr/share/nginx/html/awroberts-media
 
           {{- with .Values.livenessProbe }}
           livenessProbe:
