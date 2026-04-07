@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 validate_background_video() {
-  local media_file="$HOST_MEDIA_PATH/$BACKGROUND_VIDEO_FILENAME"
+  local media_file="/var/www/$BACKGROUND_VIDEO_FILENAME"
 
   if [[ ! -f "$media_file" ]]; then
     echo "ERROR: background video file not found: $media_file" >&2
