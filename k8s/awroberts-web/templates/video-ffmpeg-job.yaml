@@ -27,10 +27,8 @@ spec:
               rm -f "$OUTPUT_DIR"/seg_*.ts "$OUTPUT" || true;
 
               ffmpeg -y -i "$SOURCE" \
-                -c:v libx264 -preset slow -profile:v high -level 5.1 \
-                -crf 17 -maxrate 25M -bufsize 50M \
-                -g 120 -keyint_min 120 -sc_threshold 0 \
-                -an \
+                -map 0:v:0 \
+                -c:v copy \
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
                 -hls_playlist_type vod \
