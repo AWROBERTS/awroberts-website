@@ -30,7 +30,8 @@ let icons = {};
 let socialLinks = [
   { imgKey: 'github', url: 'https://github.com/awroberts' },
   { imgKey: 'linkedin', url: 'https://www.linkedin.com/in/alexander-roberts-53563312b/' },
-  { imgKey: 'bandcamp', url: 'https://chewvalleytapes.bandcamp.com/' }
+  { imgKey: 'bandcamp', url: 'https://chewvalleytapes.bandcamp.com/' },
+  { imgKey: 'youtube', url: 'https://www.youtube.com/@ChewValleyTapes' }
 ];
 let hoveringSocial = -1;
 
@@ -60,6 +61,7 @@ function preload() {
   icons.github = loadImage('/assets/github.png');
   icons.linkedin = loadImage('/assets/linkedin.png');
   icons.bandcamp = loadImage('/assets/bandcamp.png');
+  icons.youtube = loadImage('/assets/youtube.png');
 }
 
 function setup() {
@@ -404,9 +406,9 @@ function drawEmail() {
 function drawSocialIcons() {
   const size = emailSize * 0.8;
   const margin = 30;
-  const spacing = size + 20;
+  const gap = 14;
   const xStart = margin;
-  const y = margin;
+  const yStart = margin + 10;
 
   hoveringSocial = -1;
 
@@ -414,7 +416,11 @@ function drawSocialIcons() {
   const alpha = fadeProgress * 255;
 
   socialLinks.forEach((item, i) => {
-    const x = xStart + i * spacing;
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = xStart + col * (size + gap);
+    const y = yStart + row * (size + gap);
+
     const icon = icons[item.imgKey];
 
     const isHover =
@@ -429,8 +435,15 @@ function drawSocialIcons() {
     }
 
     const glowAlpha = isHover ? 255 : 0;
+    const glowPad = 8;
 
-    drawGlow(x - 6, y - 6, size + 12, size + 12, glowAlpha);
+    drawGlow(
+      x - glowPad,
+      y - glowPad,
+      size + glowPad * 2,
+      size + glowPad * 2,
+      glowAlpha
+    );
 
     if (icon && icon.width > 0 && icon.height > 0) {
       push();
@@ -493,7 +506,24 @@ function handlePointerActivation(px, py) {
     return true;
   }
 
-  const socialRects = getSocialHitRects();
+  const socialRects = socialLinks.map((item, i) => {
+    const size = emailSize * 0.8;
+    const margin = 30;
+    const gap = 14;
+    const xStart = margin;
+    const yStart = margin + 10;
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+
+    return {
+      index: i,
+      x: xStart + col * (size + gap),
+      y: yStart + row * (size + gap),
+      size,
+      url: item.url
+    };
+  });
+
   for (const rect of socialRects) {
     if (pointInBox(px, py, rect.x, rect.y, rect.size)) {
       openSocial(rect.index);
