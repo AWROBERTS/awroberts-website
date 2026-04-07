@@ -27,7 +27,7 @@ spec:
               mountPath: /var/www/html/awroberts/awroberts-media
           readinessProbe:
             httpGet:
-              path: /awroberts-media/background-poster.png
+              path: /healthz
               port: 80
             initialDelaySeconds: 2
             periodSeconds: 5
