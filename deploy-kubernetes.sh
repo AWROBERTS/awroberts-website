@@ -65,6 +65,7 @@ main() {
   info_and_validate_context
   build_all_images
   import_all_images
+  validate_background_video
   restart_kube_proxy
   ensure_traefik_helm
   deploy_with_helm
@@ -78,4 +79,3 @@ main() {
 }
 
 main "$@"
-
