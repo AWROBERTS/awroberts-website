@@ -69,7 +69,7 @@ backgroundVideo:
     filename: "background.mp4"
 
   hls:
-    segmentDuration: 4
+    segmentDuration: 2
     playlistSize: 12
 
   volume:
