@@ -5,16 +5,17 @@ metadata:
   namespace: {{ .Values.gateway.namespace }}
 spec:
   parentRefs:
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: http
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-root
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-wildcard
 
+  # No hostnames → matches anything not claimed by your app route
   rules:
     - matches:
         - path:
