@@ -47,7 +47,8 @@ spec:
 
           volumeMounts:
             - name: media-volume
-              mountPath: /usr/share/nginx/html/awroberts-media
+              mountPath: /usr/share/nginx/html/stream
+              subPath: awroberts-media/hls
 
           {{- with .Values.livenessProbe }}
           livenessProbe:
