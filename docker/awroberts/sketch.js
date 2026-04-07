@@ -419,7 +419,7 @@ function drawSocialIcons() {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const x = xStart + col * (size + gap);
-    const y = yStart + row * (size + gap);
+    const y = yStart + row * (size + gap) - 5;
 
     const icon = icons[item.imgKey];
 
