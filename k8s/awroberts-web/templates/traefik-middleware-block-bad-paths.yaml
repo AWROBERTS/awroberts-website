@@ -1,0 +1,13 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: block-bad-paths
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  deny:
+    regexps:
+      - "^/xmlrpc\\.php"
+      - "^/wp-"
+      - "^/sitemap"
+      - "^/robots"
+      - "^/update_weights"
