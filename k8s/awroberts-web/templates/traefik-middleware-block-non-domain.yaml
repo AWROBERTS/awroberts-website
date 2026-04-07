@@ -15,7 +15,6 @@ spec:
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-wildcard
 
-  # No hostnames → matches anything not claimed by your app route
   rules:
     - matches:
         - path:
@@ -23,3 +22,4 @@ spec:
             value: /
       backendRefs:
         - name: noop@internal
+          kind: TraefikService
