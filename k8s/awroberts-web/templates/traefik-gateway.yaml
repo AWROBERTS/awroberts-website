@@ -10,6 +10,7 @@ spec:
   gatewayClassName: traefik
 
   listeners:
+    # HTTPS for root domain
     - name: https-root
       protocol: HTTPS
       port: 8443
@@ -22,6 +23,7 @@ spec:
         namespaces:
           from: All
 
+    # HTTPS for wildcard subdomains
     - name: https-wildcard
       protocol: HTTPS
       port: 8443
@@ -34,6 +36,22 @@ spec:
         namespaces:
           from: All
 
+    # Catch‑all HTTPS listener
+    # Fixes routers that strip or rewrite Host headers.
+    # Ensures Traefik always uses real TLS cert.
+    - name: https-catchall
+      protocol: HTTPS
+      port: 8443
+      hostname: "*"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.traefik.tls.secretName }}
+      allowedRoutes:
+        namespaces:
+          from: All
+
+    # HTTP listener
     - name: http
       protocol: HTTP
       port: 8000
