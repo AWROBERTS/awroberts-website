@@ -59,6 +59,8 @@ let melodyNotes = [];
 let rhythmSeed = 1;
 let clusterSeed = 1;
 
+let soundButton;
+
 const glowColor = [127, 203, 255];
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 const POSTER_URL = "/awroberts-media/background-poster.png";
@@ -111,8 +113,6 @@ function setup() {
   videoLayerCtx = videoLayer.drawingContext;
 
   bgVideoEl = document.getElementById("bg-video");
-  console.log('[setup] start button:', document.getElementById('start-button'));
-  console.log('[setup] bg-video element:', bgVideoEl);
 
   if (bgVideoEl) {
     bgVideoEl.loop = false;
@@ -121,29 +121,9 @@ function setup() {
     bgVideoEl.autoplay = true;
     bgVideoEl.crossOrigin = "anonymous";
 
-    bgVideoEl.addEventListener("loadstart", () => console.log("[video] loadstart"));
-    bgVideoEl.addEventListener("loadedmetadata", () => console.log("[video] loadedmetadata", bgVideoEl.videoWidth, bgVideoEl.videoHeight));
     bgVideoEl.addEventListener("loadeddata", () => {
-      console.log("[video] loadeddata");
       videoReady = true;
-      bgVideoEl.play().catch(err => console.warn("[video] play() failed after loadeddata:", err));
-    });
-    bgVideoEl.addEventListener("canplay", () => {
-      console.log("[video] canplay");
-      videoReady = true;
-      bgVideoEl.play().catch(err => console.warn("[video] play() failed after canplay:", err));
-    });
-    bgVideoEl.addEventListener("playing", () => {
-      console.log("[video] playing");
-      videoReady = true;
-    });
-    bgVideoEl.addEventListener("pause", () => console.log("[video] pause"));
-    bgVideoEl.addEventListener("stalled", () => console.warn("[video] stalled"));
-    bgVideoEl.addEventListener("waiting", () => console.warn("[video] waiting"));
-    bgVideoEl.addEventListener("ended", () => {
-      console.log("[video] ended; restarting");
-      bgVideoEl.currentTime = 0;
-      bgVideoEl.play().catch(err => console.warn("[video] restart play() failed:", err));
+      bgVideoEl.play().catch(() => {});
     });
 
     if (window.Hls && Hls.isSupported()) {
@@ -157,63 +137,55 @@ function setup() {
         startPosition: 0
       });
 
-      hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-        console.warn("[hls] error:", {
-          fatal: data.fatal,
-          type: data.type,
-          details: data.details,
-          reason: data.reason
-        });
-
-        if (data.fatal) {
-          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            console.warn("[hls] recovering media error");
-            hlsInstance.recoverMediaError();
-          } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            console.warn("[hls] restarting load");
-            hlsInstance.startLoad();
-          } else {
-            console.warn("[hls] destroying instance due to fatal error");
-            hlsInstance.destroy();
-          }
-        }
-      });
-
-      hlsInstance.on(Hls.Events.MEDIA_ATTACHED, () => {
-        console.log("[hls] media attached");
-        bgVideoEl.play().catch(err => console.warn("[video] play() failed:", err));
-      });
-
-      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log("[hls] manifest parsed");
-        bgVideoEl.play().catch(err => console.warn("[video] play() failed:", err));
-      });
-
-      console.log("[hls] loading source:", VIDEO_URL);
       hlsInstance.loadSource(VIDEO_URL);
       hlsInstance.attachMedia(bgVideoEl);
     } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
-      console.log("[video] native HLS supported");
       bgVideoEl.src = VIDEO_URL;
-      bgVideoEl.play().catch(err => console.warn("[video] native play() failed:", err));
-    } else {
-      console.warn("[video] no HLS support available");
+      bgVideoEl.play().catch(() => {});
     }
   }
 
-  const btn = document.getElementById('start-button');
-  if (btn) {
-    btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      console.log('[ui] start button pressed');
-      startSound();
-    });
-    btn.addEventListener('click', () => {
-      console.log('[ui] start button clicked');
-    });
-  } else {
-    console.warn('[ui] start-button not found');
-  }
+  // -------------------------------
+  // ✨ Stylish Sound Button
+  // -------------------------------
+  soundButton = createButton('Start Sound');
+  soundButton.parent('canvas-container');
+
+  soundButton.style('position', 'absolute');
+  soundButton.style('left', '30px');
+  soundButton.style('bottom', '200px'); // sits above deployment info
+  soundButton.style('padding', '10px 18px');
+  soundButton.style('font-family', 'sans-serif');
+  soundButton.style('font-size', '14px');
+  soundButton.style('border-radius', '999px');
+  soundButton.style('border', '1px solid rgba(255,255,255,0.7)');
+  soundButton.style('background', 'rgba(20,20,20,0.65)');
+  soundButton.style('color', 'white');
+  soundButton.style('cursor', 'pointer');
+  soundButton.style('backdrop-filter', 'blur(6px)');
+  soundButton.style('transition', 'opacity 0.4s ease, box-shadow 0.25s ease');
+  soundButton.style('opacity', '0');
+
+  // Fade in after load
+  setTimeout(() => {
+    soundButton.style('opacity', '1');
+  }, 600);
+
+  // Glow on hover
+  soundButton.mouseOver(() => {
+    soundButton.style('box-shadow', '0 0 14px rgba(127,203,255,0.9)');
+  });
+
+  soundButton.mouseOut(() => {
+    soundButton.style('box-shadow', '0 0 0 rgba(0,0,0,0)');
+  });
+
+  // Start sound on click
+  soundButton.mousePressed(() => {
+    startSound();
+    soundButton.style('opacity', '0');
+    setTimeout(() => soundButton.hide(), 400);
+  });
 
   emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
 
@@ -292,12 +264,10 @@ function updateVideoFrame() {
 
     if (videoFadeStart === null) {
       videoFadeStart = millis();
-      console.log("[video] first frame copied");
     }
 
     return true;
   } catch (err) {
-    console.warn("[video] frame copy skipped:", err);
     return hasVideoFrame;
   }
 }
@@ -493,45 +463,22 @@ function touchStarted() {
 }
 
 async function startSound() {
-  console.log('[audio] startSound called');
-
-  if (soundStarted) {
-    console.log('[audio] already started; ignoring');
-    return;
-  }
+  if (soundStarted) return;
 
   try {
-    console.log('[audio] creating AudioContext');
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    console.log('[audio] state before resume:', audioCtx.state);
     await audioCtx.resume();
-    console.log('[audio] state after resume:', audioCtx.state);
 
-    console.log('[audio] building seeds');
     buildSeeds();
-
-    console.log('[audio] building melody');
     buildMelodyFromSha();
 
-    console.log('[audio] sampling video color');
     streamRedSample = sampleStreamRed();
-    console.log('[audio] streamRedSample:', streamRedSample);
 
-    console.log('[audio] building audio graph');
     buildAudioGraph();
-
-    console.log('[audio] starting scheduler');
     startScheduler();
 
     soundStarted = true;
-
-    const overlay = document.getElementById('start-overlay');
-    if (overlay) overlay.style.display = 'none';
-
-    console.log('[audio] sound started successfully');
   } catch (err) {
-    console.error('[audio] failed to start sound:', err);
     soundStarted = false;
   }
 }
@@ -694,7 +641,6 @@ function setMelodyStep(step) {
   const bassFreq = Number.isFinite(bassFreqRaw) ? bassFreqRaw : 55;
 
   if (![note, harmony, bassFreq].every(Number.isFinite)) {
-    console.warn('Non-finite frequency detected', { step, idx, noteRaw, note, harmony, bassFreqRaw, bassFreq });
     return;
   }
 
@@ -747,7 +693,6 @@ function sampleStreamRed() {
 
     return count ? (sumR / count) / 255 : 0.35;
   } catch (err) {
-    console.warn('[video] Could not sample stream frame red channel:', err);
     return 0.35;
   }
 }
