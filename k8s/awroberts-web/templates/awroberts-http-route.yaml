@@ -13,11 +13,14 @@ spec:
       sectionName: https-wildcard
     - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: traefik
+      sectionName: https-catchall
+    - name: {{ include "awroberts.fullname" . }}-gateway
+      namespace: traefik
       sectionName: http
 
   hostnames:
-    - {{ index .Values.traefik.hostnames 0 }}   # awroberts.co.uk
-    - {{ index .Values.traefik.hostnames 1 }}   # www.awroberts.co.uk
+    - {{ index .Values.traefik.hostnames 0 }}
+    - {{ index .Values.traefik.hostnames 1 }}
 
   rules:
     - matches:
