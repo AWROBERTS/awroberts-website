@@ -165,6 +165,7 @@ function setup() {
   soundButton.style('backdrop-filter', 'blur(6px)');
   soundButton.style('transition', 'opacity 0.4s ease, box-shadow 0.25s ease');
   soundButton.style('opacity', '0');
+  soundButton.style('z-index', '10');
 
   // Fade in after load
   setTimeout(() => {
