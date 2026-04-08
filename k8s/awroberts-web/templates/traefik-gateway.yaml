@@ -42,7 +42,6 @@ spec:
     - name: https-catchall
       protocol: HTTPS
       port: 8443
-      hostname: "*"
       tls:
         mode: Terminate
         certificateRefs:
