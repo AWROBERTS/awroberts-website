@@ -9,7 +9,4 @@ load_env_file() {
     echo "❌ Environment file not found: $env_file"
     exit 1
   fi
-
-  export HOST_CERT_PATH HOST_KEY_PATH
 }
-
