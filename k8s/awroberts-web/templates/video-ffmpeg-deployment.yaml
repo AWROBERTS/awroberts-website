@@ -22,7 +22,7 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              SOURCE="/var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}";
+              SOURCE="{{ .Values.backgroundVideo.source }}";
               OUTPUT_DIR="/output";
               OUTPUT="$OUTPUT_DIR/live.m3u8";
 
@@ -33,9 +33,9 @@ spec:
                 -c:v copy \
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
-                -hls_list_size 10 \
+                -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }} \
                 -hls_flags delete_segments \
-                -hls_segment_filename "$OUTPUT_DIR/live_%05d.ts" \
+                -hls_segment_filename "$OUTPUT_DIR/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%05d.ts" \
                 "$OUTPUT"
           volumeMounts:
             - name: hls
