@@ -18,13 +18,13 @@ spec:
       sectionName: http
 
   hostnames:
-{{ toYaml .Values.traefik.hostnames | nindent 4 }}
+    - awroberts.co.uk
 
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: {{ .Values.stream.pathPrefix | default "/stream" }}
+            value: {{ .Values.stream.pathPrefix | default "/stream/" }}
 
       filters:
         - type: ExtensionRef
