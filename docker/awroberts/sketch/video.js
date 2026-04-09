@@ -25,6 +25,8 @@ let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
+const HlsGlobal = window.Hls;
+
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 const POSTER_URL = "/awroberts-media/background-poster.png";
 
@@ -40,6 +42,8 @@ export function preloadVideoAssets() {
 // -----------------------------
 export function initVideoSystem() {
   bgVideoEl = document.getElementById("bg-video");
+
+  console.log("initVideoSystem():", { bgVideoEl, HlsGlobal });
 
   videoSourceCanvas = document.createElement("canvas");
   videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
@@ -66,11 +70,17 @@ function setupVideoEvents() {
   });
 
   const markVideoReady = () => {
+    if (!videoReady) {
+      console.log("Video ready");
+    }
     videoReady = true;
   };
 
   if ("requestVideoFrameCallback" in bgVideoEl) {
-    bgVideoEl.requestVideoFrameCallback(() => markVideoReady());
+    bgVideoEl.requestVideoFrameCallback(() => {
+      console.log("First decoded frame detected");
+      markVideoReady();
+    });
   } else {
     bgVideoEl.addEventListener("canplay", markVideoReady);
     bgVideoEl.addEventListener("loadeddata", markVideoReady);
@@ -78,8 +88,10 @@ function setupVideoEvents() {
 }
 
 function setupHLS() {
-  if (Hls.isSupported()) {
-    hlsInstance = new Hls({
+  if (HlsGlobal && HlsGlobal.isSupported()) {
+    console.log("Using HLS.js");
+
+    hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
       maxBufferLength: 60,
@@ -89,11 +101,13 @@ function setupHLS() {
       startPosition: 0
     });
 
-    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+    hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
+      console.warn("HLS.js error:", data);
+
       if (data.fatal) {
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
           hlsInstance.recoverMediaError();
-        } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        } else if (data.type === HlsGlobal.ErrorTypes.NETWORK_ERROR) {
           hlsInstance.startLoad();
         } else {
           hlsInstance.destroy();
@@ -101,11 +115,26 @@ function setupHLS() {
       }
     });
 
+    hlsInstance.on(HlsGlobal.Events.MEDIA_ATTACHED, () => {
+      console.log("HLS.js media attached");
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+    });
+
+    hlsInstance.on(HlsGlobal.Events.MANIFEST_PARSED, () => {
+      console.log("HLS.js manifest parsed");
+      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+    });
+
+    console.log("Loading HLS source:", VIDEO_URL);
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
+
   } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
+    console.log("Using native HLS");
     bgVideoEl.src = VIDEO_URL;
     bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+  } else {
+    console.warn("No HLS support detected");
   }
 }
 
@@ -150,10 +179,12 @@ export function updateVideoFrame() {
 
     if (videoFadeStart === null) {
       videoFadeStart = millis();
+      console.log("Video fade started");
     }
 
     return true;
-  } catch {
+  } catch (err) {
+    console.warn("Video frame copy skipped:", err);
     return hasVideoFrame;
   }
 }
