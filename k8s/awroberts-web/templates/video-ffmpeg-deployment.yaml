@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {{ include "awroberts.fullname" . }}-background
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: {{ include "awroberts.fullname" . }}-background
@@ -19,6 +19,7 @@ spec:
         - name: ffmpeg-live
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
+
           command: ["/bin/sh", "-c"]
           args:
             - >
@@ -37,14 +38,43 @@ spec:
                 -hls_allow_cache 0 \
                 -hls_flags delete_segments+append_list \
                 -hls_segment_filename "$OUTPUT_DIR/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%05d.ts" \
-                "$OUTPUT"
+                "$OUTPUT";
+
           volumeMounts:
             - name: media-volume
-              mountPath: /var/www/html/awroberts/awroberts-media
+              mountPath: {{ .Values.volume.mountPath }}
+
           resources:
             {{- toYaml .Values.backgroundVideo.resources.ffmpeg | nindent 12 }}
+
+        - name: nginx
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+
+          volumeMounts:
+            - name: media-volume
+              mountPath: {{ .Values.volume.mountPath }}
+
       volumes:
         - name: media-volume
           hostPath:
-            path: {{ .Values.backgroundVideo.volume.hostPath }}
+            path: {{ .Values.volume.hostPath }}
             type: DirectoryOrCreate
