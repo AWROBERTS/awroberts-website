@@ -24,7 +24,7 @@ stream:
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
-  mountPath: /usr/share/nginx/html/awroberts-media
+  mountPath: /usr/share/nginx/html
 
 containerPort: 80
 
@@ -60,7 +60,7 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  source: "/var/www/html/awroberts/awroberts-media/hls/index.m3u8"
+  source: "/usr/share/nginx/html/hls/index.m3u8"
 
   ffmpeg:
     image:
@@ -72,7 +72,7 @@ backgroundVideo:
     segmentDuration: 2
     liveWindow: 10
     liveSegmentPrefix: "live_"
-    outputDir: "/var/www/html/awroberts/awroberts-media/hls"
+    outputDir: "/usr/share/nginx/html/stream"
 
   volume:
     hostPath: "/var/www/html/awroberts/awroberts-media"
