@@ -20,7 +20,7 @@ gateway:
   namespace: traefik
 
 stream:
-  pathPrefix: /stream
+  pathPrefix: /stream/
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
