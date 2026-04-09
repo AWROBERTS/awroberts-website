@@ -19,7 +19,7 @@ spec:
       filters:
         - type: ExtensionRef
           extensionRef:
-            group: traefik.containo.us
+            group: traefik.io
             kind: Middleware
             name: no-cache-hls
 
