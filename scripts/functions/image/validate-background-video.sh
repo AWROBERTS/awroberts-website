@@ -48,7 +48,7 @@ validate_background_video() {
 
   printf "%s\n" "${segments[@]}" \
     | sed "s|^|$playlist_dir/|" \
-    | xargs -n1 -P8 -I{} bash -c 'validate_single_segment "$1" "$2"' _ {} "$tmp_failures"
+    | xargs -P8 -I{} bash -c 'validate_single_segment "$1" "$2"' _ {} "$tmp_failures"
 
   if [[ -s "$tmp_failures" ]]; then
     echo "❌ Segment validation failed:"
