@@ -74,9 +74,6 @@ backgroundVideo:
     liveSegmentPrefix: "live_"
     outputDir: "/usr/share/nginx/html/stream"
 
-  volume:
-    hostPath: "/var/www/html/awroberts/awroberts-media"
-
   resources:
     ffmpeg:
       limits:
