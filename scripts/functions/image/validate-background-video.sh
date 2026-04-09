@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
 
+validate_single_segment() {
+  local seg_path="$1"
+  local tmp_failures="$2"
+
+  if [[ ! -f "$seg_path" ]]; then
+    echo "❌ Missing segment file: $seg_path" >> "$tmp_failures"
+    return
+  fi
+
+  if ! ffprobe -v error -select_streams v:0 \
+       -show_entries stream=codec_name -of csv=p=0 \
+       "$seg_path" >/dev/null 2>&1; then
+    echo "❌ Corrupt or unreadable segment: $seg_path" >> "$tmp_failures"
+  fi
+}
+
 validate_background_video() {
   local source_path="$BACKGROUND_VIDEO_SOURCE"
 
@@ -12,11 +28,9 @@ validate_background_video() {
 
   echo "📄 Parsing playlist for segment references…"
 
-  # Determine the directory containing the playlist
   local playlist_dir
   playlist_dir="$(dirname "$source_path")"
 
-  # Extract segment list from playlist
   local segments
   mapfile -t segments < <(grep "\.ts" "$source_path")
 
@@ -25,31 +39,24 @@ validate_background_video() {
     return 1
   fi
 
-  echo "📦 Found ${#segments[@]} segments — validating each with ffprobe…"
+  echo "📦 Found ${#segments[@]} segments — validating in parallel…"
 
-  local bad_segments=0
+  local tmp_failures
+  tmp_failures="$(mktemp)"
 
-  for seg in "${segments[@]}"; do
-    local seg_path="$playlist_dir/$seg"
+  export -f validate_single_segment
 
-    if [[ ! -f "$seg_path" ]]; then
-      echo "❌ Missing segment file: $seg_path"
-      ((bad_segments++))
-      continue
-    fi
+  printf "%s\n" "${segments[@]}" \
+    | sed "s|^|$playlist_dir/|" \
+    | xargs -n1 -P8 bash -c 'validate_single_segment "$@"' _ "$tmp_failures"
 
-    # ffprobe validation (fast, safe)
-    if ! ffprobe -v error -select_streams v:0 -show_entries stream=codec_name \
-        -of csv=p=0 "$seg_path" >/dev/null 2>&1; then
-      echo "❌ Corrupt or unreadable segment: $seg_path"
-      ((bad_segments++))
-    fi
-  done
-
-  if [[ $bad_segments -gt 0 ]]; then
-    echo "❌ Segment validation failed — $bad_segments bad segment(s) detected." >&2
+  if [[ -s "$tmp_failures" ]]; then
+    echo "❌ Segment validation failed:"
+    cat "$tmp_failures" >&2
+    rm -f "$tmp_failures"
     return 1
   fi
 
-  echo "✅ All ${#segments[@]} HLS segments validated successfully."
+  rm -f "$tmp_failures"
+  echo "✅ All ${#segments[@]} HLS segments validated successfully (parallel scan)."
 }
