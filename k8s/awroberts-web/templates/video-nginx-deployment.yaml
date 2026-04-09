@@ -20,11 +20,11 @@ spec:
           imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
           ports:
             - containerPort: 80
+
           volumeMounts:
-            - name: hls
-              mountPath: /usr/share/nginx/html/stream
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
+
           readinessProbe:
             httpGet:
               path: /healthz
@@ -33,10 +33,8 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
+
       volumes:
-        - name: hls
-          persistentVolumeClaim:
-            claimName: {{ include "awroberts.fullname" . }}-background-hls
         - name: media-volume
           hostPath:
             path: {{ .Values.backgroundVideo.volume.hostPath }}
