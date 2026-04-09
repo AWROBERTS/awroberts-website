@@ -23,7 +23,7 @@ spec:
 
           volumeMounts:
             - name: media-volume
-              mountPath: /var/www/html/awroberts/awroberts-media
+              mountPath: {{ .Values.volume.mountPath }}
 
           readinessProbe:
             httpGet:
@@ -37,5 +37,5 @@ spec:
       volumes:
         - name: media-volume
           hostPath:
-            path: {{ .Values.backgroundVideo.volume.hostPath }}
+            path: {{ .Values.volume.hostPath }}
             type: DirectoryOrCreate
