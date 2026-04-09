@@ -4,12 +4,12 @@ import { preloadVideoAssets, initVideoSystem, drawVideo } from './video.js';
 import { preloadUIAssets, initUI, drawUI, handlePointerActivation, handleResize } from './ui.js';
 import { getOverlayPixelDensity } from './utils.js';
 
-export function preload() {
+window.preload = function () {
   preloadVideoAssets();
   preloadUIAssets();
-}
+};
 
-export function setup() {
+window.setup = function () {
   pixelDensity(getOverlayPixelDensity());
 
   const canvas = createCanvas(windowWidth, windowHeight);
@@ -22,26 +22,26 @@ export function setup() {
 
   initVideoSystem();
   initUI();
-}
+};
 
-export function draw() {
+window.draw = function () {
   clear();
   drawVideo();
   drawUI();
-}
+};
 
-export function mousePressed() {
+window.mousePressed = function () {
   handlePointerActivation(mouseX, mouseY);
-}
+};
 
-export function touchStarted() {
+window.touchStarted = function () {
   if (touches.length > 0) {
     handlePointerActivation(touches[0].x, touches[0].y);
   }
   return false;
-}
+};
 
-export function windowResized() {
+window.windowResized = function () {
   resizeCanvas(windowWidth, windowHeight);
   handleResize();
-}
+};
