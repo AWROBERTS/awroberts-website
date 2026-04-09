@@ -62,15 +62,15 @@ backgroundVideo:
   ffmpeg:
     image:
       repository: jrottenberg/ffmpeg
-      tag: "4.4-alpine"
+      tag: "8-alpine"
       pullPolicy: IfNotPresent
-
-  video:
-    filename: "background.mp4"
 
   hls:
     segmentDuration: 2
-    playlistSize: 12
+
+    livePlaylist: "live.m3u8"
+    liveSegmentPrefix: "live_"
+    liveWindow: 10
 
   volume:
     hostPath: "/var/www/html/awroberts/awroberts-media"

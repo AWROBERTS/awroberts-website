@@ -1,19 +1,22 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: {{ include "awroberts.fullname" . }}-background-encode
+  name: {{ include "awroberts.fullname" . }}-background-live
   labels:
-    app: {{ include "awroberts.fullname" . }}-background-encode
+    app: {{ include "awroberts.fullname" . }}-background-live
 spec:
-  backoffLimit: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "awroberts.fullname" . }}-background-live
   template:
     metadata:
       labels:
-        app: {{ include "awroberts.fullname" . }}-background-encode
+        app: {{ include "awroberts.fullname" . }}-background-live
     spec:
-      restartPolicy: Never
+      restartPolicy: Always
       containers:
-        - name: ffmpeg
+        - name: ffmpeg-live
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
           command: ["/bin/sh", "-c"]
@@ -21,24 +24,26 @@ spec:
             - >
               SOURCE="/var/www/html/awroberts/awroberts-media/{{ .Values.backgroundVideo.video.filename }}";
               OUTPUT_DIR="/output";
-              OUTPUT="$OUTPUT_DIR/index.m3u8";
+              OUTPUT="$OUTPUT_DIR/live.m3u8";
 
               mkdir -p "$OUTPUT_DIR";
-              rm -f "$OUTPUT_DIR"/seg_*.ts "$OUTPUT" || true;
 
-              ffmpeg -y -i "$SOURCE" \
+              ffmpeg -re -stream_loop -1 -i "$SOURCE" \
                 -map 0:v:0 \
                 -c:v copy \
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
-                -hls_playlist_type vod \
-                -hls_segment_filename "$OUTPUT_DIR/seg_%05d.ts" \
+                -hls_list_size 10 \
+                -hls_flags delete_segments \
+                -hls_segment_filename "$OUTPUT_DIR/live_%05d.ts" \
                 "$OUTPUT"
           volumeMounts:
             - name: hls
               mountPath: /output
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
+          resources:
+            {{- toYaml .Values.backgroundVideo.resources.ffmpeg | nindent 12 }}
       volumes:
         - name: hls
           persistentVolumeClaim:
