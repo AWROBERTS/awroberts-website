@@ -4,8 +4,18 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background
 spec:
   parentRefs:
-    - name: {{ .Values.gateway.name | default "awroberts-web-deploy-gateway" }}
-      namespace: {{ .Values.gateway.namespace | default "traefik" }}
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: https-root
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: https-wildcard
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: https-catchall
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: http
 
   hostnames:
 {{ toYaml .Values.traefik.hostnames | nindent 4 }}
