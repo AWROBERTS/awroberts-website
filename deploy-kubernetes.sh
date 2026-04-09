@@ -67,6 +67,7 @@ main() {
   import_all_images
   validate_background_video
   restart_kube_proxy
+  ensure_metrics_server
   ensure_traefik_helm
   deploy_with_helm
   ensure_tls_secret
