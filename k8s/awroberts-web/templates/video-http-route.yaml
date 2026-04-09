@@ -6,13 +6,23 @@ spec:
   parentRefs:
     - name: {{ .Values.gateway.name | default "awroberts-web-deploy-gateway" }}
       namespace: {{ .Values.gateway.namespace | default "traefik" }}
+
   hostnames:
 {{ toYaml .Values.traefik.hostnames | nindent 4 }}
+
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: {{ .Values.stream.pathPrefix | default "/stream" }}
+
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.containo.us
+            kind: Middleware
+            name: no-cache-hls
+
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}-background
           port: {{ .Values.service.port | default 80 }}
