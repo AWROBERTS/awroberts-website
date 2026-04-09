@@ -48,7 +48,6 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
 
-          # FIXED: mount the shared media volume exactly once, at the correct root
           volumeMounts:
             - name: media-volume
               mountPath: {{ .Values.volume.mountPath }}
