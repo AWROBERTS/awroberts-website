@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
 
+validate_single_segment() {
+  local seg_path="$1"
+  local tmp_failures="$2"
+
+  if [[ ! -f "$seg_path" ]]; then
+    echo "❌ Missing segment file: $seg_path" >> "$tmp_failures"
+    return
+  fi
+
+  if ! ffprobe -v error -select_streams v:0 \
+       -show_entries stream=codec_name -of csv=p=0 \
+       "$seg_path" >/dev/null 2>&1; then
+    echo "❌ Corrupt or unreadable segment: $seg_path" >> "$tmp_failures"
+  fi
+}
+
 validate_background_video() {
   local source_path="$BACKGROUND_VIDEO_SOURCE"
 
@@ -43,20 +59,4 @@ validate_background_video() {
 
   rm -f "$tmp_failures"
   echo "✅ All ${#segments[@]} HLS segments validated successfully (parallel scan)."
-}
-
-validate_single_segment() {
-  local seg_path="$1"
-  local tmp_failures="$2"
-
-  if [[ ! -f "$seg_path" ]]; then
-    echo "❌ Missing segment file: $seg_path" >> "$tmp_failures"
-    return
-  fi
-
-  if ! ffprobe -v error -select_streams v:0 \
-       -show_entries stream=codec_name -of csv=p=0 \
-       "$seg_path" >/dev/null 2>&1; then
-    echo "❌ Corrupt or unreadable segment: $seg_path" >> "$tmp_failures"
-  fi
 }
