@@ -32,37 +32,37 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
 
+          # FIXED: mount the shared media volume exactly once, at the correct root
           volumeMounts:
-            # HLS stream mount
             - name: media-volume
-              mountPath: /usr/share/nginx/html/stream
-              subPath: awroberts-media/hls
-
-            # Poster + font mount
-            - name: media-volume
-              mountPath: /usr/share/nginx/html/awroberts-media
+              mountPath: {{ .Values.volume.mountPath }}
 
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+
           {{- with .Values.readinessProbe }}
           readinessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -72,10 +72,12 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
@@ -84,5 +86,5 @@ spec:
       volumes:
         - name: media-volume
           hostPath:
-            path: /var/www/html/awroberts/awroberts-media
+            path: {{ .Values.volume.hostPath }}
             type: DirectoryOrCreate
