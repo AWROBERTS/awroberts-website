@@ -23,8 +23,8 @@ spec:
           args:
             - >
               SOURCE="{{ .Values.backgroundVideo.source }}";
-              OUTPUT_DIR="/output";
-              OUTPUT="$OUTPUT_DIR/live.m3u8";
+              OUTPUT_DIR="{{ .Values.backgroundVideo.hls.outputDir }}";
+              OUTPUT="$OUTPUT_DIR/index.m3u8";
 
               mkdir -p "$OUTPUT_DIR";
 
@@ -34,20 +34,16 @@ spec:
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
                 -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }} \
-                -hls_flags delete_segments \
+                -hls_allow_cache 0 \
+                -hls_flags delete_segments+append_list \
                 -hls_segment_filename "$OUTPUT_DIR/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%05d.ts" \
                 "$OUTPUT"
           volumeMounts:
-            - name: hls
-              mountPath: /output
             - name: media-volume
               mountPath: /var/www/html/awroberts/awroberts-media
           resources:
             {{- toYaml .Values.backgroundVideo.resources.ffmpeg | nindent 12 }}
       volumes:
-        - name: hls
-          persistentVolumeClaim:
-            claimName: {{ include "awroberts.fullname" . }}-background-hls
         - name: media-volume
           hostPath:
             path: {{ .Values.backgroundVideo.volume.hostPath }}
