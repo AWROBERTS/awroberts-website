@@ -60,7 +60,7 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  source: "/usr/share/nginx/html/hls/stream.m3u8"
+  source: "/usr/share/nginx/html/awroberts-media/hls/stream.m3u8"
 
   ffmpeg:
     image:
