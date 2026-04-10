@@ -86,4 +86,4 @@ spec:
         - name: media-volume
           hostPath:
             path: {{ .Values.volume.hostPath }}
-            type: DirectoryOrCreate
+            type: Directory
