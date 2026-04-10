@@ -68,6 +68,11 @@ backgroundVideo:
       tag: "8-alpine"
       pullPolicy: IfNotPresent
 
+  nginx:
+    image:
+      repository: background-video
+      pullPolicy: IfNotPresent
+
   hls:
     segmentDuration: 2
     liveWindow: 10
