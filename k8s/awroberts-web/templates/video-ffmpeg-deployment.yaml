@@ -48,8 +48,8 @@ spec:
             {{- toYaml .Values.backgroundVideo.resources.ffmpeg | nindent 12 }}
 
         - name: nginx
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
+          imagePullPolicy: IfNotPresent
 
           ports:
             - containerPort: {{ .Values.containerPort }}
