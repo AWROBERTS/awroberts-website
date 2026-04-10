@@ -23,7 +23,7 @@ stream:
   pathPrefix: /stream/
 
 volume:
-  hostPath: /var/www/html/awroberts/awroberts-media
+  hostPath: /var/www/html/awroberts
   mountPath: /usr/share/nginx/html
 
 containerPort: 80
