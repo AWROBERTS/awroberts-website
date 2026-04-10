@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "awroberts.fullname" . }}-background
+  name: {{ include "awroberts.fullname" . }}-background-ffmpeg
   labels:
-    app: {{ include "awroberts.fullname" . }}-background
+    app: {{ include "awroberts.fullname" . }}-background-ffmpeg
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "awroberts.fullname" . }}-background
+      app: {{ include "awroberts.fullname" . }}-background-ffmpeg
   template:
     metadata:
       labels:
-        app: {{ include "awroberts.fullname" . }}-background
+        app: {{ include "awroberts.fullname" . }}-background-ffmpeg
     spec:
       restartPolicy: Always
       containers:
