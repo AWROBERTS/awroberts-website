@@ -23,18 +23,10 @@ stream:
   pathPrefix: /stream/
 
 volume:
-  hostPath: /var/www/html/awroberts
-  mountPath: /usr/share/nginx/html
+  hostPath: /var/www/html/awroberts/awroberts-media
+  mountPath: /usr/share/nginx/html/awroberts-media
 
 containerPort: 80
-
-resources:
-  requests:
-    cpu: 20m
-    memory: 32Mi
-  limits:
-    cpu: 200m
-    memory: 128Mi
 
 livenessProbe:
   httpGet:
@@ -81,9 +73,17 @@ backgroundVideo:
 
   resources:
     ffmpeg:
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
       requests:
-        cpu: "100m"
-        memory: "256Mi"
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    nginx:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
