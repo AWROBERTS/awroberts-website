@@ -34,5 +34,5 @@ spec:
             name: no-cache-hls
 
       backendRefs:
-        - name: {{ include "awroberts.fullname" . }}-background-ffmpeg
-          port: {{ .Values.service.port | default 80 }}
+        - name: {{ include "awroberts.fullname" . }}-background
+          port: 80
