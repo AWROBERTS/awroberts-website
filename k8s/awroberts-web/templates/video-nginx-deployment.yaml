@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "awroberts.fullname" . }}-background
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "awroberts.fullname" . }}-background
 spec:
@@ -16,38 +17,33 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
+          image: {{ .Values.backgroundVideo.nginx.image.repository }}
           imagePullPolicy: {{ .Values.backgroundVideo.nginx.image.pullPolicy }}
           ports:
-            - containerPort: 80
-
+            - containerPort: {{ .Values.containerPort }}
           volumeMounts:
-            - name: media-volume
+            - name: background-volume
               mountPath: {{ .Values.backgroundVolume.mountPath }}
-
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 80
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            timeoutSeconds: 2
-            failureThreshold: 3
-
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: 80
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            timeoutSeconds: 2
-            failureThreshold: 3
-
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           resources:
-            {{- toYaml .Values.backgroundVideo.resources.nginx | nindent 12 }}
-
+            requests:
+              cpu: {{ .Values.backgroundVideo.resources.nginx.requests.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.nginx.requests.memory }}
+            limits:
+              cpu: {{ .Values.backgroundVideo.resources.nginx.limits.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.nginx.limits.memory }}
       volumes:
-        - name: media-volume
+        - name: background-volume
           hostPath:
             path: {{ .Values.backgroundVolume.hostPath }}
-            type: DirectoryOrCreate
