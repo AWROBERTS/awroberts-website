@@ -23,6 +23,7 @@ spec:
             - /bin/sh
             - -c
             - >
+              mkdir -p {{ .Values.backgroundVideo.hls.outputDir }} &&
               ffmpeg -y
               -stream_loop -1
               -i {{ .Values.backgroundVideo.source }}
@@ -33,6 +34,7 @@ spec:
               -hls_flags delete_segments
               -hls_segment_filename "{{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts"
               "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
+
           volumeMounts:
             - name: background-volume
               mountPath: {{ .Values.backgroundVolume.mountPath }}
