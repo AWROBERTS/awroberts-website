@@ -63,7 +63,8 @@ backgroundVideo:
   nginx:
     image:
       repository: background-video
-      pullPolicy: IfNotPresent
+      tag: latest
+      pullPolicy: Never
 
   hls:
     segmentDuration: 2
