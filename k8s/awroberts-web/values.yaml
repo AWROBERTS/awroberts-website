@@ -20,11 +20,7 @@ gateway:
   namespace: traefik
 
 stream:
-  pathPrefix: /stream/
-
-volume:
-  hostPath: /var/www/html/awroberts/awroberts-media
-  mountPath: /usr/share/nginx/html/awroberts-media
+  pathPrefix: /stream
 
 backgroundVolume:
   hostPath: /var/www/html/awroberts/awroberts-media

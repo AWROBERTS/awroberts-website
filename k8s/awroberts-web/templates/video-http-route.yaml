@@ -5,24 +5,24 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   parentRefs:
-    - name: {{ include "awroberts.fullname" . }}-gateway
+    - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-root
-    - name: {{ include "awroberts.fullname" . }}-gateway
+    - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-wildcard
-    - name: {{ include "awroberts.fullname" . }}-gateway
+    - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
       sectionName: http
-
   hostnames:
-    - awroberts.co.uk
-
+    {{- range .Values.traefik.hostnames }}
+    - {{ . }}
+    {{- end }}
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: /stream
+            value: {{ .Values.stream.pathPrefix }}
       filters:
         - type: ExtensionRef
           extensionRef:
@@ -31,4 +31,4 @@ spec:
             name: no-cache-hls
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}-background
-          port: 80
+          port: {{ .Values.service.port }}
