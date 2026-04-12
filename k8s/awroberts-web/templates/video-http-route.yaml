@@ -12,9 +12,6 @@ spec:
       sectionName: https-wildcard
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
-      sectionName: https-catchall
-    - name: {{ .Values.gateway.name }}
-      namespace: {{ .Values.gateway.namespace }}
       sectionName: http
 
   hostnames:
@@ -24,7 +21,7 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: {{ .Values.stream.pathPrefix | default "/stream/" }}
+            value: {{ .Values.stream.pathPrefix | default "/stream" }}
 
       filters:
         - type: ExtensionRef
