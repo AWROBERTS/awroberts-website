@@ -24,6 +24,10 @@ stream:
 
 volume:
   hostPath: /var/www/html/awroberts/awroberts-media
+  mountPath: /usr/share/nginx/html/awroberts-media
+
+backgroundVolume:
+  hostPath: /var/www/html/awroberts/awroberts-media
   mountPath: /usr/share/nginx/html
 
 containerPort: 80
