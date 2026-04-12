@@ -2,10 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "awroberts.fullname" . }}-background-ffmpeg
+  namespace: {{ .Release.Namespace }}
   labels:
     app: {{ include "awroberts.fullname" . }}-background-ffmpeg
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app: {{ include "awroberts.fullname" . }}-background-ffmpeg
@@ -16,9 +17,8 @@ spec:
     spec:
       containers:
         - name: ffmpeg
-          image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
+          image: {{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}
           imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
-
           command:
             - /bin/sh
             - -c
@@ -33,14 +33,16 @@ spec:
               -hls_segment_filename "{{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts"
               "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
           volumeMounts:
-            - name: media-volume
+            - name: background-volume
               mountPath: {{ .Values.backgroundVolume.mountPath }}
-
           resources:
-            {{- toYaml .Values.backgroundVideo.resources.ffmpeg | nindent 12 }}
-
+            requests:
+              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.requests.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpeg.requests.memory }}
+            limits:
+              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.limits.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpeg.limits.memory }}
       volumes:
-        - name: media-volume
+        - name: background-volume
           hostPath:
             path: {{ .Values.backgroundVolume.hostPath }}
-            type: DirectoryOrCreate
