@@ -23,7 +23,7 @@ spec:
 
           volumeMounts:
             - name: media-volume
-              mountPath: {{ .Values.volume.mountPath }}
+              mountPath: {{ .Values.backgroundVolume.mountPath }}
 
           readinessProbe:
             httpGet:
@@ -49,5 +49,5 @@ spec:
       volumes:
         - name: media-volume
           hostPath:
-            path: {{ .Values.volume.hostPath }}
+            path: {{ .Values.backgroundVolume.hostPath }}
             type: DirectoryOrCreate
