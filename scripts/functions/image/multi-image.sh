@@ -125,6 +125,12 @@ import_image_generic() {
 }
 
 import_all_images() {
+  # APP
   import_image_generic "${APP_FULL_IMAGE}"
+  import_image_generic "${APP_LATEST_IMAGE}"
+
+  # BACKGROUND VIDEO
   import_image_generic "${BG_FULL_IMAGE}"
+  import_image_generic "${BG_LATEST_IMAGE}"
 }
+
