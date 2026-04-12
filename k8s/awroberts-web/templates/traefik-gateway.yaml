@@ -36,20 +36,6 @@ spec:
         namespaces:
           from: All
 
-    # Catch‑all HTTPS listener
-    # Fixes routers that strip or rewrite Host headers.
-    # Ensures Traefik always uses real TLS cert.
-    - name: https-catchall
-      protocol: HTTPS
-      port: 8443
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.traefik.tls.secretName }}
-      allowedRoutes:
-        namespaces:
-          from: All
-
     # HTTP listener
     - name: http
       protocol: HTTP
