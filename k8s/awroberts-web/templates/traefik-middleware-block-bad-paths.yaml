@@ -4,10 +4,8 @@ metadata:
   name: block-bad-paths
   namespace: {{ .Values.gateway.namespace }}
 spec:
-  deny:
-    regexps:
-      - "^/xmlrpc\\.php"
-      - "^/wp-"
-      - "^/sitemap"
-      - "^/robots"
-      - "^/update_weights"
+  redirectRegex:
+    regex: "^/(xmlrpc\\.php|wp-|sitemap|robots|update_weights)"
+    replacement: "/404"
+    permanent: false
+
