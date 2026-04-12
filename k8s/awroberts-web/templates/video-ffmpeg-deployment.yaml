@@ -26,10 +26,11 @@ spec:
               ffmpeg -y
               -stream_loop -1
               -i {{ .Values.backgroundVideo.source }}
-              -c:v libx264 -preset veryfast -crf 23
+              -c copy
               -f hls
               -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
               -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }}
+              -hls_flags delete_segments
               -hls_segment_filename "{{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts"
               "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
           volumeMounts:
