@@ -7,7 +7,7 @@ spec:
   parentRefs:
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
-      sectionName: stream
+      sectionName: https-root
 
   hostnames:
     {{- range .Values.traefik.hostnames }}
