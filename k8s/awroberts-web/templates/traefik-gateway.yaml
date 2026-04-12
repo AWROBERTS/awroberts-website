@@ -44,15 +44,3 @@ spec:
         namespaces:
           from: All
 
-    # LISTENER — isolates /stream routing
-    - name: stream
-      protocol: HTTPS
-      port: 8443
-      hostname: "awroberts.co.uk"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name: {{ .Values.traefik.tls.secretName }}
-      allowedRoutes:
-        namespaces:
-          from: All
