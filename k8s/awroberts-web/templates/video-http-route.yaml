@@ -31,5 +31,5 @@ spec:
             name: no-cache-hls
 
       backendRefs:
-        - name: {{ include "awroberts.fullname" . }}-background
+        - name: {{ include "awroberts.fullname" . }}-gateway
           port: 80
