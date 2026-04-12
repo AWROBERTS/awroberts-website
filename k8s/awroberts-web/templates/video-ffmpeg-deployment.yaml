@@ -26,7 +26,7 @@ spec:
               SOURCE="{{ .Values.backgroundVideo.source }}";
               OUTPUT_DIR="{{ .Values.backgroundVideo.hls.outputDir }}";
 
-              ffmpeg -re -i "$SOURCE" \
+              ffmpeg -re -stream_loop -1 -i "$SOURCE" \
                 -c:v libx264 -preset veryfast -tune zerolatency \
                 -c:a aac -ar 44100 -b:a 128k \
                 -f hls \
