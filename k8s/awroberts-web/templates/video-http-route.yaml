@@ -2,15 +2,16 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: {{ include "awroberts.fullname" . }}-background
+  namespace: {{ .Release.Namespace }}
 spec:
   parentRefs:
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-root
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: https-wildcard
-    - name: {{ .Values.gateway.name }}
+    - name: {{ include "awroberts.fullname" . }}-gateway
       namespace: {{ .Values.gateway.namespace }}
       sectionName: http
 
@@ -21,15 +22,13 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: {{ .Values.stream.pathPrefix | default "/stream" }}
-
+            value: /stream
       filters:
         - type: ExtensionRef
           extensionRef:
             group: traefik.io
             kind: Middleware
             name: no-cache-hls
-
       backendRefs:
-        - name: {{ include "awroberts.fullname" . }}-gateway
+        - name: {{ include "awroberts.fullname" . }}-background
           port: 80
