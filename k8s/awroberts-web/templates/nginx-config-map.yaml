@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: awroberts-web-nginx
+data:
+  nginx.conf: |
+    worker_processes {{ .Values.nginx.workerProcesses }};
+
+    events {
+        worker_connections {{ .Values.nginx.workerConnections }};
+    }
+
+    http {
+        include       mime.types;
+        default_type  application/octet-stream;
+
+        sendfile on;
+        keepalive_timeout {{ .Values.nginx.keepaliveTimeout }};
+
+        server {
+            listen {{ .Values.nginx.listenPort }};
+            listen [::]:{{ .Values.nginx.listenPort }};
+            server_name "{{ .Values.nginx.serverName }}";
+
+            root "{{ .Values.nginx.root }}";
+            index "{{ .Values.nginx.index }}";
+
+            location "{{ .Values.livenessProbe.httpGet.path }}" {
+                return 200;
+            }
+
+            location ~* \.json$ {
+                default_type application/json;
+                try_files $uri =404;
+            }
+
+            location = "{{ .Values.assets.fallbackImagePublicPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fallbackImage }}";
+                add_header Cache-Control "{{ .Values.assets.fallbackCacheControl }}" always;
+            }
+
+            location = "{{ .Values.assets.fontPublicPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fontFile }}";
+                add_header Cache-Control "{{ .Values.assets.fontCacheControl }}" always;
+            }
+
+            location / {
+                try_files $uri $uri/ "/{{ .Values.nginx.index }}";
+            }
+        }
+    }
