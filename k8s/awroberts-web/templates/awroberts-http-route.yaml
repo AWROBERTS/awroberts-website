@@ -5,22 +5,20 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   parentRefs:
-    - name: {{ include "awroberts.fullname" . }}-gateway
-      namespace: traefik
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
       sectionName: https-root
-    - name: {{ include "awroberts.fullname" . }}-gateway
-      namespace: traefik
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
       sectionName: https-wildcard
-    - name: {{ include "awroberts.fullname" . }}-gateway
-      namespace: traefik
-      sectionName: https-catchall
-    - name: {{ include "awroberts.fullname" . }}-gateway
-      namespace: traefik
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
       sectionName: http
 
   hostnames:
-    - {{ index .Values.traefik.hostnames 0 }}
-    - {{ index .Values.traefik.hostnames 1 }}
+    {{- range .Values.traefik.hostnames }}
+    - {{ . }}
+    {{- end }}
 
   rules:
     - matches:
