@@ -32,7 +32,7 @@ assets:
   fallbackCacheControl: "public, max-age=604800"
 
   fontFile: CURWENFONT.ttf
-  fontPublicPath: /fonts/curwen.ttf
+  fontPublicPath: /awroberts-media/CURWENFONT.ttf
   fontCacheControl: "public, max-age=31536000, immutable"
 
 nginx:
