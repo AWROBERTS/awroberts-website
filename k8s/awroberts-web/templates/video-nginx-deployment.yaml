@@ -47,7 +47,7 @@ spec:
       volumes:
         - name: nginx-conf
           configMap:
-            name: {{ include "awroberts-web.fullname" . }}-background-nginx
+            name: {{ include "awroberts.name" . }}-background-nginx
         - name: media-volume
           hostPath:
             path: {{ .Values.media.hostPath }}
