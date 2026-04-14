@@ -1,42 +1,52 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "awroberts.fullname" . }}
+  name: {{ include "awroberts-web.fullname" . }}
   labels:
-    {{- include "awroberts.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
-      {{- include "awroberts.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        {{- include "awroberts.labels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") . | sha256sum }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ include "awroberts-web.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-
           ports:
-            - name: http
-              containerPort: {{ .Values.containerPort }}
-              protocol: TCP
-
+            - containerPort: {{ .Values.nginx.listenPort }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.nginx.listenPort }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.nginx.listenPort }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
             - name: media-volume
               mountPath: {{ .Values.media.mountPath }}
-
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-
       volumes:
+        - name: nginx-conf
+          configMap:
+            name: {{ include "awroberts-web.fullname" . }}-nginx
         - name: media-volume
           hostPath:
             path: {{ .Values.media.hostPath }}
