@@ -17,8 +17,9 @@ spec:
     spec:
       containers:
         - name: ffmpeg
-          image: {{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}
+          image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
+
           command:
             - /bin/sh
             - -c
@@ -36,8 +37,9 @@ spec:
               "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
 
           volumeMounts:
-            - name: background-volume
-              mountPath: {{ .Values.backgroundVolume.mountPath }}
+            - name: hls-output
+              mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
+
           resources:
             requests:
               cpu: {{ .Values.backgroundVideo.resources.ffmpeg.requests.cpu }}
@@ -45,7 +47,9 @@ spec:
             limits:
               cpu: {{ .Values.backgroundVideo.resources.ffmpeg.limits.cpu }}
               memory: {{ .Values.backgroundVideo.resources.ffmpeg.limits.memory }}
+
       volumes:
-        - name: background-volume
+        - name: hls-output
           hostPath:
-            path: {{ .Values.backgroundVolume.hostPath }}
+            path: {{ .Values.backgroundVideo.hls.outputDir }}
+            type: DirectoryOrCreate
