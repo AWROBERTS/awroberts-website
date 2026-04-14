@@ -35,6 +35,9 @@ assets:
   fontPublicPath: /awroberts-media/CURWENFONT.ttf
   fontCacheControl: "public, max-age=31536000, immutable"
 
+  publicPath: /assets
+  mountPath: /usr/share/nginx/html/assets
+
 nginx:
   workerProcesses: 1
   workerConnections: 1024
@@ -43,6 +46,12 @@ nginx:
   serverName: "_"
   root: /usr/share/nginx/html
   index: index.html
+
+  mimeTypes:
+    ttf: "font/ttf"
+    otf: "font/otf"
+    woff: "font/woff"
+    woff2: "font/woff2"
 
 containerPort: 80
 
