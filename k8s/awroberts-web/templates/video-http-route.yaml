@@ -27,4 +27,4 @@ spec:
             name: no-cache-hls
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}-background
-          port: {{ .Values.service.port }}
+          port: {{ .Values.containerPort }}

@@ -22,9 +22,27 @@ gateway:
 stream:
   pathPrefix: /stream
 
-backgroundVolume:
+media:
   hostPath: /var/www/html/awroberts/awroberts-media
-  mountPath: /usr/share/nginx/html
+  mountPath: /awroberts-media
+
+assets:
+  fallbackImage: background-poster.png
+  fallbackImagePublicPath: /fallback/background.png
+  fallbackCacheControl: "public, max-age=604800"
+
+  fontFile: CURWENFONT.ttf
+  fontPublicPath: /fonts/curwen.ttf
+  fontCacheControl: "public, max-age=31536000, immutable"
+
+nginx:
+  workerProcesses: 1
+  workerConnections: 1024
+  keepaliveTimeout: 65
+  listenPort: 80
+  serverName: "_"
+  root: /usr/share/nginx/html
+  index: index.html
 
 containerPort: 80
 
