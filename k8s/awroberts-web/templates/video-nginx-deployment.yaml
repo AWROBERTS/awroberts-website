@@ -4,24 +4,24 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "awroberts-web.name" . }}-background
+    app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.backgroundVideo.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "awroberts-web.name" . }}-background
+      app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "awroberts-web.name" . }}-background
+        app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-background-config-map.yaml") . | sha256sum }}
     spec:
       containers:
-        - name: {{ include "awroberts-web.name" . }}-background
+        - name: {{ include "awroberts.name" . }}-background
           image: "{{ .Values.backgroundVideo.image.repository }}:{{ .Values.backgroundVideo.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
           ports:
