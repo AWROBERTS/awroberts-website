@@ -22,8 +22,8 @@ spec:
     spec:
       containers:
         - name: {{ include "awroberts.name" . }}-background
-          image: "{{ .Values.backgroundVideo.image.repository }}:{{ .Values.backgroundVideo.image.tag }}"
-          imagePullPolicy: {{ .Values.backgroundVideo.image.pullPolicy }}
+          image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
+          imagePullPolicy: {{ .Values.backgroundVideo.nginx.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.nginx.listenPort | default 80 }}
           livenessProbe:
