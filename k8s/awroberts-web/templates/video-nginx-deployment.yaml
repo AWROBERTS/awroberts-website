@@ -18,7 +18,7 @@ spec:
         app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
-        checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-background-config-map.yaml") . | sha256sum }}
+        checksum/nginx-conf: {{ include (print $.Template.BasePath "/video-nginx-config-map.yaml") . | sha256sum }}
     spec:
       containers:
         - name: {{ include "awroberts.name" . }}-background
