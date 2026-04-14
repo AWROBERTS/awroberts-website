@@ -3,24 +3,24 @@ kind: Deployment
 metadata:
   name: {{ include "awroberts-web.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+    app.kubernetes.io/name: {{ include "awroberts.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+      app.kubernetes.io/name: {{ include "awroberts.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "awroberts-web.name" . }}
+        app.kubernetes.io/name: {{ include "awroberts.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-config-map.yaml") . | sha256sum }}
     spec:
       containers:
-        - name: {{ include "awroberts-web.name" . }}
+        - name: {{ include "awroberts.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
