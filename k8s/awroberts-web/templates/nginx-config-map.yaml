@@ -41,14 +41,19 @@ data:
                 try_files $uri =404;
             }
 
-            location = "{{ .Values.assets.fallbackImagePublicPath }}" {
-                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fallbackImage }}";
-                add_header Cache-Control "{{ .Values.assets.fallbackCacheControl }}" always;
+            location = "{{ .Values.media.publicBackgroundPosterPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.media.backgroundPosterFile }}";
+                add_header Cache-Control "{{ .Values.media.backgroundPosterCacheControl }}";
             }
 
-            location = "{{ .Values.assets.fontPublicPath }}" {
-                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fontFile }}";
-                add_header Cache-Control "{{ .Values.assets.fontCacheControl }}" always;
+            location = "{{ .Values.media.publicFontPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.media.fontFile }}";
+                add_header Cache-Control "{{ .Values.media.fontCacheControl }}";
+            }
+
+            location {{ .Values.media.publicStreamPath }}/ {
+                alias {{ .Values.media.mountPath }}/{{ .Values.media.streamDir }}/;
+                add_header Cache-Control "no-cache";
             }
 
             location {{ .Values.assets.publicPath }}/ {
