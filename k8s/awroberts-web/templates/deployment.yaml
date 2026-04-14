@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "awroberts-web.fullname" . }}
+  name: {{ include "awroberts.name" . }}
   labels:
     app.kubernetes.io/name: {{ include "awroberts.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -46,7 +46,7 @@ spec:
       volumes:
         - name: nginx-conf
           configMap:
-            name: {{ include "awroberts-web.fullname" . }}-nginx
+            name: {{ include "awroberts.name" . }}-nginx
         - name: media-volume
           hostPath:
             path: {{ .Values.media.hostPath }}
