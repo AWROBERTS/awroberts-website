@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: awroberts-web-nginx
+  name: {{ include "awroberts-web.fullname" . }}-nginx
 data:
   nginx.conf: |
     worker_processes {{ .Values.nginx.workerProcesses }};
@@ -11,8 +11,8 @@ data:
     }
 
     http {
-        include       mime.types;
-        default_type  application/octet-stream;
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
 
         types {
             {{ .Values.nginx.mimeTypes.ttf }} ttf;
@@ -32,35 +32,42 @@ data:
             root "{{ .Values.nginx.root }}";
             index "{{ .Values.nginx.index }}";
 
+            # Liveness / Readiness probe
             location "{{ .Values.livenessProbe.httpGet.path }}" {
                 return 200;
             }
 
+            # JSON files
             location ~* \.json$ {
                 default_type application/json;
                 try_files $uri =404;
             }
 
+            # Background poster
             location = "{{ .Values.media.publicBackgroundPosterPath }}" {
                 alias "{{ .Values.media.mountPath }}/{{ .Values.media.backgroundPosterFile }}";
                 add_header Cache-Control "{{ .Values.media.backgroundPosterCacheControl }}";
             }
 
+            # Font file
             location = "{{ .Values.media.publicFontPath }}" {
                 alias "{{ .Values.media.mountPath }}/{{ .Values.media.fontFile }}";
                 add_header Cache-Control "{{ .Values.media.fontCacheControl }}";
             }
 
+            # HLS stream
             location {{ .Values.media.publicStreamPath }}/ {
                 alias {{ .Values.media.mountPath }}/{{ .Values.media.streamDir }}/;
                 add_header Cache-Control "no-cache";
             }
 
+            # Static assets
             location {{ .Values.assets.publicPath }}/ {
                 alias {{ .Values.assets.mountPath }}/;
                 add_header Cache-Control "public, max-age=31536000";
             }
 
+            # Main site
             location / {
                 try_files $uri $uri/ "/{{ .Values.nginx.index }}";
             }
