@@ -1,6 +1,15 @@
 // video.js
 
 // -----------------------------
+// INTERNAL P5 INSTANCE
+// -----------------------------
+let awrWeb = null;
+
+export function bindVideoP5(p) {
+  awrWeb = p;
+}
+
+// -----------------------------
 // VIDEO STATE
 // -----------------------------
 export let bgVideoEl;
@@ -34,7 +43,7 @@ const POSTER_URL = "/awroberts-media/background-poster.png";
 // PRELOAD
 // -----------------------------
 export function preloadVideoAssets() {
-  bgPosterImg = loadImage(POSTER_URL);
+  bgPosterImg = awrWeb.loadImage(POSTER_URL);
 }
 
 // -----------------------------
@@ -45,11 +54,13 @@ export function initVideoSystem() {
 
   console.log("initVideoSystem():", { bgVideoEl, HlsGlobal });
 
+  // Offscreen canvas for raw video frame
   videoSourceCanvas = document.createElement("canvas");
   videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
   videoSourceReady = true;
 
-  videoLayer = createGraphics(windowWidth, windowHeight);
+  // p5 graphics layer for scaled output
+  videoLayer = awrWeb.createGraphics(awrWeb.windowWidth, awrWeb.windowHeight);
   videoLayer.pixelDensity(1);
   videoLayer.clear();
   videoLayerReady = true;
@@ -153,6 +164,7 @@ export function updateVideoFrame() {
   const sourceW = bgVideoEl.videoWidth;
   const sourceH = bgVideoEl.videoHeight;
 
+  // Resize raw source canvas if needed
   if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
     videoSourceCanvas.width = sourceW;
     videoSourceCanvas.height = sourceH;
@@ -160,15 +172,18 @@ export function updateVideoFrame() {
     videoSourceHeight = sourceH;
   }
 
-  if (videoLayer.width !== width || videoLayer.height !== height) {
-    videoLayer.resizeCanvas(width, height);
+  // Resize p5 graphics layer if needed
+  if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
+    videoLayer.resizeCanvas(awrWeb.width, awrWeb.height);
     videoLayer.pixelDensity(1);
     videoLayerCtx = videoLayer.drawingContext;
   }
 
   try {
+    // Copy raw video frame
     videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
 
+    // Draw scaled frame into p5 graphics layer
     videoLayerCtx.save();
     videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
     videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
@@ -178,7 +193,7 @@ export function updateVideoFrame() {
     hasVideoFrame = true;
 
     if (videoFadeStart === null) {
-      videoFadeStart = millis();
+      videoFadeStart = awrWeb.millis();
       console.log("Video fade started");
     }
 
@@ -194,7 +209,7 @@ export function updateVideoFrame() {
 // -----------------------------
 export function drawBackgroundFallback() {
   if (!bgPosterImg) return;
-  image(bgPosterImg, 0, 0, width, height);
+  awrWeb.image(bgPosterImg, 0, 0, awrWeb.width, awrWeb.height);
 }
 
 export function drawVideo() {
@@ -207,12 +222,12 @@ export function drawVideo() {
 
   let alpha = 255;
   if (videoFadeStart !== null) {
-    const t = (millis() - videoFadeStart) / videoFadeDuration;
-    alpha = constrain(t * 255, 0, 255);
+    const t = (awrWeb.millis() - videoFadeStart) / videoFadeDuration;
+    alpha = awrWeb.constrain(t * 255, 0, 255);
   }
 
-  push();
-  tint(255, alpha);
-  image(videoLayer, 0, 0, width, height);
-  pop();
+  awrWeb.push();
+  awrWeb.tint(255, alpha);
+  awrWeb.image(videoLayer, 0, 0, awrWeb.width, awrWeb.height);
+  awrWeb.pop();
 }

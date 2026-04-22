@@ -1,6 +1,15 @@
 // ui.js
 
 // -----------------------------
+// INTERNAL P5 INSTANCE
+// -----------------------------
+let awrWeb = null;
+
+export function bindUIP5(p) {
+  awrWeb = p;
+}
+
+// -----------------------------
 // UI STATE
 // -----------------------------
 let curwenFont;
@@ -25,24 +34,30 @@ let diag;
 // PRELOAD
 // -----------------------------
 export function preloadUIAssets() {
-  curwenFont = loadFont('/awroberts-media/CURWENFONT.ttf');
-  diag = loadJSON('/deployment.json');
+  curwenFont = awrWeb.loadFont('/awroberts-media/CURWENFONT.ttf');
+  diag = awrWeb.loadJSON('/deployment.json');
 
-  icons.github = loadImage('/assets/github.png');
-  icons.linkedin = loadImage('/assets/linkedin.png');
-  icons.bandcamp = loadImage('/assets/bandcamp.png');
-  icons.youtube = loadImage('/assets/youtube.png');
+  icons.github = awrWeb.loadImage('/assets/github.png');
+  icons.linkedin = awrWeb.loadImage('/assets/linkedin.png');
+  icons.bandcamp = awrWeb.loadImage('/assets/bandcamp.png');
+  icons.youtube = awrWeb.loadImage('/assets/youtube.png');
 }
 
 // -----------------------------
 // INIT
 // -----------------------------
 export function initUI() {
-  emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
-  textFont(curwenFont);
-  textSize(emailSize);
-  textAlign(RIGHT, TOP);
-  fadeStartTime = millis();
+  emailSize = awrWeb.constrain(
+    awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.05,
+    16,
+    70
+  );
+
+  awrWeb.textFont(curwenFont);
+  awrWeb.textSize(emailSize);
+  awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+
+  fadeStartTime = awrWeb.millis();
 }
 
 // -----------------------------
@@ -50,11 +65,11 @@ export function initUI() {
 // -----------------------------
 export function getEmailHitRect() {
   const margin = 30;
-  const x = width - margin;
+  const x = awrWeb.width - margin;
   const y = margin;
 
-  textSize(emailSize);
-  const textW = textWidth(emailText);
+  awrWeb.textSize(emailSize);
+  const textW = awrWeb.textWidth(emailText);
 
   const padLeft = emailSize * 0.8;
   const padRight = emailSize * 0.2;
@@ -82,12 +97,12 @@ function pointInBox(px, py, x, y, size) {
 // GLOW
 // -----------------------------
 function drawGlow(x, y, w, h, alpha) {
-  push();
-  noStroke();
-  fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
-  drawingContext.filter = 'blur(12px)';
-  rect(x, y, w, h, 6);
-  pop();
+  awrWeb.push();
+  awrWeb.noStroke();
+  awrWeb.fill(glowColor[0], glowColor[1], glowColor[2], alpha * 0.6);
+  awrWeb.drawingContext.filter = 'blur(12px)';
+  awrWeb.rect(x, y, w, h, 6);
+  awrWeb.pop();
 }
 
 // -----------------------------
@@ -97,22 +112,22 @@ function drawEmail() {
   const hit = getEmailHitRect();
 
   isHoveringEmail =
-    mouseX >= hit.left &&
-    mouseX <= hit.right &&
-    mouseY >= hit.top &&
-    mouseY <= hit.bottom;
+    awrWeb.mouseX >= hit.left &&
+    awrWeb.mouseX <= hit.right &&
+    awrWeb.mouseY >= hit.top &&
+    awrWeb.mouseY <= hit.bottom;
 
   if (isHoveringEmail) {
     drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 255);
-    cursor(HAND);
+    awrWeb.cursor(awrWeb.HAND);
   } else {
     drawGlow(hit.left, hit.top, hit.right - hit.left, hit.bottom - hit.top, 0);
   }
 
-  textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
-  fill(255);
-  textAlign(RIGHT, TOP);
-  text(emailText, hit.x, hit.y);
+  awrWeb.textSize(isHoveringEmail ? emailSize * 1.05 : emailSize);
+  awrWeb.fill(255);
+  awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+  awrWeb.text(emailText, hit.x, hit.y);
 }
 
 function openEmail() {
@@ -131,7 +146,7 @@ function drawSocialIcons() {
 
   hoveringSocial = -1;
 
-  const fadeProgress = constrain((millis() - fadeStartTime) / 1000, 0, 1);
+  const fadeProgress = awrWeb.constrain((awrWeb.millis() - fadeStartTime) / 1000, 0, 1);
   const alpha = fadeProgress * 255;
 
   socialLinks.forEach((item, i) => {
@@ -143,14 +158,14 @@ function drawSocialIcons() {
     const icon = icons[item.imgKey];
 
     const isHover =
-      mouseX > x &&
-      mouseX < x + size &&
-      mouseY > y &&
-      mouseY < y + size;
+      awrWeb.mouseX > x &&
+      awrWeb.mouseX < x + size &&
+      awrWeb.mouseY > y &&
+      awrWeb.mouseY < y + size;
 
     if (isHover) {
       hoveringSocial = i;
-      cursor(HAND);
+      awrWeb.cursor(awrWeb.HAND);
     }
 
     const glowAlpha = isHover ? 255 : 0;
@@ -165,10 +180,10 @@ function drawSocialIcons() {
     );
 
     if (icon && icon.width > 0 && icon.height > 0) {
-      push();
-      tint(255, alpha);
-      image(icon, x, y, size, size);
-      pop();
+      awrWeb.push();
+      awrWeb.tint(255, alpha);
+      awrWeb.image(icon, x, y, size, size);
+      awrWeb.pop();
     }
   });
 }
@@ -184,10 +199,10 @@ function openSocial(index) {
 function drawDeploymentInfo() {
   if (!diag) return;
 
-  const baseSize = min(windowWidth, windowHeight) * 0.02;
-  textSize(baseSize);
-  textAlign(LEFT);
-  fill(255);
+  const baseSize = awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.02;
+  awrWeb.textSize(baseSize);
+  awrWeb.textAlign(awrWeb.LEFT);
+  awrWeb.fill(255);
 
   const margin = 30;
   const x = margin;
@@ -203,10 +218,10 @@ function drawDeploymentInfo() {
     `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
   ];
 
-  let y = height - margin - (baseSize * 1.3 * lines.length);
+  let y = awrWeb.height - margin - (baseSize * 1.3 * lines.length);
 
   for (let i = 0; i < lines.length; i++) {
-    text(lines[i], x, y);
+    awrWeb.text(lines[i], x, y);
     y += baseSize * 1.3;
   }
 }
@@ -247,8 +262,12 @@ export function handlePointerActivation(px, py) {
 // -----------------------------
 export function handleResize() {
   if (emailSize) {
-    emailSize = constrain(min(windowWidth, windowHeight) * 0.05, 16, 70);
-    textSize(emailSize);
+    emailSize = awrWeb.constrain(
+      awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.05,
+      16,
+      70
+    );
+    awrWeb.textSize(emailSize);
   }
 }
 
