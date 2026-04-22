@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-    name: {{ include "awroberts-web.name" . }}-nginx
+  name: {{ include "awroberts.fullname" . }}-nginx
 
 data:
   nginx.conf: |
