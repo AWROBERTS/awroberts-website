@@ -32,35 +32,42 @@ data:
             root "{{ .Values.nginx.root }}";
             index "{{ .Values.nginx.index }}";
 
+            # Health check
             location "{{ .Values.livenessProbe.httpGet.path }}" {
                 return 200;
             }
 
+            # JSON files
             location ~* \.json$ {
                 default_type application/json;
                 try_files $uri =404;
             }
 
-            location = "{{ .Values.media.publicBackgroundPosterPath }}" {
-                alias "{{ .Values.media.mountPath }}/{{ .Values.media.backgroundPosterFile }}";
-                add_header Cache-Control "{{ .Values.media.backgroundPosterCacheControl }}";
+            # Fallback background image
+            location = "{{ .Values.assets.fallbackImagePublicPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fallbackImage }}";
+                add_header Cache-Control "{{ .Values.assets.fallbackCacheControl }}";
             }
 
-            location = "{{ .Values.media.publicFontPath }}" {
-                alias "{{ .Values.media.mountPath }}/{{ .Values.media.fontFile }}";
-                add_header Cache-Control "{{ .Values.media.fontCacheControl }}";
+            # Font file
+            location = "{{ .Values.assets.fontPublicPath }}" {
+                alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fontFile }}";
+                add_header Cache-Control "{{ .Values.assets.fontCacheControl }}";
             }
 
-            location {{ .Values.media.publicStreamPath }}/ {
-                alias {{ .Values.media.mountPath }}/{{ .Values.media.streamDir }}/;
+            # HLS stream
+            location {{ .Values.stream.pathPrefix }}/ {
+                alias {{ .Values.backgroundVideo.hls.outputDir }}/;
                 add_header Cache-Control "no-cache";
             }
 
+            # Static assets
             location {{ .Values.assets.publicPath }}/ {
                 alias {{ .Values.assets.mountPath }}/;
                 add_header Cache-Control "public, max-age=31536000";
             }
 
+            # SPA fallback
             location / {
                 try_files $uri $uri/ "/{{ .Values.nginx.index }}";
             }
