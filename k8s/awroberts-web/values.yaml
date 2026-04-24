@@ -24,7 +24,8 @@ stream:
 
 media:
   hostPath: /var/www/html/awroberts/awroberts-media
-  mountPath: /awroberts-media
+  # must be inside nginx root
+  mountPath: /usr/share/nginx/html/awroberts-media
 
 assets:
   fallbackImage: background-poster.png
