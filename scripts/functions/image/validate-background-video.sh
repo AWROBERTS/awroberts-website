@@ -1,21 +1,5 @@
 #!/usr/bin/env bash
 
-validate_single_segment() {
-  local seg_path="$1"
-  local tmp_failures="$2"
-
-  if [[ ! -f "$seg_path" ]]; then
-    echo "❌ Missing segment file: $seg_path" >> "$tmp_failures"
-    return
-  fi
-
-  if ! ffprobe -v error -select_streams v:0 \
-       -show_entries stream=codec_name -of csv=p=0 \
-       "$seg_path" >/dev/null 2>&1; then
-    echo "❌ Corrupt or unreadable segment: $seg_path" >> "$tmp_failures"
-  fi
-}
-
 validate_background_video() {
   local source_path="$BACKGROUND_VIDEO_SOURCE"
 
@@ -32,23 +16,23 @@ validate_background_video() {
   playlist_dir="$(dirname "$source_path")"
 
   local segments
-  mapfile -t segments < <(grep "\.ts" "$source_path")
+  mapfile -t segments < <(grep -F ".ts" "$source_path")
 
   if [[ ${#segments[@]} -eq 0 ]]; then
     echo "ERROR: No segments found in playlist." >&2
     return 1
   fi
 
-  echo "📦 Found ${#segments[@]} segments — validating in parallel…"
+  echo "📦 Found ${#segments[@]} segments — validating in parallel (P=8)…"
 
   local tmp_failures
   tmp_failures="$(mktemp)"
 
-  export -f validate_single_segment
-
   printf "%s\n" "${segments[@]}" \
     | sed "s|^|$playlist_dir/|" \
-    | xargs -P8 -I{} bash -c 'validate_single_segment "$1" "$2"' _ {} "$tmp_failures"
+    | xargs -P8 -I{} ffprobe -v error -select_streams v:0 \
+        -show_entries stream=codec_name -of csv=p=0 "{}" \
+        >/dev/null 2>>"$tmp_failures"
 
   if [[ -s "$tmp_failures" ]]; then
     echo "❌ Segment validation failed:"
@@ -58,5 +42,5 @@ validate_background_video() {
   fi
 
   rm -f "$tmp_failures"
-  echo "✅ All ${#segments[@]} HLS segments validated successfully (parallel scan)."
+  echo "✅ All ${#segments[@]} HLS segments validated successfully."
 }
