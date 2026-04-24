@@ -80,7 +80,7 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  source: "/usr/share/nginx/html/hls/stream.m3u8"
+  source: "/stream/index.m3u8"
 
   ffmpeg:
     image:
@@ -98,6 +98,7 @@ backgroundVideo:
     segmentDuration: 2
     liveWindow: 10
     liveSegmentPrefix: "live_"
+
     outputDir: "/usr/share/nginx/html/stream"
 
   resources:
