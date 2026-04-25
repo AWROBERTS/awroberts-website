@@ -18,8 +18,6 @@ gateway:
 rbac:
   enabled: true
 
-hostNetwork: true
-
 ports:
   web:
     port: 8000
