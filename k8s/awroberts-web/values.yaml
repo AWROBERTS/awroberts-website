@@ -24,7 +24,6 @@ stream:
 
 media:
   hostPath: /var/www/html/awroberts/awroberts-media
-  # must be inside nginx root
   mountPath: /usr/share/nginx/html/awroberts-media
 
 assets:
@@ -94,11 +93,20 @@ backgroundVideo:
       tag: latest
       pullPolicy: Never
 
+    volumeMounts:
+      - name: hls-output
+        mountPath: /usr/share/nginx/html/stream
+
+    volumes:
+      - name: hls-output
+        hostPath:
+          path: /usr/share/nginx/html/stream
+          type: DirectoryOrCreate
+
   hls:
     segmentDuration: 2
     liveWindow: 10
     liveSegmentPrefix: "live_"
-
     outputDir: "/usr/share/nginx/html/stream"
 
   resources:
