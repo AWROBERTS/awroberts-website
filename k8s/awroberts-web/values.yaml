@@ -100,7 +100,7 @@ backgroundVideo:
     volumes:
       - name: hls-output
         hostPath:
-          path: /usr/share/nginx/html/stream
+          path: /var/www/html/awroberts/awroberts-media/stream
           type: DirectoryOrCreate
 
   hls:
