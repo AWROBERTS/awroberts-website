@@ -21,27 +21,23 @@ rbac:
 ports:
   web:
     port: 8000
-    hostPort: 8000
     expose:
       default: true
     exposedPort: 8000
 
   websecure:
     port: 8443
-    hostPort: 8443
     expose:
       default: true
     exposedPort: 8443
 
   traefik:
     port: 9000
-    hostPort: 9000
     expose:
       default: false
 
   metrics:
     port: 9001
-    hostPort: 9001
     expose:
       default: false
 
