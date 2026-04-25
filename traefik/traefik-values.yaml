@@ -10,7 +10,7 @@ additionalArguments:
   - "--ping=true"
   - "--entryPoints.web.address=:8000"
   - "--entryPoints.websecure.address=:8443"
-  - "--providers.kubernetesgateway"
+  - "--providers.kubernetesgateway=true"
 
 gateway:
   enabled: true
