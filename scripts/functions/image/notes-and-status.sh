@@ -52,9 +52,9 @@ notes_and_status() {
     echo
     echo "HTTPRoutes:"
     kubectl -n "$NAMESPACE" get httproute \
-      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      -l "meta.helm.sh/release-name=$HELM_RELEASE" \
       -o wide 2>/dev/null || echo "HTTPRoute not found"
-  fi
+    fi
 
   echo
   echo "=============================="
