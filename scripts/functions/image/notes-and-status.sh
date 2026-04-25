@@ -51,13 +51,9 @@ notes_and_status() {
 
     echo
     echo "HTTPRoutes:"
-    HTTPROUTE_NAME="${DEPLOYMENT_NAME}-route"
-
-    if kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME" >/dev/null 2>&1; then
-      kubectl -n "$NAMESPACE" get httproute "$HTTPROUTE_NAME"
-    else
-      echo "HTTPRoute not found"
-    fi
+    kubectl -n "$NAMESPACE" get httproute \
+      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
+      -o wide 2>/dev/null || echo "HTTPRoute not found"
   fi
 
   echo
