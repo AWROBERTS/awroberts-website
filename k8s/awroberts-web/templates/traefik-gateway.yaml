@@ -7,14 +7,14 @@ metadata:
     "helm.sh/resource-policy": keep
 
 spec:
-  gatewayClassName: traefik
+  gatewayClassName: {{ .Values.gateway.className }}
 
   listeners:
     # HTTPS for root domain
-    - name: https-root
+    - name: {{ .Values.traefik.entrypoints.websecure.name }}
       protocol: HTTPS
-      port: 8443
-      hostname: "awroberts.co.uk"
+      port: {{ .Values.traefik.entrypoints.websecure.port }}
+      hostname: {{ .Values.gateway.hostnames.root | quote }}
       tls:
         mode: Terminate
         certificateRefs:
@@ -24,10 +24,10 @@ spec:
           from: All
 
     # HTTPS for wildcard subdomains
-    - name: https-wildcard
+    - name: {{ .Values.traefik.entrypoints.websecure.name }}
       protocol: HTTPS
-      port: 8443
-      hostname: "*.awroberts.co.uk"
+      port: {{ .Values.traefik.entrypoints.websecure.port }}
+      hostname: {{ .Values.gateway.hostnames.wildcard | quote }}
       tls:
         mode: Terminate
         certificateRefs:
@@ -37,10 +37,9 @@ spec:
           from: All
 
     # HTTP listener
-    - name: http
+    - name: {{ .Values.traefik.entrypoints.web.name }}
       protocol: HTTP
-      port: 8000
+      port: {{ .Values.traefik.entrypoints.web.port }}
       allowedRoutes:
         namespaces:
           from: All
-
