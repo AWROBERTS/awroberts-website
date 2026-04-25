@@ -24,31 +24,38 @@ spec:
         - name: {{ include "awroberts.name" . }}-background
           image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.nginx.image.pullPolicy }}
+
           ports:
             - containerPort: {{ .Values.nginx.listenPort | default 80 }}
+
           livenessProbe:
             httpGet:
               path: {{ .Values.livenessProbe.httpGet.path }}
               port: {{ .Values.nginx.listenPort | default 80 }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+
           readinessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.httpGet.path }}
+              path: {{ .Values.readinessProbe.httpGet.path }}
               port: {{ .Values.nginx.listenPort | default 80 }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+
           volumeMounts:
             - name: nginx-conf
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
-            - name: media-volume
-              mountPath: {{ .Values.media.mountPath }}
+
+            - name: hls-output
+              mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
+
       volumes:
         - name: nginx-conf
           configMap:
             name: {{ include "awroberts.name" . }}-background-nginx
-        - name: media-volume
+
+        - name: hls-output
           hostPath:
-            path: {{ .Values.media.hostPath }}
-            type: Directory
+            path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
+            type: DirectoryOrCreate
