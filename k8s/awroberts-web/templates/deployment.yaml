@@ -2,20 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "awroberts.name" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ include "awroberts.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: web
+    app.kubernetes.io/part-of: {{ include "awroberts.name" . }}
+    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "awroberts.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: web
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{ include "awroberts.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: web
+        app.kubernetes.io/part-of: {{ include "awroberts.name" . }}
+        app.kubernetes.io/managed-by: Helm
       annotations:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-config-map.yaml") . | sha256sum }}
     spec:
@@ -33,7 +41,7 @@ spec:
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.httpGet.path }}
+              path: {{ .Values.readinessProbe.httpGet.path }}
               port: {{ .Values.nginx.listenPort }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}

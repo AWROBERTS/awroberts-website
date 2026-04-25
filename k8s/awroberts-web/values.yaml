@@ -93,15 +93,9 @@ backgroundVideo:
       tag: latest
       pullPolicy: Never
 
-    volumeMounts:
-      - name: hls-output
-        mountPath: /usr/share/nginx/html/stream
-
-    volumes:
-      - name: hls-output
-        hostPath:
-          path: /usr/share/nginx/html/stream
-          type: DirectoryOrCreate
+    volume:
+      name: hls-output
+      hostPath: /var/www/html/awroberts/awroberts-media/stream
 
   hls:
     segmentDuration: 2
