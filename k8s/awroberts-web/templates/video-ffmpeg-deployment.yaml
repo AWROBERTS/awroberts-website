@@ -4,16 +4,22 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background-ffmpeg
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "awroberts.fullname" . }}-background-ffmpeg
+    app.kubernetes.io/name: {{ include "awroberts.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: background-ffmpeg
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "awroberts.fullname" . }}-background-ffmpeg
+      app.kubernetes.io/name: {{ include "awroberts.name" . }}
+      app.kubernetes.io/component: background-ffmpeg
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ include "awroberts.fullname" . }}-background-ffmpeg
+        app.kubernetes.io/name: {{ include "awroberts.name" . }}
+        app.kubernetes.io/component: background-ffmpeg
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
         - name: ffmpeg
@@ -37,11 +43,9 @@ spec:
               "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
 
           volumeMounts:
-            # mount HLS INPUT directory
             - name: hls-input
               mountPath: /usr/share/nginx/html/hls
 
-            # mount HLS OUTPUT directory
             - name: hls-output
               mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
 
@@ -54,14 +58,12 @@ spec:
               memory: {{ .Values.backgroundVideo.resources.ffmpeg.limits.memory }}
 
       volumes:
-        # HLS INPUT directory
         - name: hls-input
           hostPath:
             path: {{ .Values.media.hostPath }}/hls
             type: Directory
 
-        # HLS OUTPUT directory
         - name: hls-output
           hostPath:
-            path: {{ .Values.backgroundVideo.hls.outputDir }}
+            path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
             type: DirectoryOrCreate
