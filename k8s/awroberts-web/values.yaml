@@ -26,6 +26,7 @@ traefik:
 gateway:
   name: awroberts-web-deploy-gateway
   namespace: traefik
+  className: traefik
   hostnames:
     root: awroberts.co.uk
     wildcard: "*.awroberts.co.uk"
