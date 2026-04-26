@@ -26,6 +26,9 @@ traefik:
 gateway:
   name: awroberts-web-deploy-gateway
   namespace: traefik
+  hostnames:
+    root: awroberts.co.uk
+    wildcard: "*.awroberts.co.uk"
 
 stream:
   pathPrefix: /stream
