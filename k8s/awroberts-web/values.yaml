@@ -15,6 +15,14 @@ traefik:
     maxAge: 31536000
     includeSubdomains: true
 
+  entrypoints:
+    web:
+      name: web
+      port: 8000
+    websecure:
+      name: websecure
+      port: 8443
+
 gateway:
   name: awroberts-web-deploy-gateway
   namespace: traefik
