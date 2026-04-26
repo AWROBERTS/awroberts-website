@@ -11,7 +11,7 @@ spec:
 
   listeners:
     # HTTPS for root domain
-    - name: {{ .Values.traefik.entrypoints.websecure.name }}
+    - name: websecure-root
       protocol: HTTPS
       port: {{ .Values.traefik.entrypoints.websecure.port }}
       hostname: {{ .Values.gateway.hostnames.root | quote }}
@@ -24,7 +24,7 @@ spec:
           from: All
 
     # HTTPS for wildcard subdomains
-    - name: {{ .Values.traefik.entrypoints.websecure.name }}
+    - name: websecure-wildcard
       protocol: HTTPS
       port: {{ .Values.traefik.entrypoints.websecure.port }}
       hostname: {{ .Values.gateway.hostnames.wildcard | quote }}
