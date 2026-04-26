@@ -8,9 +8,13 @@ logs:
 additionalArguments:
   - "--api.dashboard=true"
   - "--ping=true"
-  - "--entryPoints.web.address=:80"
-  - "--entryPoints.websecure.address=:443"
   - "--providers.kubernetesgateway=true"
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
 
 gateway:
   enabled: true
