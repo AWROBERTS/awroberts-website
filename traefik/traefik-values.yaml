@@ -18,6 +18,17 @@ gateway:
 rbac:
   enabled: true
 
+traefik:
+  entrypoints:
+    web:
+      name: web
+      port: 8000
+    websecure:
+      name: websecure
+      port: 8443
+  tls:
+    secretName: awroberts-tls
+
 ports:
   web:
     port: 8000
