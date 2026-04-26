@@ -8,8 +8,8 @@ logs:
 additionalArguments:
   - "--api.dashboard=true"
   - "--ping=true"
-  - "--entryPoints.web.address=:8000"
-  - "--entryPoints.websecure.address=:8443"
+  - "--entryPoints.web.address=:80"
+  - "--entryPoints.websecure.address=:443"
   - "--providers.kubernetesgateway=true"
 
 gateway:
@@ -25,7 +25,6 @@ ports:
     expose:
       default: true
     exposedPort: 80
-    targetPort: 8000
 
   websecure:
     port: 443
@@ -33,7 +32,6 @@ ports:
     expose:
       default: true
     exposedPort: 443
-    targetPort: 8443
 
   traefik:
     port: 9000
