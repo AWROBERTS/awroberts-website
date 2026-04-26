@@ -20,16 +20,18 @@ rbac:
 
 ports:
   web:
-    port: 8000
+    port: 80
     expose:
       default: true
-    exposedPort: 8000
+    exposedPort: 80
+    targetPort: 8000
 
   websecure:
-    port: 8443
+    port: 443
     expose:
       default: true
-    exposedPort: 8443
+    exposedPort: 443
+    targetPort: 8443
 
   traefik:
     port: 9000
