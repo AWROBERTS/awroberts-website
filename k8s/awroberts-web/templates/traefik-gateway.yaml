@@ -13,7 +13,7 @@ spec:
     # HTTPS for root domain
     - name: websecure-root
       protocol: HTTPS
-      port: {{ .Values.traefik.entrypoints.websecure.port }}
+      port: 443
       hostname: {{ .Values.gateway.hostnames.root | quote }}
       tls:
         mode: Terminate
@@ -26,7 +26,7 @@ spec:
     # HTTPS for wildcard subdomains
     - name: websecure-wildcard
       protocol: HTTPS
-      port: {{ .Values.traefik.entrypoints.websecure.port }}
+      port: 443
       hostname: {{ .Values.gateway.hostnames.wildcard | quote }}
       tls:
         mode: Terminate
@@ -37,9 +37,9 @@ spec:
           from: All
 
     # HTTP listener
-    - name: {{ .Values.traefik.entrypoints.web.name }}
+    - name: web
       protocol: HTTP
-      port: {{ .Values.traefik.entrypoints.web.port }}
+      port: 80
       allowedRoutes:
         namespaces:
           from: All
