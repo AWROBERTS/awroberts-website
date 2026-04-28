@@ -9,12 +9,9 @@ additionalArguments:
   - "--api.dashboard=true"
   - "--ping=true"
   - "--providers.kubernetesgateway=true"
-
-entryPoints:
-  web:
-    address: ":80"
-  websecure:
-    address: ":443"
+  - "--entryPoints.web.address=:80"
+  - "--entryPoints.websecure.address=:443"
+  - "--entryPoints.websecure.http.tls=true"
 
 gateway:
   enabled: true
