@@ -19,7 +19,21 @@ gateway:
 rbac:
   enabled: true
 
-hostNetwork: true
+deployment:
+  hostNetwork: true
+
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: false
+
+  containerSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    allowPrivilegeEscalation: true
+    capabilities:
+      add:
+        - NET_BIND_SERVICE
 
 ports:
   web:
