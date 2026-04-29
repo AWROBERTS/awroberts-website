@@ -22,18 +22,15 @@ rbac:
 deployment:
   hostNetwork: true
 
-  podSecurityContext:
-    runAsUser: 0
-    runAsGroup: 0
-    runAsNonRoot: false
-
-  containerSecurityContext:
-    runAsUser: 0
-    runAsGroup: 0
-    allowPrivilegeEscalation: true
-    capabilities:
-      add:
-        - NET_BIND_SERVICE
+  containers:
+    securityContext:
+      runAsUser: 0
+      runAsGroup: 0
+      runAsNonRoot: false
+      allowPrivilegeEscalation: true
+      capabilities:
+        add:
+          - NET_BIND_SERVICE
 
 ports:
   web:
