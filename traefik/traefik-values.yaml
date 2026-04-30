@@ -19,9 +19,9 @@ gateway:
 rbac:
   enabled: true
 
-deployment:
-  hostNetwork: true
+hostNetwork: true
 
+deployment:
   containers:
     securityContext:
       runAsUser: 0
