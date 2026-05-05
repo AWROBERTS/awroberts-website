@@ -57,4 +57,12 @@ ports:
 
 service:
   enabled: true
-  type: ClusterIP
+  type: NodePort
+  ports:
+    web:
+      port: 80
+      nodePort: 30080
+    websecure:
+      port: 443
+      nodePort: 30443
+
