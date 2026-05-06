@@ -42,9 +42,10 @@ const sketch = (awrWeb) => {
 
     initUI();
 
-    // Correct place to initialize video system
-    // DOM is fully ready, p5 canvas is ready, video element exists
-    initVideoSystem();
+    // Delay video initialisation until DOM is fully ready
+    window.requestAnimationFrame(() => {
+      initVideoSystem();
+    });
   };
 
   awrWeb.draw = () => {
