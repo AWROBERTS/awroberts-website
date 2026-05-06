@@ -7,18 +7,18 @@ spec:
   parentRefs:
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
-      sectionName: https-root
+      sectionName: websecure-root
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
-      sectionName: https-wildcard
+      sectionName: websecure-wildcard
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
-      sectionName: http
+      sectionName: web
 
   hostnames:
-    {{- range .Values.traefik.hostnames }}
-    - {{ . }}
-    {{- end }}
+{{- range .Values.traefik.hostnames }}
+    - {{ . | quote }}
+{{- end }}
 
   rules:
     - matches:
