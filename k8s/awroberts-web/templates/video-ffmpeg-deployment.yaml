@@ -47,7 +47,7 @@ spec:
               mountPath: /usr/share/nginx/html/hls
 
             - name: hls-output
-              mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
+              mountPath: /usr/share/nginx/html/awroberts-media
 
           resources:
             requests:
