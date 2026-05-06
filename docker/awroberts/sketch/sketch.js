@@ -20,7 +20,7 @@ import { getOverlayPixelDensity } from './utils.js';
 
 const sketch = (awrWeb) => {
 
-  // Bind awrWeb instance into modules ONCE
+  // Bind p5 instance into modules
   bindVideoP5(awrWeb);
   bindUIP5(awrWeb);
 
@@ -40,8 +40,11 @@ const sketch = (awrWeb) => {
     canvas.style('z-index', '1');
     canvas.style('filter', 'saturate(1.8) contrast(1.08)');
 
-    initVideoSystem();
     initUI();
+
+    // Correct place to initialize video system
+    // DOM is fully ready, p5 canvas is ready, video element exists
+    initVideoSystem();
   };
 
   awrWeb.draw = () => {
@@ -67,4 +70,5 @@ const sketch = (awrWeb) => {
   };
 };
 
-new p5(sketch);
+// ⭐ Export the sketch — do NOT instantiate p5 here
+export default sketch;
