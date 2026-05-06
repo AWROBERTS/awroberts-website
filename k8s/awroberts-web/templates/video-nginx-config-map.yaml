@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: awroberts-web-background-nginx
+  name: {{ include "awroberts.name" . }}-background-nginx
 data:
   nginx.conf: |
     worker_processes {{ .Values.nginx.workerProcesses | default 1 }};
@@ -11,8 +11,8 @@ data:
     }
 
     http {
-        include       mime.types;
-        default_type  application/octet-stream;
+        include mime.types;
+        default_type application/octet-stream;
 
         sendfile on;
         keepalive_timeout {{ .Values.nginx.keepaliveTimeout | default 65 }};
@@ -22,12 +22,15 @@ data:
             listen [::]:{{ .Values.nginx.listenPort | default 80 }};
             server_name "_";
 
+            # Serve HLS output directory
             root "{{ .Values.backgroundVideo.hls.outputDir }}";
 
+            # Health check
             location "{{ .Values.livenessProbe.httpGet.path }}" {
                 return 200;
             }
 
+            # Serve all HLS files directly
             location / {
                 add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
                 try_files $uri =404;
