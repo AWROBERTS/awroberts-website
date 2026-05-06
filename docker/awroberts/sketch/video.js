@@ -37,7 +37,7 @@ let hasVideoFrame = false;
 const HlsGlobal = window.Hls;
 
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
-const POSTER_URL = "/awroberts-media/background-poster.png";
+const POSTER_URL = "/background-poster.png";
 
 // -----------------------------
 // PRELOAD
