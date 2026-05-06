@@ -39,7 +39,7 @@ data:
 
             # Public poster image (proxied to background Nginx)
             location = /background-poster.png {
-                proxy_pass http://{{ include "awroberts.name" . }}-deploy-background/background-poster.png;
+                proxy_pass http://{{ include "awroberts.name" . }}-web-deploy-background/background-poster.png;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 add_header Cache-Control "no-cache";
