@@ -70,5 +70,5 @@ const sketch = (awrWeb) => {
   };
 };
 
-// ⭐ Export the sketch — do NOT instantiate p5 here
+// Export the sketch — do NOT instantiate p5 here
 export default sketch;

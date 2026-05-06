@@ -33,17 +33,22 @@
          crossorigin="anonymous"
          style="
            position:absolute;
-           left:-9999px;
-           top:-9999px;
-           width:320px;
-           height:180px;
+           top:0;
+           left:0;
+           width:1px;
+           height:1px;
            opacity:0;
-           pointer-events:none;
+           z-index:-1;
          ">
   </video>
 
   <div id="canvas-container"></div>
-  
-  <script type="module" src="/sketch/sketch.js"></script>
+
+  <!-- Correct way to load a p5 module -->
+  <script type="module">
+    import sketch from "/sketch/sketch.js";
+    new p5(sketch);
+  </script>
+
 </body>
 </html>
