@@ -47,12 +47,25 @@ export function preloadVideoAssets() {
 }
 
 // -----------------------------
-// INIT
+// INIT (with DOM-ready + retry)
 // -----------------------------
 export function initVideoSystem() {
+  console.log("initVideoSystem() called");
+
+  // Ensure DOM is ready
+  if (document.readyState !== "complete" && document.readyState !== "interactive") {
+    console.log("DOM not ready — retrying initVideoSystem()");
+    return setTimeout(initVideoSystem, 50);
+  }
+
   bgVideoEl = document.getElementById("bg-video");
 
-  console.log("initVideoSystem():", { bgVideoEl, HlsGlobal });
+  if (!bgVideoEl) {
+    console.warn("bgVideoEl not found — retrying initVideoSystem()");
+    return setTimeout(initVideoSystem, 50);
+  }
+
+  console.log("initVideoSystem(): video element found:", bgVideoEl);
 
   // Offscreen canvas for raw video frame
   videoSourceCanvas = document.createElement("canvas");
@@ -66,12 +79,13 @@ export function initVideoSystem() {
   videoLayerReady = true;
   videoLayerCtx = videoLayer.drawingContext;
 
-  if (bgVideoEl) {
-    setupVideoEvents();
-    setupHLS();
-  }
+  setupVideoEvents();
+  setupHLS();
 }
 
+// -----------------------------
+// VIDEO EVENTS
+// -----------------------------
 function setupVideoEvents() {
   bgVideoEl.loop = false;
 
@@ -81,9 +95,7 @@ function setupVideoEvents() {
   });
 
   const markVideoReady = () => {
-    if (!videoReady) {
-      console.log("Video ready");
-    }
+    if (!videoReady) console.log("Video ready");
     videoReady = true;
   };
 
@@ -98,7 +110,12 @@ function setupVideoEvents() {
   }
 }
 
+// -----------------------------
+// HLS INITIALIZATION
+// -----------------------------
 function setupHLS() {
+  console.log("setupHLS(): HlsGlobal =", HlsGlobal);
+
   if (HlsGlobal && HlsGlobal.isSupported()) {
     console.log("Using HLS.js");
 
@@ -164,7 +181,6 @@ export function updateVideoFrame() {
   const sourceW = bgVideoEl.videoWidth;
   const sourceH = bgVideoEl.videoHeight;
 
-  // Resize raw source canvas if needed
   if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
     videoSourceCanvas.width = sourceW;
     videoSourceCanvas.height = sourceH;
@@ -172,7 +188,6 @@ export function updateVideoFrame() {
     videoSourceHeight = sourceH;
   }
 
-  // Resize p5 graphics layer if needed
   if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
     videoLayer.resizeCanvas(awrWeb.width, awrWeb.height);
     videoLayer.pixelDensity(1);
@@ -180,10 +195,8 @@ export function updateVideoFrame() {
   }
 
   try {
-    // Copy raw video frame
     videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
 
-    // Draw scaled frame into p5 graphics layer
     videoLayerCtx.save();
     videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
     videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
