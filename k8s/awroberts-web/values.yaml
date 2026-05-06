@@ -28,7 +28,7 @@ stream:
 
 media:
   hostPath: /var/www/html/awroberts/awroberts-media
-  mountPath: /usr/share/nginx/html/awroberts-media
+  mountPath: /var/www/html/awroberts/awroberts-media
 
 assets:
   fallbackImage: background-poster.png
@@ -99,13 +99,13 @@ backgroundVideo:
 
     volume:
       name: hls-output
-      hostPath: /var/www/html/awroberts/awroberts-media/stream
+      hostPath: /var/www/html/awroberts/awroberts-media
 
   hls:
     segmentDuration: 2
     liveWindow: 10
     liveSegmentPrefix: "live_"
-    outputDir: "/usr/share/nginx/html/stream"
+    outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
   resources:
     ffmpeg:
