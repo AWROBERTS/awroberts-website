@@ -20,4 +20,5 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "awroberts.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "awroberts.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: web
 {{- end -}}
