@@ -5,8 +5,9 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background
-    app.kubernetes.io/instance: awroberts-web
+    app.kubernetes.io/name: "awroberts-web-background"
+    app.kubernetes.io/instance: "awroberts-web"
+
   ports:
     - name: http
       port: 80
