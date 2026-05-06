@@ -30,6 +30,12 @@ data:
                 return 200;
             }
 
+            # Poster image (served from same HLS directory)
+            location = /background-poster.png {
+                alias {{ .Values.backgroundVideo.hls.outputDir }}/background-poster.png;
+                add_header Cache-Control "no-cache";
+            }
+
             # Serve all HLS files directly
             location / {
                 add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
