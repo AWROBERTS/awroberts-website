@@ -55,12 +55,6 @@ data:
                 add_header Cache-Control "{{ .Values.assets.fontCacheControl }}";
             }
 
-            # HLS stream
-            location {{ .Values.stream.pathPrefix }}/ {
-                alias {{ .Values.backgroundVideo.hls.outputDir }}/;
-                add_header Cache-Control "no-cache";
-            }
-
             # Static assets
             location {{ .Values.assets.publicPath }}/ {
                 alias {{ .Values.assets.mountPath }}/;
