@@ -1,17 +1,22 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "awroberts.fullname" . }}
+  name: {{ include "awroberts.name" . }}-deploy
   labels:
     {{- include "awroberts.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.service.annotations }}
     {{- toYaml .Values.service.annotations | nindent 4 }}
     {{- end }}
+
 spec:
   type: {{ .Values.service.type }}
+
   selector:
-    {{- include "awroberts.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "awroberts.name" . }}-deploy
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: web
+
   ports:
     - name: {{ .Values.service.portName | default "http" }}
       port: {{ .Values.service.port }}
