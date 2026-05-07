@@ -32,7 +32,7 @@ data:
 
             # Poster image (served from same HLS directory)
             location = /background-poster.png {
-                alias {{ .Values.backgroundVideo.hls.outputDir }}/background-poster.png;
+                alias /var/www/html/awroberts/awroberts-media/background-poster.png;
                 add_header Cache-Control "no-cache";
             }
 
