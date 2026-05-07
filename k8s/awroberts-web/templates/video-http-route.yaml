@@ -1,8 +1,9 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: {{ include "awroberts.fullname" . }}-background
+  name: {{ include "awroberts.name" . }}-deploy-background
   namespace: {{ .Release.Namespace }}
+
 spec:
   parentRefs:
     - name: {{ .Values.gateway.name }}
@@ -16,21 +17,23 @@ spec:
       sectionName: web
 
   hostnames:
-    {{- range .Values.traefik.hostnames }}
-    - {{ . }}
-    {{- end }}
+{{- range .Values.traefik.hostnames }}
+    - {{ . | quote }}
+{{- end }}
 
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: {{ .Values.stream.pathPrefix }}
+
       filters:
         - type: ExtensionRef
           extensionRef:
             group: traefik.io
             kind: Middleware
             name: no-cache-hls
+
       backendRefs:
-        - name: {{ include "awroberts.fullname" . }}-background
+        - name: {{ include "awroberts.name" . }}-deploy-background
           port: {{ .Values.containerPort }}
