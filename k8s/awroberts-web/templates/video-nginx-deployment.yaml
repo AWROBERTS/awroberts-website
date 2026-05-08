@@ -48,6 +48,9 @@ spec:
               subPath: nginx.conf
 
             - name: hls-output
+              mountPath: /var/www/html/awroberts/awroberts-media
+
+            - name: hls-output
               mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
 
       volumes:
