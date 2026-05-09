@@ -4,24 +4,28 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
+    app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background
     app.kubernetes.io/instance: {{ .Release.Name }}
+
 spec:
   replicas: {{ .Values.backgroundVideo.replicaCount }}
+
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
+      app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background
       app.kubernetes.io/instance: {{ .Release.Name }}
+
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "awroberts.name" . }}-background
+        app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/video-nginx-config-map.yaml") . | sha256sum }}
+
     spec:
       containers:
-        - name: {{ include "awroberts.name" . }}-background
+        - name: {{ include "awroberts.fullname" . }}-background
           image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
           imagePullPolicy: {{ .Values.backgroundVideo.nginx.image.pullPolicy }}
 
@@ -56,7 +60,7 @@ spec:
       volumes:
         - name: nginx-conf
           configMap:
-            name: {{ include "awroberts.name" . }}-background-nginx
+            name: {{ include "awroberts.fullname" . }}-background-nginx
 
         - name: hls-output
           hostPath:
