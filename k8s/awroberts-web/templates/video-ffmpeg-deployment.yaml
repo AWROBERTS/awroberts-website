@@ -4,22 +4,26 @@ metadata:
   name: {{ include "awroberts.fullname" . }}-background-ffmpeg
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "awroberts.name" . }}
+    app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: background-ffmpeg
+
 spec:
   replicas: {{ .Values.replicaCount }}
+
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "awroberts.name" . }}
+      app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg
       app.kubernetes.io/component: background-ffmpeg
       app.kubernetes.io/instance: {{ .Release.Name }}
+
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "awroberts.name" . }}
+        app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg
         app.kubernetes.io/component: background-ffmpeg
         app.kubernetes.io/instance: {{ .Release.Name }}
+
     spec:
       containers:
         - name: ffmpeg
