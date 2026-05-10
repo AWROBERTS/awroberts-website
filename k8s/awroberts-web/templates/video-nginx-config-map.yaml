@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "awroberts.name" . }}-background-nginx
+  name: {{ include "awroberts.fullname" . }}-background-nginx
 data:
   nginx.conf: |
     worker_processes {{ .Values.nginx.workerProcesses | default 1 }};
