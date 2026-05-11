@@ -56,4 +56,3 @@ ports:
 service:
   enabled: true
   type: NodePort
-
