@@ -13,12 +13,6 @@ spec:
     - name: {{ .Values.gateway.name }}
       namespace: {{ .Values.gateway.namespace }}
       sectionName: websecure-root
-    - name: {{ .Values.gateway.name }}
-      namespace: {{ .Values.gateway.namespace }}
-      sectionName: websecure-wildcard
-    - name: {{ .Values.gateway.name }}
-      namespace: {{ .Values.gateway.namespace }}
-      sectionName: web
 
   hostnames:
 {{- range .Values.traefik.hostnames }}
