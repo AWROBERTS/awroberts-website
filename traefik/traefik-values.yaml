@@ -55,4 +55,4 @@ ports:
 
 service:
   enabled: true
-  type: ClusterIP
+  type: NodePort
