@@ -57,17 +57,31 @@ generate_deployment_json() {
     helm version --short 2>/dev/null || echo ""
   }
 
+  get_service_selector() {
+    kubectl get svc "${SERVICE_NAME}" -n "${NAMESPACE}" \
+      -o jsonpath='{range $key,$value := .spec.selector}{printf "%s=%s," $key $value}{end}' 2>/dev/null \
+      | sed 's/,$//'
+  }
+
   get_first_running_pod_name() {
+    local selector
+
+    selector="$(get_service_selector)"
+
+    if [[ -z "${selector:-}" ]]; then
+      echo "❌ No selector found for service '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
+      return 1
+    fi
+
     kubectl get pod -n "${NAMESPACE}" \
-      -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+      -l "${selector}" \
       --field-selector=status.phase=Running \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
   get_first_service_name() {
-    kubectl get svc -n "${NAMESPACE}" \
-      -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+    kubectl get svc "${SERVICE_NAME}" -n "${NAMESPACE}" \
+      -o jsonpath='{.metadata.name}' 2>/dev/null
   }
 
   get_traefik_deployment_name() {
@@ -97,15 +111,17 @@ generate_deployment_json() {
   pod_name="$(get_first_running_pod_name)"
 
   if [[ -z "${pod_name:-}" ]]; then
-    echo "❌ No running pod found for Helm release '${HELM_RELEASE}' in namespace '${NAMESPACE}'" >&2
+    echo "❌ No running pod found for service '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
     return 1
   fi
+
+  echo "Selected web pod: ${pod_name}"
 
   local service_name
   service_name="$(get_first_service_name)"
 
   if [[ -z "${service_name:-}" ]]; then
-    echo "❌ No service found for Helm release '${HELM_RELEASE}' in namespace '${NAMESPACE}'" >&2
+    echo "❌ No service found named '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
     return 1
   fi
 
@@ -178,7 +194,7 @@ EOF
   echo
   echo "📤 Copying JSON into running pod"
 
-  kubectl cp deployment.json "$NAMESPACE/$pod_name":/usr/share/nginx/html/deployment.json
+  kubectl cp "$output_file" "$NAMESPACE/$pod_name":/usr/share/nginx/html/deployment.json
 
   echo "deployment.json copied to pod: $pod_name"
 }
