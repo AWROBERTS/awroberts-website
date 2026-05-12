@@ -1,6 +1,11 @@
 restart_kube_proxy() {
   echo "🔧 Applying kube-proxy ConfigMap..."
-  kubectl apply -f "${PROJECT_ROOT}/k8s/kube-proxy-config.yaml"
+
+  if kubectl get configmap kube-proxy -n kube-system >/dev/null 2>&1; then
+    kubectl replace -f "${PROJECT_ROOT}/k8s/kube-proxy-config.yaml"
+  else
+    kubectl create -f "${PROJECT_ROOT}/k8s/kube-proxy-config.yaml"
+  fi
 
   echo "⏳ Waiting for ConfigMap to propagate..."
   sleep 3
