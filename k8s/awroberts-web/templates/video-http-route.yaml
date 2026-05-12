@@ -6,9 +6,13 @@ metadata:
 
 spec:
   parentRefs:
-    - name: {{ .Values.gateway.name }}
-      namespace: {{ .Values.gateway.namespace }}
-      sectionName: websecure-wildcard
+  - name: {{ .Values.gateway.name }}
+    namespace: {{ .Values.gateway.namespace }}
+    sectionName: websecure-root
+
+  - name: {{ .Values.gateway.name }}
+    namespace: {{ .Values.gateway.namespace }}
+    sectionName: websecure-wildcard
 
   hostnames:
 {{- range .Values.traefik.hostnames }}
