@@ -4,7 +4,7 @@ deploy_with_helm() {
   echo "📦 Ensuring namespace ${NAMESPACE} exists..."
   kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
-  helm upgrade --install "${DEPLOYMENT_NAME}" "${HELM_CHART_PATH}" \
+  helm upgrade --install "${HELM_RELEASE}" "${HELM_CHART_PATH}" \
     --namespace "${NAMESPACE}" \
     --set image.repository="${APP_IMAGE_NAME_BASE}" \
     --set image.tag="${IMAGE_TAG}" \
