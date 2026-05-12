@@ -36,6 +36,7 @@ spec:
             - >
               mkdir -p {{ .Values.backgroundVideo.hls.outputDir }} &&
               ffmpeg -y
+              -re
               -stream_loop -1
               -i {{ .Values.backgroundVideo.source }}
               -c copy
@@ -51,7 +52,7 @@ spec:
               mountPath: /usr/share/nginx/html/hls
 
             - name: hls-output
-              mountPath: /usr/share/nginx/html/awroberts-media
+              mountPath: /var/www/html/awroberts/awroberts-media
 
           resources:
             requests:
