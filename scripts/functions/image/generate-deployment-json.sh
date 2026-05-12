@@ -57,19 +57,37 @@ generate_deployment_json() {
     helm version --short 2>/dev/null || echo ""
   }
 
+  get_service_name() {
+    if [[ -n "${SERVICE_NAME:-}" ]] && kubectl get svc "${SERVICE_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+      echo "${SERVICE_NAME}"
+      return 0
+    fi
+
+    if [[ -n "${DEPLOYMENT_NAME:-}" ]] && kubectl get svc "${DEPLOYMENT_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+      echo "${DEPLOYMENT_NAME}"
+      return 0
+    fi
+
+    kubectl get svc -n "${NAMESPACE}" \
+      -l "app.kubernetes.io/instance=${HELM_RELEASE},app.kubernetes.io/component=web" \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  }
+
   get_service_selector() {
-    kubectl get svc "${SERVICE_NAME}" -n "${NAMESPACE}" \
-      -o jsonpath='{range $key,$value := .spec.selector}{printf "%s=%s," $key $value}{end}' 2>/dev/null \
+    local service_name="$1"
+
+    kubectl get svc "${service_name}" -n "${NAMESPACE}" \
+      -o go-template='{{range $key, $value := .spec.selector}}{{printf "%s=%s," $key $value}}{{end}}' 2>/dev/null \
       | sed 's/,$//'
   }
 
-  get_first_running_pod_name() {
+  get_first_running_pod_from_service() {
+    local service_name="$1"
     local selector
 
-    selector="$(get_service_selector)"
+    selector="$(get_service_selector "${service_name}")"
 
     if [[ -z "${selector:-}" ]]; then
-      echo "❌ No selector found for service '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
       return 1
     fi
 
@@ -79,9 +97,52 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_first_service_name() {
-    kubectl get svc "${SERVICE_NAME}" -n "${NAMESPACE}" \
-      -o jsonpath='{.metadata.name}' 2>/dev/null
+  get_first_running_web_pod_by_labels() {
+    kubectl get pod -n "${NAMESPACE}" \
+      -l "app.kubernetes.io/instance=${HELM_RELEASE},app.kubernetes.io/component=web" \
+      --field-selector=status.phase=Running \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  }
+
+  get_first_running_web_pod_by_name() {
+    kubectl get pod -n "${NAMESPACE}" \
+      --field-selector=status.phase=Running \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
+      | grep -E "^${SERVICE_NAME}-[a-z0-9]+-[a-z0-9]+$" \
+      | grep -v background \
+      | head -n 1
+  }
+
+  get_first_running_pod_name() {
+    local service_name="$1"
+    local pod_name
+
+    pod_name="$(get_first_running_pod_from_service "${service_name}" || true)"
+
+    if [[ -n "${pod_name:-}" ]]; then
+      echo "$pod_name"
+      return 0
+    fi
+
+    echo "⚠️ No pod found from selector for service '${service_name}'. Falling back to web labels." >&2
+
+    pod_name="$(get_first_running_web_pod_by_labels || true)"
+
+    if [[ -n "${pod_name:-}" ]]; then
+      echo "$pod_name"
+      return 0
+    fi
+
+    echo "⚠️ No pod found from web labels. Falling back to web pod name lookup." >&2
+
+    pod_name="$(get_first_running_web_pod_by_name || true)"
+
+    if [[ -n "${pod_name:-}" ]]; then
+      echo "$pod_name"
+      return 0
+    fi
+
+    return 1
   }
 
   get_traefik_deployment_name() {
@@ -107,23 +168,25 @@ generate_deployment_json() {
     fi
   }
 
+  local service_name
+  service_name="$(get_service_name)"
+
+  if [[ -z "${service_name:-}" ]]; then
+    echo "❌ No web service found in namespace '${NAMESPACE}'" >&2
+    return 1
+  fi
+
+  echo "Selected service: ${service_name}"
+
   local pod_name
-  pod_name="$(get_first_running_pod_name)"
+  pod_name="$(get_first_running_pod_name "${service_name}")"
 
   if [[ -z "${pod_name:-}" ]]; then
-    echo "❌ No running pod found for service '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
+    echo "❌ No running web pod found in namespace '${NAMESPACE}'" >&2
     return 1
   fi
 
   echo "Selected web pod: ${pod_name}"
-
-  local service_name
-  service_name="$(get_first_service_name)"
-
-  if [[ -z "${service_name:-}" ]]; then
-    echo "❌ No service found named '${SERVICE_NAME}' in namespace '${NAMESPACE}'" >&2
-    return 1
-  fi
 
   local traefik_deployment_name
   traefik_deployment_name="$(get_traefik_deployment_name)"
