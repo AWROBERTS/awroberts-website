@@ -25,6 +25,8 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
 
     spec:
+      terminationGracePeriodSeconds: 10
+
       containers:
         - name: ffmpeg
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
@@ -33,38 +35,57 @@ spec:
           command:
             - /bin/sh
             - -c
-            - >
-              mkdir -p {{ .Values.backgroundVideo.hls.outputDir }} &&
+            - |
+              set -u
 
-              (
+              OUTPUT_DIR="{{ .Values.backgroundVideo.hls.outputDir }}"
+              POSTER_PATH="/var/www/html/awroberts/awroberts-media/background-poster.png"
+              SEGMENT_PREFIX="{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}"
+
+              mkdir -p "$OUTPUT_DIR"
+
+              poster_loop() {
                 while true; do
-                  latest_segment="$(ls -1t {{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}*.ts 2>/dev/null | sed -n '2p')";
+                  latest_segment="$(ls -1t "$OUTPUT_DIR"/"$SEGMENT_PREFIX"*.ts 2>/dev/null | sed -n '2p' || true)"
 
                   if [ -n "$latest_segment" ] && [ -f "$latest_segment" ]; then
-                    ffmpeg -y
-                    -loglevel error
-                    -i "$latest_segment"
-                    -frames:v 1
-                    /tmp/background-poster.png
-                    &&
-                    mv /tmp/background-poster.png /var/www/html/awroberts/awroberts-media/background-poster.png;
-                  fi;
+                    ffmpeg -y \
+                      -loglevel error \
+                      -i "$latest_segment" \
+                      -frames:v 1 \
+                      /tmp/background-poster.png
 
-                  sleep 10;
+                    if [ -f /tmp/background-poster.png ]; then
+                      mv /tmp/background-poster.png "$POSTER_PATH"
+                    fi
+                  fi
+
+                  sleep 10
                 done
-              ) &
+              }
 
-              exec ffmpeg -y
-              -re
-              -stream_loop -1
-              -i {{ .Values.backgroundVideo.source }}
-              -c copy
-              -f hls
-              -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }}
-              -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }}
-              -hls_flags delete_segments
-              -hls_segment_filename "{{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts"
-              "{{ .Values.backgroundVideo.hls.outputDir }}/index.m3u8"
+              poster_loop &
+              poster_loop_pid="$!"
+
+              trap 'kill "$poster_loop_pid" 2>/dev/null || true; exit 0' TERM INT
+
+              ffmpeg -y \
+                -re \
+                -stream_loop -1 \
+                -i {{ .Values.backgroundVideo.source }} \
+                -c copy \
+                -f hls \
+                -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
+                -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }} \
+                -hls_flags delete_segments \
+                -hls_segment_filename "$OUTPUT_DIR/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts" \
+                "$OUTPUT_DIR/index.m3u8" &
+
+              ffmpeg_pid="$!"
+
+              wait "$ffmpeg_pid"
+
+              kill "$poster_loop_pid" 2>/dev/null || true
 
           volumeMounts:
             - name: hls-input
