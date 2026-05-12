@@ -69,6 +69,17 @@ data:
                 add_header Cache-Control "public, max-age=31536000";
             }
 
+            # HLS background stream for the browser/p5 sketch.
+            # The background service remains internal; this path exposes it through the main site origin.
+            location /stream/ {
+                proxy_pass http://{{ include "awroberts.fullname" . }}-background/stream/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+            }
+
             # SPA fallback
             location / {
                 try_files $uri $uri/ "/{{ .Values.nginx.index }}";
