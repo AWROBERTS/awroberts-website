@@ -128,8 +128,9 @@ generate_deployment_json() {
     local library_name="$2"
 
     kubectl exec "${pod_name}" -n "${NAMESPACE}" -- \
-      sh -c "grep -Eo '${library_name}(@|/)[0-9]+\\.[0-9]+\\.[0-9]+' /usr/share/nginx/html/index.html | head -n 1" 2>/dev/null \
-      | sed -E "s/^${library_name}[@/]//"
+      sh -c "grep -Eo '${library_name}(@|/)[0-9]+\\.[0-9]+\\.[0-9]+([^0-9]|$)' /usr/share/nginx/html/index.html | head -n 1" 2>/dev/null \
+      | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -n 1
   }
 
   get_hls_js_version() {
@@ -230,8 +231,8 @@ generate_deployment_json() {
   local background_video_pod_ip
   local background_ffmpeg_pod_ip
   web_pod_ip="$(get_pod_ip "${web_pod_name}")"
-  background_video_pod_ip="$(get_first_running_pod_ip_for_deployment "${HELM_RELEASE}-background")"
-  background_ffmpeg_pod_ip="$(get_first_running_pod_ip_for_deployment "${HELM_RELEASE}-background-ffmpeg")"
+  background_video_pod_ip="$(get_first_running_pod_ip_for_deployment "${DEPLOYMENT_NAME}-background")"
+  background_ffmpeg_pod_ip="$(get_first_running_pod_ip_for_deployment "${DEPLOYMENT_NAME}-background-ffmpeg")"
 
   local service_cluster_ip
   service_cluster_ip="$(kubectl get svc "${service_name}" -n "${NAMESPACE}" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
