@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "awroberts.name" . }}-deploy-background
+  name: {{ include "awroberts.fullname" . }}-background
 spec:
   type: ClusterIP
 
   selector:
-    app.kubernetes.io/name: {{ include "awroberts.name" . }}-deploy-background
+    app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background
     app.kubernetes.io/instance: {{ .Release.Name }}
 
   ports:
