@@ -10,12 +10,30 @@ spec:
       namespace: {{ .Values.gateway.namespace }}
       sectionName: websecure-root
 
+    - name: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
+      sectionName: websecure-wildcard
+
   hostnames:
 {{- range .Values.traefik.hostnames }}
     - {{ . | quote }}
 {{- end }}
 
   rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.stream.pathPrefix | quote }}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: no-cache-hls
+      backendRefs:
+        - name: {{ include "awroberts.fullname" . }}-background
+          port: 80
+
     - matches:
         - path:
             type: PathPrefix
