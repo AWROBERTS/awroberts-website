@@ -30,7 +30,10 @@ securityContext:
     add:
       - NET_BIND_SERVICE
 
-deployment: {}
+deployment:
+  replicas: 1
+  strategy:
+    type: Recreate
 
 ports:
   web:
