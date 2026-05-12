@@ -35,7 +35,26 @@ spec:
             - -c
             - >
               mkdir -p {{ .Values.backgroundVideo.hls.outputDir }} &&
-              ffmpeg -y
+
+              (
+                while true; do
+                  latest_segment="$(ls -1t {{ .Values.backgroundVideo.hls.outputDir }}/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}*.ts 2>/dev/null | sed -n '2p')";
+
+                  if [ -n "$latest_segment" ] && [ -f "$latest_segment" ]; then
+                    ffmpeg -y
+                    -loglevel error
+                    -i "$latest_segment"
+                    -frames:v 1
+                    /tmp/background-poster.png
+                    &&
+                    mv /tmp/background-poster.png /var/www/html/awroberts/awroberts-media/background-poster.png;
+                  fi;
+
+                  sleep 10;
+                done
+              ) &
+
+              exec ffmpeg -y
               -re
               -stream_loop -1
               -i {{ .Values.backgroundVideo.source }}
