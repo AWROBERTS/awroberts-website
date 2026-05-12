@@ -73,19 +73,8 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_service_selector() {
-    local service_name="$1"
-
-    kubectl get svc "${service_name}" -n "${NAMESPACE}" \
-      -o go-template='{{range $key, $value := .spec.selector}}{{printf "%s=%s," $key $value}}{{end}}' 2>/dev/null \
-      | sed 's/,$//'
-  }
-
-  get_first_running_pod_from_service() {
-    local service_name="$1"
-    local selector
-
-    selector="$(get_service_selector "${service_name}")"
+  get_first_running_pod_from_selector() {
+    local selector="$1"
 
     if [[ -z "${selector:-}" ]]; then
       return 1
@@ -97,52 +86,80 @@ generate_deployment_json() {
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
   }
 
-  get_first_running_web_pod_by_labels() {
-    kubectl get pod -n "${NAMESPACE}" \
-      -l "app.kubernetes.io/instance=${HELM_RELEASE},app.kubernetes.io/component=web" \
-      --field-selector=status.phase=Running \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+  get_first_running_pod_for_deployment() {
+    local deployment_name="$1"
+    local selector
+
+    selector="$(
+      kubectl get deploy "${deployment_name}" -n "${NAMESPACE}" \
+        -o go-template='{{range $key, $value := .spec.selector.matchLabels}}{{printf "%s=%s," $key $value}}{{end}}' 2>/dev/null \
+        | sed 's/,$//'
+    )"
+
+    if [[ -z "${selector:-}" ]]; then
+      return 1
+    fi
+
+    get_first_running_pod_from_selector "${selector}"
   }
 
-  get_first_running_web_pod_by_name() {
-    kubectl get pod -n "${NAMESPACE}" \
-      --field-selector=status.phase=Running \
-      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null \
-      | grep -E "^${SERVICE_NAME}-[a-z0-9]+-[a-z0-9]+$" \
-      | grep -v background \
-      | head -n 1
+  get_pod_ip() {
+    local pod_name="$1"
+
+    if [[ -z "${pod_name:-}" ]]; then
+      echo ""
+      return 0
+    fi
+
+    kubectl get pod "${pod_name}" -n "${NAMESPACE}" \
+      -o jsonpath='{.status.podIP}' 2>/dev/null || echo ""
   }
 
-  get_first_running_pod_name() {
-    local service_name="$1"
+  get_first_running_pod_ip_for_deployment() {
+    local deployment_name="$1"
     local pod_name
 
-    pod_name="$(get_first_running_pod_from_service "${service_name}" || true)"
+    pod_name="$(get_first_running_pod_for_deployment "${deployment_name}" || true)"
+    get_pod_ip "${pod_name}"
+  }
 
-    if [[ -n "${pod_name:-}" ]]; then
-      echo "$pod_name"
-      return 0
+  get_library_version_from_index_html() {
+    local pod_name="$1"
+    local library_name="$2"
+
+    kubectl exec "${pod_name}" -n "${NAMESPACE}" -- \
+      sh -c "grep -Eo '${library_name}(@|/)[0-9]+\\.[0-9]+\\.[0-9]+' /usr/share/nginx/html/index.html | head -n 1" 2>/dev/null \
+      | sed -E "s/^${library_name}[@/]//"
+  }
+
+  get_hls_js_version() {
+    local pod_name="$1"
+    local version=""
+
+    version="$(get_library_version_from_index_html "${pod_name}" "hls.js" || true)"
+
+    if [[ -n "${version:-}" ]]; then
+      echo "${version}"
+    else
+      echo "unknown"
+    fi
+  }
+
+  get_p5_js_version() {
+    local pod_name="$1"
+    local version=""
+
+    version="$(get_library_version_from_index_html "${pod_name}" "p5.js" || true)"
+
+    if [[ -z "${version:-}" ]]; then
+      version="$(get_library_version_from_index_html "${pod_name}" "p5" || true)"
     fi
 
-    echo "⚠️ No pod found from selector for service '${service_name}'. Falling back to web labels." >&2
-
-    pod_name="$(get_first_running_web_pod_by_labels || true)"
-
-    if [[ -n "${pod_name:-}" ]]; then
-      echo "$pod_name"
-      return 0
+    if [[ -n "${version:-}" ]]; then
+      echo "${version}"
+    else
+      echo "unknown"
     fi
-
-    echo "⚠️ No pod found from web labels. Falling back to web pod name lookup." >&2
-
-    pod_name="$(get_first_running_web_pod_by_name || true)"
-
-    if [[ -n "${pod_name:-}" ]]; then
-      echo "$pod_name"
-      return 0
-    fi
-
-    return 1
   }
 
   get_traefik_deployment_name() {
@@ -153,7 +170,8 @@ generate_deployment_json() {
 
   get_traefik_image() {
     local traefik_deploy_name="$1"
-    kubectl get deploy "$traefik_deploy_name" -n traefik \
+
+    kubectl get deploy "${traefik_deploy_name}" -n traefik \
       -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null
   }
 
@@ -161,8 +179,8 @@ generate_deployment_json() {
     local traefik_image_ref="$1"
     local image_tag="${traefik_image_ref##*:}"
 
-    if [[ -n "$image_tag" && "$image_tag" != "$traefik_image_ref" ]]; then
-      echo "$image_tag"
+    if [[ -n "${image_tag}" && "${image_tag}" != "${traefik_image_ref}" ]]; then
+      echo "${image_tag}"
     else
       echo "unknown"
     fi
@@ -178,15 +196,15 @@ generate_deployment_json() {
 
   echo "Selected service: ${service_name}"
 
-  local pod_name
-  pod_name="$(get_first_running_pod_name "${service_name}")"
+  local web_pod_name
+  web_pod_name="$(get_first_running_pod_for_deployment "${DEPLOYMENT_NAME}" || true)"
 
-  if [[ -z "${pod_name:-}" ]]; then
-    echo "❌ No running web pod found in namespace '${NAMESPACE}'" >&2
+  if [[ -z "${web_pod_name:-}" ]]; then
+    echo "❌ No running web pod found for deployment '${DEPLOYMENT_NAME}' in namespace '${NAMESPACE}'" >&2
     return 1
   fi
 
-  echo "Selected web pod: ${pod_name}"
+  echo "Selected web pod for deployment metadata update."
 
   local traefik_deployment_name
   traefik_deployment_name="$(get_traefik_deployment_name)"
@@ -194,9 +212,9 @@ generate_deployment_json() {
   local traefik_version="unknown"
   if [[ -n "${traefik_deployment_name:-}" ]]; then
     local live_traefik_image
-    live_traefik_image="$(get_traefik_image "$traefik_deployment_name")"
+    live_traefik_image="$(get_traefik_image "${traefik_deployment_name}")"
     if [[ -n "${live_traefik_image:-}" ]]; then
-      traefik_version="$(get_traefik_version_from_image "$live_traefik_image")"
+      traefik_version="$(get_traefik_version_from_image "${live_traefik_image}")"
     fi
   fi
 
@@ -205,14 +223,18 @@ generate_deployment_json() {
 
   local app_sha
   local bg_sha
-  app_sha="$(resolve_image_sha "$app_image")"
-  bg_sha="$(resolve_image_sha "$bg_image")"
+  app_sha="$(resolve_image_sha "${app_image}")"
+  bg_sha="$(resolve_image_sha "${bg_image}")"
 
-  local pod_ip
-  pod_ip="$(kubectl get pod "$pod_name" -n "${NAMESPACE}" -o jsonpath='{.status.podIP}' 2>/dev/null || echo "")"
+  local web_pod_ip
+  local background_video_pod_ip
+  local background_ffmpeg_pod_ip
+  web_pod_ip="$(get_pod_ip "${web_pod_name}")"
+  background_video_pod_ip="$(get_first_running_pod_ip_for_deployment "${HELM_RELEASE}-background")"
+  background_ffmpeg_pod_ip="$(get_first_running_pod_ip_for_deployment "${HELM_RELEASE}-background-ffmpeg")"
 
   local service_cluster_ip
-  service_cluster_ip="$(kubectl get svc "$service_name" -n "${NAMESPACE}" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
+  service_cluster_ip="$(kubectl get svc "${service_name}" -n "${NAMESPACE}" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")"
 
   local kubernetes_version
   kubernetes_version="$(get_kubernetes_version)"
@@ -220,7 +242,13 @@ generate_deployment_json() {
   local helm_version
   helm_version="$(get_helm_version)"
 
-  cat > "$output_file" <<EOF
+  local hls_js_version
+  hls_js_version="$(get_hls_js_version "${web_pod_name}")"
+
+  local p5_js_version
+  p5_js_version="$(get_p5_js_version "${web_pod_name}")"
+
+  cat > "${output_file}" <<EOF
 {
   "kubernetes": {
     "version": "${kubernetes_version}"
@@ -241,9 +269,24 @@ generate_deployment_json() {
       "version": "${traefik_version}"
     }
   },
-  "pod": {
-    "name": "${pod_name}",
-    "ip": "${pod_ip}"
+  "pods": {
+    "web": {
+      "ip": "${web_pod_ip}"
+    },
+    "backgroundVideo": {
+      "ip": "${background_video_pod_ip}"
+    },
+    "backgroundFfmpeg": {
+      "ip": "${background_ffmpeg_pod_ip}"
+    }
+  },
+  "libraries": {
+    "hls.js": {
+      "version": "${hls_js_version}"
+    },
+    "p5.js": {
+      "version": "${p5_js_version}"
+    }
   },
   "backgroundVideo": {
     "build": {
@@ -257,7 +300,7 @@ EOF
   echo
   echo "📤 Copying JSON into running pod"
 
-  kubectl cp "$output_file" "$NAMESPACE/$pod_name":/usr/share/nginx/html/deployment.json
+  kubectl cp "${output_file}" "${NAMESPACE}/${web_pod_name}":/usr/share/nginx/html/deployment.json
 
-  echo "deployment.json copied to pod: $pod_name"
+  echo "deployment.json copied to pod."
 }
