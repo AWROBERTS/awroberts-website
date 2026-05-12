@@ -40,6 +40,8 @@ const sketch = (awrWeb) => {
     canvas.style('z-index', '1');
     canvas.style('filter', 'saturate(1.8) contrast(1.08)');
 
+    awrWeb.noCursor();
+
     initUI();
 
     // Delay video initialisation until DOM is fully ready
