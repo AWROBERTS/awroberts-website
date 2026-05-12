@@ -23,20 +23,6 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: {{ .Values.stream.pathPrefix | quote }}
-      filters:
-        - type: ExtensionRef
-          extensionRef:
-            group: traefik.io
-            kind: Middleware
-            name: no-cache-hls
-      backendRefs:
-        - name: {{ include "awroberts.fullname" . }}-background
-          port: 80
-
-    - matches:
-        - path:
-            type: PathPrefix
             value: "/"
       backendRefs:
         - name: {{ include "awroberts.fullname" . }}
