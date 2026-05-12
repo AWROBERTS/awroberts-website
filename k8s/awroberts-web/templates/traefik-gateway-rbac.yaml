@@ -9,6 +9,7 @@ rules:
       - gateways
       - httproutes
       - grpcroutes
+      - tlsroutes
       - referencegrants
       - backendtlspolicies
     verbs: ["get", "list", "watch"]
@@ -19,6 +20,7 @@ rules:
       - gateways/status
       - httproutes/status
       - grpcroutes/status
+      - tlsroutes/status
     verbs: ["update", "patch"]
 
 ---
