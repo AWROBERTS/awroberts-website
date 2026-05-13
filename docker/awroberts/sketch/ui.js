@@ -216,9 +216,7 @@ function drawDeploymentInfo() {
     `web pod ip: ${diag.pods?.web?.ip ?? 'N/A'}`,
     `background video pod ip: ${diag.pods?.backgroundVideo?.ip ?? 'N/A'}`,
     `background ffmpeg pod ip: ${diag.pods?.backgroundFfmpeg?.ip ?? 'N/A'}`,
-    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
-    `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
-    `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
+    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`
   ];
 
   let y = awrWeb.height - margin - (baseSize * 1.3 * lines.length);
