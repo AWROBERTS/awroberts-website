@@ -3,52 +3,6 @@
 generate_deployment_json() {
   local output_file="${1:-deployment.json}"
 
-  resolve_image_sha() {
-    local image_ref="$1"
-    local repo_digest=""
-    local image_id=""
-    local label_sha=""
-    local tag_sha=""
-
-    repo_digest="$(
-      docker image inspect "$image_ref" \
-        --format '{{index .RepoDigests 0}}' 2>/dev/null
-    )"
-
-    if [[ -n "$repo_digest" && "$repo_digest" != "<no value>" ]]; then
-      echo "${repo_digest#sha256:}"
-      return 0
-    fi
-
-    image_id="$(
-      docker image inspect "$image_ref" \
-        --format '{{.Id}}' 2>/dev/null
-    )"
-
-    if [[ -n "$image_id" && "$image_id" != "<no value>" ]]; then
-      echo "${image_id#sha256:}"
-      return 0
-    fi
-
-    label_sha="$(
-      docker image inspect "$image_ref" \
-        --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null
-    )"
-
-    if [[ -n "$label_sha" && "$label_sha" != "<no value>" ]]; then
-      echo "$label_sha"
-      return 0
-    fi
-
-    tag_sha="${image_ref##*:}"
-    if [[ -n "$tag_sha" && "$tag_sha" != "$image_ref" ]]; then
-      echo "$tag_sha"
-      return 0
-    fi
-
-    echo "unknown"
-  }
-
   get_kubernetes_version() {
     kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
   }
@@ -219,14 +173,6 @@ generate_deployment_json() {
     fi
   fi
 
-  local app_image="${APP_FULL_IMAGE:-${APP_IMAGE_NAME:-awroberts}:unknown}"
-  local bg_image="${BG_FULL_IMAGE:-${BACKGROUND_IMAGE_NAME:-background-video}:unknown}"
-
-  local app_sha
-  local bg_sha
-  app_sha="$(resolve_image_sha "${app_image}")"
-  bg_sha="$(resolve_image_sha "${bg_image}")"
-
   local web_pod_ip
   local background_video_pod_ip
   local background_ffmpeg_pod_ip
@@ -260,9 +206,6 @@ generate_deployment_json() {
   "awroberts": {
     "service": {
       "clusterIP": "${service_cluster_ip}"
-    },
-    "build": {
-      "sha": "${app_sha}"
     }
   },
   "traefik": {
@@ -287,11 +230,6 @@ generate_deployment_json() {
     },
     "p5.js": {
       "version": "${p5_js_version}"
-    }
-  },
-  "backgroundVideo": {
-    "build": {
-      "sha": "${bg_sha}"
     }
   }
 }
