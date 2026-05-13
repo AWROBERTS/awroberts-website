@@ -224,6 +224,21 @@ export function updateVideoFrame() {
 }
 
 // -----------------------------
+// COLOUR SAMPLER
+// -----------------------------
+export function sampleVideoColor(x, y) {
+  if (!videoLayerReady || !hasVideoFrame) return [200, 200, 200];
+  try {
+    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
+    const py = Math.floor(awrWeb.constrain(y, 0, videoLayer.height - 1));
+    const d = videoLayerCtx.getImageData(px, py, 1, 1).data;
+    return [d[0], d[1], d[2]];
+  } catch {
+    return [200, 200, 200];
+  }
+}
+
+// -----------------------------
 // DRAW
 // -----------------------------
 export function drawBackgroundFallback() {
