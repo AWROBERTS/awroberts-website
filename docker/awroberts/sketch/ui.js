@@ -213,12 +213,10 @@ function drawDeploymentInfo() {
     `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
     `hls.js: ${diag.libraries?.['hls.js']?.version ?? 'N/A'}`,
     `p5.js: ${diag.libraries?.['p5.js']?.version ?? 'N/A'}`,
+    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
     `web pod ip: ${diag.pods?.web?.ip ?? 'N/A'}`,
     `background video pod ip: ${diag.pods?.backgroundVideo?.ip ?? 'N/A'}`,
-    `background ffmpeg pod ip: ${diag.pods?.backgroundFfmpeg?.ip ?? 'N/A'}`,
-    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
-    `awroberts sha: ${diag.awroberts?.build?.sha ?? 'N/A'}`,
-    `background video sha: ${diag.backgroundVideo?.build?.sha ?? 'N/A'}`
+    `background ffmpeg pod ip: ${diag.pods?.backgroundFfmpeg?.ip ?? 'N/A'}`
   ];
 
   let y = awrWeb.height - margin - (baseSize * 1.3 * lines.length);
