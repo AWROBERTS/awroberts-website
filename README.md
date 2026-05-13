@@ -41,6 +41,6 @@ The site is deployed using:
 ## Notes
 
 - The website uses a p5.js sketch for rendering the interface.
-- Background video is streamed via HLS.js. When the stream is unavailable, a poster image is shown and refreshed every 10 seconds to stay current with the latest frame generated server-side.
-- The deployment info overlay displays technology stack entries (Kubernetes, Helm, Traefik, hls.js, p5.js) as logos with right-aligned version values, and infrastructure details (cluster IP, pod IPs) as text labels.
+- Background video is streamed via HLS.js. When the stream is unavailable, a poster image is shown and refreshed every 10 seconds to stay current with the latest segment generated server-side.
+- The deployment info overlay displays technology stack entries (Kubernetes, Helm, Traefik, hls.js, p5.js) as logos, and infrastructure details (cluster IP, pod IPs).
 - Deployment metadata (versions, pod IPs, cluster IP) is injected into the running pod at deploy time for runtime visibility.
