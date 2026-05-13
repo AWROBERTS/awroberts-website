@@ -207,22 +207,29 @@ function drawDeploymentInfo() {
   const margin = 30;
   const x = margin;
 
-  const lines = [
-    `kubernetes: ${diag.kubernetes?.version ?? 'N/A'}`,
-    `helm: ${diag.helm?.version ?? 'N/A'}`,
-    `traefik: ${diag.traefik?.build?.version ?? 'N/A'}`,
-    `hls.js: ${diag.libraries?.['hls.js']?.version ?? 'N/A'}`,
-    `p5.js: ${diag.libraries?.['p5.js']?.version ?? 'N/A'}`,
-    `cluster ip: ${diag.awroberts?.service?.clusterIP ?? 'N/A'}`,
-    `web pod ip: ${diag.pods?.web?.ip ?? 'N/A'}`,
-    `background video pod ip: ${diag.pods?.backgroundVideo?.ip ?? 'N/A'}`,
-    `background ffmpeg pod ip: ${diag.pods?.backgroundFfmpeg?.ip ?? 'N/A'}`
+  const entries = [
+    { label: 'kubernetes',              value: diag.kubernetes?.version ?? 'N/A' },
+    { label: 'helm',                    value: diag.helm?.version ?? 'N/A' },
+    { label: 'traefik',                 value: diag.traefik?.build?.version ?? 'N/A' },
+    { label: 'hls.js',                  value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
+    { label: 'p5.js',                   value: diag.libraries?.['p5.js']?.version ?? 'N/A' },
+    { label: 'cluster ip',              value: diag.awroberts?.service?.clusterIP ?? 'N/A' },
+    { label: 'web pod ip',              value: diag.pods?.web?.ip ?? 'N/A' },
+    { label: 'background video pod ip', value: diag.pods?.backgroundVideo?.ip ?? 'N/A' },
+    { label: 'background ffmpeg pod ip',value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
   ];
 
-  let y = awrWeb.height - margin - (baseSize * 1.3 * lines.length);
+  const maxLabelW = entries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+  const maxValueW = entries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
+  const rightEdge = x + maxLabelW + baseSize * 0.8 + maxValueW;
 
-  for (let i = 0; i < lines.length; i++) {
-    awrWeb.text(lines[i], x, y);
+  let y = awrWeb.height - margin - (baseSize * 1.3 * entries.length);
+
+  for (const { label, value } of entries) {
+    awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
+    awrWeb.text(label + ':', x, y);
+    awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+    awrWeb.text(value, rightEdge, y);
     y += baseSize * 1.3;
   }
 }
