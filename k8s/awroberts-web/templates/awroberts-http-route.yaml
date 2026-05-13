@@ -10,14 +10,8 @@ spec:
       namespace: {{ .Values.gateway.namespace }}
       sectionName: websecure-root
 
-    - name: {{ .Values.gateway.name }}
-      namespace: {{ .Values.gateway.namespace }}
-      sectionName: websecure-wildcard
-
   hostnames:
-{{- range .Values.traefik.hostnames }}
-    - {{ . | quote }}
-{{- end }}
+    - "awroberts.co.uk"
 
   rules:
     - matches:
