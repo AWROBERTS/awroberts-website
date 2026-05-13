@@ -4,7 +4,8 @@ import {
   preloadVideoAssets,
   initVideoSystem,
   drawVideo,
-  bindVideoP5
+  bindVideoP5,
+  sampleVideoColor
 } from './video.js';
 
 import {
@@ -18,11 +19,20 @@ import {
 
 import { getOverlayPixelDensity } from './utils.js';
 
+import {
+  bindSprayP5,
+  initSpray,
+  updateSpray,
+  drawSpray,
+  handleSprayResize
+} from './spray.js';
+
 const sketch = (awrWeb) => {
 
   // Bind p5 instance into modules
   bindVideoP5(awrWeb);
   bindUIP5(awrWeb);
+  bindSprayP5(awrWeb);
 
   awrWeb.preload = () => {
     preloadVideoAssets();
@@ -43,6 +53,7 @@ const sketch = (awrWeb) => {
     awrWeb.noCursor();
 
     initUI();
+    initSpray(sampleVideoColor);
 
     // Delay video initialisation until DOM is fully ready
     window.requestAnimationFrame(() => {
@@ -53,6 +64,8 @@ const sketch = (awrWeb) => {
   awrWeb.draw = () => {
     awrWeb.clear();
     drawVideo();
+    updateSpray(awrWeb.mouseX, awrWeb.mouseY, awrWeb.mouseIsPressed);
+    drawSpray();
     drawUI();
   };
 
@@ -67,9 +80,17 @@ const sketch = (awrWeb) => {
     return false;
   };
 
+  awrWeb.touchMoved = () => {
+    if (awrWeb.touches.length > 0) {
+      updateSpray(awrWeb.touches[0].x, awrWeb.touches[0].y, true);
+    }
+    return false;
+  };
+
   awrWeb.windowResized = () => {
     awrWeb.resizeCanvas(awrWeb.windowWidth, awrWeb.windowHeight);
     handleResize();
+    handleSprayResize();
   };
 };
 
