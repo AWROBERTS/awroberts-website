@@ -15,7 +15,7 @@ This repository contains the website frontend, deployment assets, and infrastruc
 
 ## Overview
 
-- **Frontend**: p5.js-based interactive homepage with background video, poster fallback, social links, and deployment info overlay
+- **Frontend**: p5.js-based interactive homepage with HLS background video, social links, and deployment info overlay
 - **Containerization**: NGINX-based Docker image for serving the site
 - **Kubernetes**: Helm chart and manifests for deploying the website and related services
 - **Infrastructure**: Terraform for supporting GitHub and cloud deployment resources
@@ -41,5 +41,6 @@ The site is deployed using:
 ## Notes
 
 - The website uses a p5.js sketch for rendering the interface.
-- Background video is handled with HLS, with a poster image fallback.
-- Deployment metadata is injected into the site for visibility during runtime.
+- Background video is streamed via HLS.js. When the stream is unavailable, a poster image is shown and refreshed every 10 seconds to stay current with the latest frame generated server-side.
+- The deployment info overlay displays technology stack entries (Kubernetes, Helm, Traefik, hls.js, p5.js) as logos with right-aligned version values, and infrastructure details (cluster IP, pod IPs) as text labels.
+- Deployment metadata (versions, pod IPs, cluster IP) is injected into the running pod at deploy time for runtime visibility.
