@@ -18,10 +18,10 @@ let drips        = [];
 let sampleColor  = null;
 
 const SPRAY_RADIUS        = 50;
-const PARTICLES_PER_FRAME = 15;
-const DRIP_THRESHOLD      = 40;
-const DRIP_GRAVITY        = 0.35;
-const DRIP_MAX_SPEED      = 16;
+const PARTICLES_PER_FRAME = 20;
+const DRIP_THRESHOLD      = 80;
+const DRIP_GRAVITY        = 0.4;
+const DRIP_MAX_SPEED      = 18;
 
 // -----------------------------
 // INIT
@@ -51,9 +51,9 @@ export function updateSpray(mx, my, isPressed) {
       const dist   = Math.random() * SPRAY_RADIUS;
       const px     = mx + Math.cos(angle) * dist;
       const py     = my + Math.sin(angle) * dist;
-      const size   = 5 + Math.random() * 10;
-      const jitter = () => Math.floor((Math.random() - 0.5) * 20);
-      const alpha  = 80 + Math.random() * 80;
+      const size   = 2 + Math.random() * 6;
+      const jitter = () => Math.floor((Math.random() - 0.5) * 30);
+      const alpha  = 30 + Math.random() * 40;
 
       sprayLayer.push();
       sprayLayer.noStroke();
@@ -74,30 +74,45 @@ export function updateSpray(mx, my, isPressed) {
   // Spawn drips from columns that have accumulated enough paint
   for (let col = 0; col < columnAccum.length; col++) {
     if (columnAccum[col] > DRIP_THRESHOLD) {
+      const [br, bg, bb] = sampleColor(col, my);
       drips.push({
         x:      col,
         y:      my,
         vy:     1,
-        width:  8 + Math.random() * 10,
-        length: 10
+        r:      br,
+        g:      bg,
+        b:      bb,
+        width:  4 + Math.random() * 6,
+        length: 8
       });
       columnAccum[col] = 0;
     }
   }
 
-  // Update drip physics only — drawing happens in drawSpray with live colour
+  // Update and draw drips
   drips = drips.filter(drip => {
-    drip.vy     = Math.min(drip.vy + DRIP_GRAVITY, DRIP_MAX_SPEED);
-    drip.y     += drip.vy;
-    drip.length = Math.min(drip.vy * 4, 60);
+    drip.vy   = Math.min(drip.vy + DRIP_GRAVITY, DRIP_MAX_SPEED);
+    drip.y   += drip.vy;
+    drip.length = Math.min(drip.vy * 3, 40);
+
+    sprayLayer.push();
+    sprayLayer.noStroke();
+    sprayLayer.fill(drip.r, drip.g, drip.b, 200);
+    sprayLayer.rect(
+      drip.x - drip.width / 2,
+      drip.y - drip.length,
+      drip.width,
+      drip.length,
+      drip.width / 2
+    );
+    sprayLayer.pop();
 
     if (drip.y >= awrSpray.height) {
-      // Leave a pool at the bottom using live colour
-      const [pr, pg, pb] = sampleColor(drip.x, awrSpray.height - 2);
+      // Leave a pool at the bottom
       sprayLayer.push();
       sprayLayer.noStroke();
-      sprayLayer.fill(pr, pg, pb, 200);
-      sprayLayer.ellipse(drip.x, awrSpray.height - 2, drip.width * 2.5, drip.width);
+      sprayLayer.fill(drip.r, drip.g, drip.b, 180);
+      sprayLayer.ellipse(drip.x, awrSpray.height - 2, drip.width * 2, drip.width);
       sprayLayer.pop();
       return false;
     }
@@ -111,31 +126,7 @@ export function updateSpray(mx, my, isPressed) {
 // -----------------------------
 export function drawSpray() {
   if (!sprayLayer) return;
-
-  // Draw the accumulated spray mist layer
   awrSpray.image(sprayLayer, 0, 0);
-
-  // Draw drips fresh every frame with live-sampled video colour
-  if (drips.length === 0) return;
-  awrSpray.push();
-  awrSpray.noStroke();
-  for (const drip of drips) {
-    const [r, g, b] = sampleColor(drip.x, drip.y);
-
-    // Drip body — tall rounded rect
-    awrSpray.fill(r, g, b, 240);
-    awrSpray.rect(
-      drip.x - drip.width / 2,
-      drip.y - drip.length,
-      drip.width,
-      drip.length,
-      drip.width / 2
-    );
-
-    // Teardrop tip at the bottom
-    awrSpray.ellipse(drip.x, drip.y, drip.width * 1.4, drip.width * 1.4);
-  }
-  awrSpray.pop();
 }
 
 // -----------------------------
