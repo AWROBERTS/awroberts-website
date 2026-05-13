@@ -41,6 +41,12 @@ export function preloadUIAssets() {
   icons.linkedin = awrWeb.loadImage('/assets/linkedin.png');
   icons.bandcamp = awrWeb.loadImage('/assets/bandcamp.png');
   icons.youtube = awrWeb.loadImage('/assets/youtube.png');
+
+  icons['logo-kubernetes'] = awrWeb.loadImage('/assets/logos/kubernetes.png');
+  icons['logo-helm']       = awrWeb.loadImage('/assets/logos/helm.png');
+  icons['logo-traefik']    = awrWeb.loadImage('/assets/logos/traefik.png');
+  icons['logo-hlsjs']      = awrWeb.loadImage('/assets/logos/hlsjs.png');
+  icons['logo-p5js']       = awrWeb.loadImage('/assets/logos/p5js.png');
 }
 
 // -----------------------------
@@ -208,26 +214,38 @@ function drawDeploymentInfo() {
   const x = margin;
 
   const entries = [
-    { label: 'kubernetes',              value: diag.kubernetes?.version ?? 'N/A' },
-    { label: 'helm',                    value: diag.helm?.version ?? 'N/A' },
-    { label: 'traefik',                 value: diag.traefik?.build?.version ?? 'N/A' },
-    { label: 'hls.js',                  value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
-    { label: 'p5.js',                   value: diag.libraries?.['p5.js']?.version ?? 'N/A' },
+    { label: 'kubernetes',              logoKey: 'logo-kubernetes', value: diag.kubernetes?.version ?? 'N/A' },
+    { label: 'helm',                    logoKey: 'logo-helm',       value: diag.helm?.version ?? 'N/A' },
+    { label: 'traefik',                 logoKey: 'logo-traefik',    value: diag.traefik?.build?.version ?? 'N/A' },
+    { label: 'hls.js',                  logoKey: 'logo-hlsjs',      value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
+    { label: 'p5.js',                   logoKey: 'logo-p5js',       value: diag.libraries?.['p5.js']?.version ?? 'N/A' },
     { label: 'cluster ip',              value: diag.awroberts?.service?.clusterIP ?? 'N/A' },
     { label: 'web pod ip',              value: diag.pods?.web?.ip ?? 'N/A' },
     { label: 'background video pod ip', value: diag.pods?.backgroundVideo?.ip ?? 'N/A' },
     { label: 'background ffmpeg pod ip',value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
   ];
 
-  const maxLabelW = entries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+  const logoH = baseSize;
+  const labelColW = Math.max(
+    baseSize * 4,
+    entries.filter(e => !e.logoKey).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0)
+  );
   const maxValueW = entries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
-  const rightEdge = x + maxLabelW + baseSize * 0.8 + maxValueW;
+  const rightEdge = x + labelColW + baseSize * 0.8 + maxValueW;
 
   let y = awrWeb.height - margin - (baseSize * 1.3 * entries.length);
 
-  for (const { label, value } of entries) {
-    awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
-    awrWeb.text(label + ':', x, y);
+  for (const { label, logoKey, value } of entries) {
+    if (logoKey) {
+      const img = icons[logoKey];
+      if (img && img.width > 0) {
+        const logoW = img.width * (logoH / img.height);
+        awrWeb.image(img, x, y, logoW, logoH);
+      }
+    } else {
+      awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
+      awrWeb.text(label + ':', x, y);
+    }
     awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
     awrWeb.text(value, rightEdge, y);
     y += baseSize * 1.3;
