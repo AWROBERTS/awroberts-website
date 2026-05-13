@@ -219,10 +219,11 @@ function drawDeploymentInfo() {
     { label: 'traefik',                 logoKey: 'logo-traefik',    value: diag.traefik?.build?.version ?? 'N/A' },
     { label: 'hls.js',                  logoKey: 'logo-hlsjs',      value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
     { label: 'p5.js',                   logoKey: 'logo-p5js',       value: diag.libraries?.['p5.js']?.version ?? 'N/A' },
-    { label: 'cluster ip',              value: diag.awroberts?.service?.clusterIP ?? 'N/A' },
-    { label: 'web pod ip',              value: diag.pods?.web?.ip ?? 'N/A' },
-    { label: 'background video pod ip', value: diag.pods?.backgroundVideo?.ip ?? 'N/A' },
-    { label: 'background ffmpeg pod ip',value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
+    { spacer: true },
+    { label: 'cluster',                 value: diag.awroberts?.service?.clusterIP ?? 'N/A' },
+    { label: 'web pod',                 value: diag.pods?.web?.ip ?? 'N/A' },
+    { label: 'background video pod',    value: diag.pods?.backgroundVideo?.ip ?? 'N/A' },
+    { label: 'background ffmpeg pod',   value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
   ];
 
   const logoH = baseSize;
