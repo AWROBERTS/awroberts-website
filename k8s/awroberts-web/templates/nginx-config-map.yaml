@@ -24,6 +24,16 @@ data:
         sendfile on;
         keepalive_timeout {{ .Values.nginx.keepaliveTimeout }};
 
+        # Trust forwarded client IPs from inside the cluster/proxy path.
+        set_real_ip_from 10.0.0.0/8;
+        set_real_ip_from 172.16.0.0/12;
+        set_real_ip_from 192.168.0.0/16;
+        real_ip_header X-Forwarded-For;
+        real_ip_recursive on;
+
+        # Per-client rate limit.
+        limit_req_zone $binary_remote_addr zone=site_per_ip:10m rate=20r/s;
+
         server {
             listen {{ .Values.nginx.listenPort }};
             listen [::]:{{ .Values.nginx.listenPort }};
@@ -39,6 +49,7 @@ data:
 
             # Public poster image (proxied to background Nginx)
             location = /background-poster.png {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 proxy_pass http://{{ include "awroberts.fullname" . }}-background/background-poster.png;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
@@ -47,24 +58,28 @@ data:
 
             # JSON files
             location ~* \.json$ {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 default_type application/json;
                 try_files $uri =404;
             }
 
             # Fallback background image
             location = "{{ .Values.assets.fallbackImagePublicPath }}" {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fallbackImage }}";
                 add_header Cache-Control "{{ .Values.assets.fallbackCacheControl }}";
             }
 
             # Font file
             location = "{{ .Values.assets.fontPublicPath }}" {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 alias "{{ .Values.media.mountPath }}/{{ .Values.assets.fontFile }}";
                 add_header Cache-Control "{{ .Values.assets.fontCacheControl }}";
             }
 
             # Static assets
             location {{ .Values.assets.publicPath }}/ {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 alias {{ .Values.assets.mountPath }}/;
                 add_header Cache-Control "public, max-age=31536000";
             }
@@ -72,6 +87,7 @@ data:
             # HLS background stream for the browser/p5 sketch.
             # The background service remains internal; this path exposes it through the main site origin.
             location /stream/ {
+                limit_req zone=site_per_ip burst=80 nodelay;
                 proxy_pass http://{{ include "awroberts.fullname" . }}-background/stream/;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
@@ -81,6 +97,7 @@ data:
 
             # SPA fallback
             location / {
+                limit_req zone=site_per_ip burst=40 nodelay;
                 try_files $uri $uri/ "/{{ .Values.nginx.index }}";
             }
         }
