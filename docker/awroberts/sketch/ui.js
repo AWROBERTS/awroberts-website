@@ -231,24 +231,26 @@ function drawDeploymentInfo() {
     baseSize * 4,
     entries.filter(e => !e.logoKey).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0)
   );
-  const maxValueW = entries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
+  const maxValueW = entries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
   const rightEdge = x + labelColW + baseSize * 0.8 + maxValueW;
 
   let y = awrWeb.height - margin - (baseSize * 1.3 * entries.length);
 
-  for (const { label, logoKey, value } of entries) {
-    if (logoKey) {
-      const img = icons[logoKey];
-      if (img && img.width > 0) {
-        const logoW = img.width * (logoH / img.height);
-        awrWeb.image(img, x, y, logoW, logoH);
+  for (const { label, logoKey, value, spacer } of entries) {
+    if (!spacer) {
+      if (logoKey) {
+        const img = icons[logoKey];
+        if (img && img.width > 0) {
+          const logoW = img.width * (logoH / img.height);
+          awrWeb.image(img, x, y, logoW, logoH);
+        }
+      } else {
+        awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
+        awrWeb.text(label + ':', x, y);
       }
-    } else {
-      awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
-      awrWeb.text(label + ':', x, y);
+      awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+      awrWeb.text(value, rightEdge, y);
     }
-    awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
-    awrWeb.text(value, rightEdge, y);
     y += baseSize * 1.3;
   }
 }
