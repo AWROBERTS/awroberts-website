@@ -43,7 +43,7 @@ const POSTER_URL = "/background-poster.png";
 // PRELOAD
 // -----------------------------
 export function preloadVideoAssets() {
-  bgPosterImg = awrWeb.loadImage(POSTER_URL);
+  bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
 }
 
 // -----------------------------
@@ -81,6 +81,12 @@ export function initVideoSystem() {
 
   setupVideoEvents();
   setupHLS();
+
+  setInterval(() => {
+    if (!videoReady) {
+      bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
+    }
+  }, 10000);
 }
 
 // -----------------------------
