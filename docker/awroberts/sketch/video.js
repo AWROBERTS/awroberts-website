@@ -141,11 +141,17 @@ function setupVideoEvents() {
   });
 
   bgVideoEl.addEventListener("stalled", () => {
+    console.warn("Video event: stalled — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
     if (hlsInstance) hlsInstance.startLoad(-1);
   });
 
   bgVideoEl.addEventListener("waiting", () => {
+    console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
     if (hlsInstance) hlsInstance.startLoad(-1);
+  });
+
+  bgVideoEl.addEventListener("pause", () => {
+    console.warn("Video event: pause — ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
   });
 
   const markVideoReady = () => {
