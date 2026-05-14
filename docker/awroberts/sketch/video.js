@@ -203,9 +203,30 @@ export function updateVideoFrame() {
   try {
     videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
 
+    // Cover crop: scale to fill canvas, cropping edges rather than squashing
+    const destW = videoLayer.width;
+    const destH = videoLayer.height;
+    const srcAspect  = sourceW / sourceH;
+    const destAspect = destW   / destH;
+
+    let sx, sy, sw, sh;
+    if (srcAspect > destAspect) {
+      // Source wider than dest — crop sides, fill height
+      sh = sourceH;
+      sw = sourceH * destAspect;
+      sx = (sourceW - sw) / 2;
+      sy = 0;
+    } else {
+      // Source taller than dest — crop top/bottom, fill width
+      sw = sourceW;
+      sh = sourceW / destAspect;
+      sx = 0;
+      sy = (sourceH - sh) / 2;
+    }
+
     videoLayerCtx.save();
-    videoLayerCtx.clearRect(0, 0, videoLayer.width, videoLayer.height);
-    videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, videoLayer.width, videoLayer.height);
+    videoLayerCtx.clearRect(0, 0, destW, destH);
+    videoLayerCtx.drawImage(videoSourceCanvas, sx, sy, sw, sh, 0, 0, destW, destH);
     videoLayerCtx.restore();
 
     lastVideoTime = currentTime;
