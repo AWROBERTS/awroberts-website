@@ -142,12 +142,10 @@ function setupVideoEvents() {
 
   bgVideoEl.addEventListener("stalled", () => {
     console.warn("Video event: stalled — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
-    if (hlsInstance) hlsInstance.startLoad(-1);
   });
 
   bgVideoEl.addEventListener("waiting", () => {
     console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
-    if (hlsInstance) hlsInstance.startLoad(-1);
   });
 
   bgVideoEl.addEventListener("pause", () => {
@@ -182,9 +180,9 @@ function setupHLS() {
     hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 30,
-      maxBufferSize: 60 * 1000 * 1000,
-      maxMaxBufferLength: 60,
+      maxBufferLength: 6,
+      maxBufferSize: 15 * 1000 * 1000,
+      maxMaxBufferLength: 10,
       backBufferLength: 0,
       startPosition: -1
     });
