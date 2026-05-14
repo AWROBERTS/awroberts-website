@@ -20,6 +20,11 @@ import {
 import { getOverlayPixelDensity } from './utils.js';
 
 import {
+  initChromaticAberration,
+  updateChromaticAberration
+} from './chromatic-aberration.js';
+
+import {
   bindScanLinesP5,
   initScanLines,
   updateScanLines,
@@ -48,10 +53,11 @@ const sketch = (awrWeb) => {
     canvas.style('top', '0');
     canvas.style('left', '0');
     canvas.style('z-index', '1');
-    canvas.style('filter', 'saturate(1.8) contrast(1.08)');
+    canvas.style('filter', 'url(#chromab) saturate(1.8) contrast(1.08)');
 
     awrWeb.noCursor();
 
+    initChromaticAberration();
     initUI();
     initScanLines();
 
@@ -67,6 +73,7 @@ const sketch = (awrWeb) => {
     updateScanLines(awrWeb.mouseX, awrWeb.mouseY, awrWeb.mouseIsPressed);
     drawScanLines();
     drawUI();
+    updateChromaticAberration();
   };
 
   awrWeb.mousePressed = () => {
