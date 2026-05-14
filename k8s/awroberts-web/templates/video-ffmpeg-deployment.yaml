@@ -77,7 +77,7 @@ spec:
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
                 -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }} \
-                -hls_flags delete_segments \
+                -hls_flags delete_segments+omit_endlist \
                 -hls_segment_filename "$OUTPUT_DIR/{{ .Values.backgroundVideo.hls.liveSegmentPrefix }}%03d.ts" \
                 "$OUTPUT_DIR/index.m3u8" &
 

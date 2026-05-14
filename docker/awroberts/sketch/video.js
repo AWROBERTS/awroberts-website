@@ -94,6 +94,14 @@ export function initVideoSystem() {
   let watchdogLastTime = -1;
   setInterval(() => {
     if (!bgVideoEl || !videoReady) return;
+    if (bgVideoEl.ended) {
+      console.warn("Video watchdog: ended state, reinitialising HLS");
+      watchdogFrozenSince = null;
+      if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+      videoReady = false;
+      setupHLS();
+      return;
+    }
     if (bgVideoEl.paused) { watchdogFrozenSince = null; watchdogLastTime = bgVideoEl.currentTime; return; }
 
     const ct = bgVideoEl.currentTime;
@@ -123,11 +131,13 @@ function setupVideoEvents() {
   bgVideoEl.loop = false;
 
   bgVideoEl.addEventListener("ended", () => {
+    console.warn("Video ended — reinitialising HLS");
     if (hlsInstance) {
-      hlsInstance.stopLoad();
-      hlsInstance.startLoad(-1);
+      hlsInstance.destroy();
+      hlsInstance = null;
     }
-    bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+    videoReady = false;
+    setupHLS();
   });
 
   bgVideoEl.addEventListener("stalled", () => {
