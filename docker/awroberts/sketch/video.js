@@ -34,6 +34,8 @@ let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
+let watchdogFrozenSince = null;
+
 const HlsGlobal = window.Hls;
 
 const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
@@ -87,6 +89,31 @@ export function initVideoSystem() {
       bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
     }
   }, 10000);
+
+  // Watchdog: restart HLS if currentTime hasn't advanced for 5s while not paused
+  let watchdogLastTime = -1;
+  setInterval(() => {
+    if (!bgVideoEl || !videoReady) return;
+    if (bgVideoEl.paused) { watchdogFrozenSince = null; watchdogLastTime = bgVideoEl.currentTime; return; }
+
+    const ct = bgVideoEl.currentTime;
+    if (ct === watchdogLastTime) {
+      if (watchdogFrozenSince === null) {
+        watchdogFrozenSince = Date.now();
+      } else if (Date.now() - watchdogFrozenSince > 5000) {
+        console.warn("Video watchdog: frozen, restarting HLS");
+        watchdogFrozenSince = null;
+        if (hlsInstance) {
+          hlsInstance.stopLoad();
+          hlsInstance.startLoad(-1);
+        }
+        bgVideoEl.play().catch(err => console.warn("Watchdog play() failed:", err));
+      }
+    } else {
+      watchdogFrozenSince = null;
+      watchdogLastTime = ct;
+    }
+  }, 1000);
 }
 
 // -----------------------------
@@ -143,7 +170,7 @@ function setupHLS() {
       maxBufferSize: 60 * 1000 * 1000,
       maxMaxBufferLength: 60,
       backBufferLength: 0,
-      startPosition: 0
+      startPosition: -1
     });
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
