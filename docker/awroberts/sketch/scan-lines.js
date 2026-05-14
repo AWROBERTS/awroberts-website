@@ -1,12 +1,12 @@
-// spray.js — early 90s CRT scan line overlay
+// scan-lines.js — early 90s CRT scan line overlay
 
 // -----------------------------
 // INTERNAL P5 INSTANCE
 // -----------------------------
-let awrSpray = null;
+let awrScanLines = null;
 
-export function bindSprayP5(p) {
-  awrSpray = p;
+export function bindScanLinesP5(p) {
+  awrScanLines = p;
 }
 
 // -----------------------------
@@ -23,8 +23,8 @@ const ROLL_SPEED     = 0.25; // px/frame — very slow vertical drift
 // -----------------------------
 // INIT
 // -----------------------------
-export function initSpray(colorSampler) {
-  scanLayer  = awrSpray.createGraphics(awrSpray.windowWidth, awrSpray.windowHeight);
+export function initScanLines() {
+  scanLayer = awrScanLines.createGraphics(awrScanLines.windowWidth, awrScanLines.windowHeight);
   scanLayer.pixelDensity(1);
   scanLayer.clear();
   glitchBands = [];
@@ -33,7 +33,7 @@ export function initSpray(colorSampler) {
 // -----------------------------
 // UPDATE
 // -----------------------------
-export function updateSpray(mx, my, isPressed) {
+export function updateScanLines(mx, my, isPressed) {
   if (!scanLayer) return;
 
   rollOffset = (rollOffset + ROLL_SPEED) % LINE_SPACING;
@@ -77,16 +77,16 @@ export function updateSpray(mx, my, isPressed) {
 // -----------------------------
 // DRAW
 // -----------------------------
-export function drawSpray() {
+export function drawScanLines() {
   if (!scanLayer) return;
-  awrSpray.image(scanLayer, 0, 0);
+  awrScanLines.image(scanLayer, 0, 0);
 }
 
 // -----------------------------
 // RESIZE
 // -----------------------------
-export function handleSprayResize() {
+export function handleScanLinesResize() {
   if (!scanLayer) return;
-  scanLayer.resizeCanvas(awrSpray.windowWidth, awrSpray.windowHeight);
+  scanLayer.resizeCanvas(awrScanLines.windowWidth, awrScanLines.windowHeight);
   glitchBands = [];
 }
