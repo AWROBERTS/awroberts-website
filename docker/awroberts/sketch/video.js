@@ -182,9 +182,9 @@ function setupHLS() {
     hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 30,
-      maxBufferSize: 60 * 1000 * 1000,
-      maxMaxBufferLength: 60,
+      maxBufferLength: 6,
+      maxBufferSize: 15 * 1000 * 1000,
+      maxMaxBufferLength: 10,
       backBufferLength: 0,
       startPosition: -1
     });
