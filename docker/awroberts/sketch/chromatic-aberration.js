@@ -17,11 +17,12 @@ export function initChromaticAberration() {
     <defs>
       <filter id="chromab" x="-5%" y="0%" width="110%" height="100%" color-interpolation-filters="sRGB">
         <feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" in="SourceGraphic" result="r"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" in="SourceGraphic" result="g"/>
         <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" in="SourceGraphic" result="b"/>
         <feOffset id="ca-r" dx="0" dy="0" in="r" result="roff"/>
         <feOffset id="ca-b" dx="0" dy="0" in="b" result="boff"/>
-        <feBlend in="SourceGraphic" in2="roff" mode="screen" result="step1"/>
-        <feBlend in="step1" in2="boff" mode="screen"/>
+        <feComposite in="roff" in2="g" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="rg"/>
+        <feComposite in="rg" in2="boff" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
       </filter>
     </defs>
   `;
