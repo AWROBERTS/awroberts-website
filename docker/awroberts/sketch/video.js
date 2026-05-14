@@ -96,8 +96,19 @@ function setupVideoEvents() {
   bgVideoEl.loop = false;
 
   bgVideoEl.addEventListener("ended", () => {
-    bgVideoEl.currentTime = 0;
+    if (hlsInstance) {
+      hlsInstance.stopLoad();
+      hlsInstance.startLoad(-1);
+    }
     bgVideoEl.play().catch(err => console.warn("play() failed:", err));
+  });
+
+  bgVideoEl.addEventListener("stalled", () => {
+    if (hlsInstance) hlsInstance.startLoad(-1);
+  });
+
+  bgVideoEl.addEventListener("waiting", () => {
+    if (hlsInstance) hlsInstance.startLoad(-1);
   });
 
   const markVideoReady = () => {
@@ -142,7 +153,7 @@ function setupHLS() {
         if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
           hlsInstance.recoverMediaError();
         } else if (data.type === HlsGlobal.ErrorTypes.NETWORK_ERROR) {
-          hlsInstance.startLoad();
+          hlsInstance.startLoad(-1);
         } else {
           hlsInstance.destroy();
         }
