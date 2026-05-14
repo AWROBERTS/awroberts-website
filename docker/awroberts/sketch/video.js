@@ -184,15 +184,21 @@ function setupHLS() {
     });
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
-      console.warn("HLS.js error:", data);
+      console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
 
       if (data.fatal) {
         if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
+          console.warn("HLS.js fatal media error — recovering");
           hlsInstance.recoverMediaError();
         } else if (data.type === HlsGlobal.ErrorTypes.NETWORK_ERROR) {
+          console.warn("HLS.js fatal network error — restarting load");
           hlsInstance.startLoad(-1);
         } else {
+          console.warn("HLS.js fatal other error — reinitialising");
           hlsInstance.destroy();
+          hlsInstance = null;
+          videoReady = false;
+          setupHLS();
         }
       }
     });
