@@ -95,10 +95,11 @@ export function updateScanLines(mx, my, isPressed) {
     scanLayer.rect(0, y, w, LINE_HEIGHT);
   }
 
-  // Glitch bands — brief bright horizontal flashes
+  // Glitch bands — sample the main canvas color at the band's y position
   for (const g of glitchBands) {
     const t = g.life / g.maxLife; // normalised 0→1 over the band's own lifetime
-    scanLayer.fill(255, 255, 255, g.alpha * t);
+    const col = awrScanLines.get(0, Math.floor(g.y)); // [r, g, b, a] from main canvas
+    scanLayer.fill(col[0], col[1], col[2], g.alpha * t);
     scanLayer.rect(0, g.y, w, g.h);
   }
 
