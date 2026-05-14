@@ -180,15 +180,21 @@ function setupHLS() {
     hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 6,
-      maxBufferSize: 15 * 1000 * 1000,
-      maxMaxBufferLength: 10,
+      maxBufferLength: 15,
+      maxBufferSize: 30 * 1000 * 1000,
+      maxMaxBufferLength: 30,
       backBufferLength: 0,
       startPosition: -1
     });
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
       console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
+
+      if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
+        console.warn("HLS.js buffer stalled — nudging load");
+        hlsInstance.startLoad(-1);
+        return;
+      }
 
       if (data.fatal) {
         if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
