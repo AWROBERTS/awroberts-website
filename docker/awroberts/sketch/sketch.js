@@ -19,20 +19,20 @@ import {
 
 import { getOverlayPixelDensity } from './utils.js';
 
-// Spray disabled — kept for future use
-// import {
-//   bindSprayP5,
-//   initSpray,
-//   updateSpray,
-//   drawSpray,
-//   handleSprayResize
-// } from './spray.js';
+import {
+  bindScanLinesP5,
+  initScanLines,
+  updateScanLines,
+  drawScanLines,
+  handleScanLinesResize
+} from './scan-lines.js';
 
 const sketch = (awrWeb) => {
 
   // Bind p5 instance into modules
   bindVideoP5(awrWeb);
   bindUIP5(awrWeb);
+  bindScanLinesP5(awrWeb);
 
   awrWeb.preload = () => {
     preloadVideoAssets();
@@ -53,6 +53,7 @@ const sketch = (awrWeb) => {
     awrWeb.noCursor();
 
     initUI();
+    initScanLines();
 
     // Delay video initialisation until DOM is fully ready
     window.requestAnimationFrame(() => {
@@ -63,6 +64,8 @@ const sketch = (awrWeb) => {
   awrWeb.draw = () => {
     awrWeb.clear();
     drawVideo();
+    updateScanLines(awrWeb.mouseX, awrWeb.mouseY, awrWeb.mouseIsPressed);
+    drawScanLines();
     drawUI();
   };
 
@@ -80,6 +83,7 @@ const sketch = (awrWeb) => {
   awrWeb.windowResized = () => {
     awrWeb.resizeCanvas(awrWeb.windowWidth, awrWeb.windowHeight);
     handleResize();
+    handleScanLinesResize();
   };
 };
 
