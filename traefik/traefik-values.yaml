@@ -40,6 +40,8 @@ ports:
     port: 443
     expose:
       default: true
+    tls:
+      enabled: true
 
   traefik:
     port: 9000
