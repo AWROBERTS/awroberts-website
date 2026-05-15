@@ -70,7 +70,7 @@ const sketch = (awrWeb) => {
   awrWeb.draw = () => {
     awrWeb.clear();
     drawVideo();
-    updateScanLines(awrWeb.mouseX, awrWeb.mouseY, awrWeb.mouseIsPressed);
+    updateScanLines();
     drawScanLines();
     drawUI();
     updateChromaticAberration();
