@@ -7,6 +7,7 @@ logs:
 
 additionalArguments:
   - "--providers.kubernetesgateway=true"
+  - "--entrypoints.websecure.http.tls=true"
 
 gateway:
   enabled: true
@@ -40,8 +41,6 @@ ports:
     port: 443
     expose:
       default: true
-    tls:
-      enabled: true
 
   traefik:
     port: 9000
