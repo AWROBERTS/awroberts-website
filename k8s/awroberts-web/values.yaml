@@ -17,7 +17,7 @@ traefik:
 
 gateway:
   name: awroberts-web-deploy-gateway
-  namespace: traefik
+  namespace: awroberts
   className: traefik
   hostnames:
     root: awroberts.co.uk
