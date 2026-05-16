@@ -10,7 +10,7 @@ additionalArguments:
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
-  enabled: true
+  enabled: false
 
 rbac:
   enabled: true
