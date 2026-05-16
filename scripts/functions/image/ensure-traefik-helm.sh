@@ -2,7 +2,8 @@ ensure_traefik_helm() {
   echo "🔧 Ensuring Traefik controller is installed via Helm..."
 
   echo "📡 Installing Gateway API CRDs..."
-  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.1.0/experimental-install.yaml
+
   echo "✅ Gateway API CRDs applied."
 
   helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
