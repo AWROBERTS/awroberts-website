@@ -6,7 +6,7 @@ logs:
     format: json
 
 additionalArguments:
-  - "--providers.kubernetesgateway=true"
+  - "--providers.kubernetesgateway"
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
