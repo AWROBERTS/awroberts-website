@@ -10,7 +10,6 @@ spec:
   gatewayClassName: {{ .Values.gateway.className }}
 
   listeners:
-    # HTTPS for root domain
     - name: websecure-root
       protocol: HTTPS
       port: 443
@@ -19,11 +18,12 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+            kind: Secret
+            group: ""
       allowedRoutes:
         namespaces:
           from: All
 
-    # HTTPS for wildcard subdomains
     - name: websecure-wildcard
       protocol: HTTPS
       port: 443
@@ -32,11 +32,12 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: {{ .Values.traefik.tls.secretName }}
+            kind: Secret
+            group: ""
       allowedRoutes:
         namespaces:
           from: All
 
-    # HTTP listener
     - name: web
       protocol: HTTP
       port: 80
