@@ -1,46 +1,59 @@
 ensure_k8s_and_containerd_installed() {
-  echo "🔍 Ensuring Kubernetes + containerd are installed..."
+  echo "🔍 Installing Kubernetes (binary method) + containerd..."
 
-  sudo_if_needed apt-get update
-  sudo_if_needed apt-get install -y apt-transport-https ca-certificates curl gpg
-
-  curl -fsSL https://dl.k8s.io/Release.key \
-    | sudo_if_needed tee /usr/share/keyrings/kubernetes-archive-keyring.gpg >/dev/null
-
-  echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] \
-https://dl.k8s.io/deb/ stable main" \
-    | sudo_if_needed tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
-
-  sudo_if_needed apt-get update
-
-  LATEST=$(curl -L -s https://dl.k8s.io/release/stable.txt)
-  VERSION="${LATEST#v}"
-
-  echo "📌 Latest Kubernetes version detected: $VERSION"
-
-  PKG_VERSION=$(apt-cache madison kubeadm | grep "$VERSION" | head -n1 | awk '{print $3}')
-
-  if [ -z "$PKG_VERSION" ]; then
-    echo "❌ ERROR: Could not find kubeadm package for version $VERSION"
-    exit 1
-  fi
-
-  echo "📦 Installing Kubernetes packages: $PKG_VERSION"
-
-  sudo_if_needed apt-get install -y \
-    kubeadm="$PKG_VERSION" \
-    kubelet="$PKG_VERSION" \
-    kubectl="$PKG_VERSION"
-
-  sudo_if_needed apt-mark hold kubeadm kubelet kubectl
-  sudo_if_needed systemctl enable --now kubelet
-
+  # --- Install containerd ---
   if ! command -v containerd >/dev/null 2>&1; then
     echo "📦 Installing containerd..."
+    sudo_if_needed apt-get update
     sudo_if_needed apt-get install -y containerd
   else
     echo "✅ containerd already installed."
   fi
 
-  echo "✅ Kubernetes + containerd installation complete."
+  echo "🔧 Configuring containerd..."
+  sudo_if_needed mkdir -p /etc/containerd
+  sudo_if_needed containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
+
+  # Enable systemd cgroups
+  sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+  sudo_if_needed systemctl restart containerd
+  sudo_if_needed systemctl enable containerd
+
+  # --- Disable swap (required by kubeadm) ---
+  echo "🔧 Disabling swap..."
+  sudo_if_needed swapoff -a
+  sudo_if_needed sed -i '/swap/d' /etc/fstab
+
+  # --- Download Kubernetes binaries ---
+  echo "🌐 Fetching latest Kubernetes version..."
+  VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+  echo "📌 Latest version: $VERSION"
+
+  echo "⬇️ Downloading kubeadm, kubelet, kubectl..."
+  sudo_if_needed curl -L --remote-name-all \
+    https://dl.k8s.io/${VERSION}/bin/linux/amd64/{kubeadm,kubelet,kubectl}
+
+  sudo_if_needed chmod +x kubeadm kubelet kubectl
+  sudo_if_needed mv kubeadm kubelet kubectl /usr/local/bin/
+
+  # --- Install kubelet systemd units ---
+  echo "🔧 Installing kubelet systemd units..."
+  sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
+
+  sudo_if_needed curl -L \
+    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubeadm/systemd/kubelet.service \
+    -o /etc/systemd/system/kubelet.service
+
+  sudo_if_needed curl -L \
+    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubeadm/systemd/10-kubeadm.conf \
+    -o /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+  sudo_if_needed systemctl daemon-reload
+  sudo_if_needed systemctl enable --now kubelet
+
+  echo "📦 Pulling Kubernetes control plane images..."
+  sudo_if_needed kubeadm config images pull
+
+  echo "✅ Kubernetes binaries + containerd installation complete."
 }
