@@ -6,11 +6,10 @@ logs:
     format: json
 
 additionalArguments:
-  - "--providers.kubernetesgateway"
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
-  enabled: false
+  enabled: true
 
 rbac:
   enabled: true
