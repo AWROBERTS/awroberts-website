@@ -32,22 +32,17 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed chmod +x kubeadm kubelet kubectl
   sudo_if_needed mv kubeadm kubelet kubectl /usr/local/bin/
 
-  echo "⬇️ Downloading Kubernetes node tarball (for systemd units)..."
-  sudo_if_needed curl -L -o kubernetes-node.tar.gz \
-    https://dl.k8s.io/${VERSION}/kubernetes-node-linux-amd64.tar.gz
-
-  echo "📦 Extracting systemd units..."
-  sudo_if_needed tar -xzf kubernetes-node.tar.gz
-
+  echo "🔧 Installing kubelet systemd units (official upstream versions)..."
   sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
 
-  sudo_if_needed cp kubernetes/node/lib/systemd/system/kubelet.service \
-    /etc/systemd/system/kubelet.service
+  sudo_if_needed curl -L \
+    https://raw.githubusercontent.com/kubernetes/systemd/master/kubelet.service \
+    -o /etc/systemd/system/kubelet.service
 
-  sudo_if_needed cp kubernetes/node/lib/systemd/system/kubelet.service.d/10-kubeadm.conf \
-    /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+  sudo_if_needed curl -L \
+    https://raw.githubusercontent.com/kubernetes/systemd/master/10-kubeadm.conf \
+    -o /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
-  echo "🔧 Enabling kubelet..."
   sudo_if_needed systemctl daemon-reload
   sudo_if_needed systemctl enable --now kubelet
 
