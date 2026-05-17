@@ -14,18 +14,14 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed mkdir -p /etc/containerd
   sudo_if_needed containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
 
-  # Enable systemd cgroups
   sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-
   sudo_if_needed systemctl restart containerd
   sudo_if_needed systemctl enable containerd
 
-  # --- Disable swap (required by kubeadm) ---
   echo "🔧 Disabling swap..."
   sudo_if_needed swapoff -a
   sudo_if_needed sed -i '/swap/d' /etc/fstab
 
-  # --- Download Kubernetes binaries ---
   echo "🌐 Fetching latest Kubernetes version..."
   VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
   echo "📌 Latest version: $VERSION"
@@ -37,16 +33,15 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed chmod +x kubeadm kubelet kubectl
   sudo_if_needed mv kubeadm kubelet kubectl /usr/local/bin/
 
-  # --- Install kubelet systemd units ---
   echo "🔧 Installing kubelet systemd units..."
   sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
 
   sudo_if_needed curl -L \
-    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubeadm/systemd/kubelet.service \
+    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubepkg/templates/latest/deb/kubelet/lib/systemd/system/kubelet.service \
     -o /etc/systemd/system/kubelet.service
 
   sudo_if_needed curl -L \
-    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubeadm/systemd/10-kubeadm.conf \
+    https://raw.githubusercontent.com/kubernetes/release/${VERSION}/cmd/kubepkg/templates/latest/deb/kubeadm/10-kubeadm.conf \
     -o /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
   sudo_if_needed systemctl daemon-reload
