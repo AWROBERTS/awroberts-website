@@ -4,11 +4,11 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed apt-get update
   sudo_if_needed apt-get install -y apt-transport-https ca-certificates curl gpg
 
-  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+  curl -fsSL https://dl.k8s.io/Release.key \
     | sudo_if_needed tee /usr/share/keyrings/kubernetes-archive-keyring.gpg >/dev/null
 
   echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] \
-https://apt.kubernetes.io/ kubernetes-xenial main" \
+https://dl.k8s.io/deb/ stable main" \
     | sudo_if_needed tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
 
   sudo_if_needed apt-get update
