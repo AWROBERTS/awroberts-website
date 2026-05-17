@@ -14,12 +14,10 @@ ensure_traefik_helm() {
   helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
   helm repo update >/dev/null 2>&1
 
-  echo "📦 Installing Traefik CRDs chart..."
-  helm upgrade --install traefik-crds traefik/traefik-crds --namespace traefik --create-namespace
-
   echo "📦 Installing Traefik (skipping CRDs)..."
   helm upgrade --install traefik traefik/traefik \
     --namespace traefik \
+    --create-namespace \
     --skip-crds \
     -f "${PROJECT_ROOT}/traefik/traefik-values.yaml"
 
