@@ -4,7 +4,7 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed apt-get update
   sudo_if_needed apt-get install -y apt-transport-https ca-certificates curl gpg
 
-  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1/deb/Release.key \
+  curl -fsSL --location https://pkgs.k8s.io/core:/stable:/v1/deb/Release.key \
     | sudo_if_needed tee /usr/share/keyrings/kubernetes-archive-keyring.gpg >/dev/null
 
   echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] \
