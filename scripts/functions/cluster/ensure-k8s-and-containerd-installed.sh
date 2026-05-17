@@ -32,17 +32,37 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed chmod +x kubeadm kubelet kubectl
   sudo_if_needed mv kubeadm kubelet kubectl /usr/local/bin/
 
-  echo "🔧 Installing kubelet systemd units (official upstream versions)..."
+  echo "🔧 Writing kubelet systemd units (embedded)..."
   sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
 
-  sudo_if_needed curl -L \
-    https://raw.githubusercontent.com/kubernetes/systemd/master/kubelet.service \
-    -o /etc/systemd/system/kubelet.service
+  sudo_if_needed tee /etc/systemd/system/kubelet.service >/dev/null <<'EOF'
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/home/
+After=network-online.target
+Wants=network-online.target
 
-  sudo_if_needed curl -L \
-    https://raw.githubusercontent.com/kubernetes/systemd/master/10-kubeadm.conf \
-    -o /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+[Service]
+ExecStart=/usr/local/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo_if_needed tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf >/dev/null <<'EOF'
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+EnvironmentFile=-/etc/default/kubelet
+ExecStart=
+ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+EOF
+
+  echo "🔧 Enabling kubelet..."
   sudo_if_needed systemctl daemon-reload
   sudo_if_needed systemctl enable --now kubelet
 
