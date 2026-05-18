@@ -11,6 +11,7 @@ additionalArguments:
 
 gateway:
   enabled: true
+  name: traefik
 
 rbac:
   enabled: true
