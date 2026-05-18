@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ensure_k8s_and_containerd_installed() {
   echo "🔍 Installing Kubernetes (binary method) + containerd..."
 
@@ -11,15 +13,10 @@ ensure_k8s_and_containerd_installed() {
   fi
 
   echo "🔧 Configuring containerd..."
-  sudo_if_needed mkdir -p /etc/containerd
-  sudo_if_needed containerd config default | sudo_if_needed tee /etc/containerd/config.toml >/dev/null
-  sudo_if_needed sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-  sudo_if_needed systemctl restart containerd
-  sudo_if_needed systemctl enable containerd
+  configure_containerd
 
-  echo "🔧 Disabling swap..."
-  sudo_if_needed swapoff -a
-  sudo_if_needed sed -i '/swap/d' /etc/fstab
+  echo "🔧 Disabling swap and applying sysctls..."
+  disable_swap_and_configure_sysctls
 
   echo "🌐 Fetching latest Kubernetes version..."
   VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
@@ -32,7 +29,7 @@ ensure_k8s_and_containerd_installed() {
   sudo_if_needed chmod +x kubeadm kubelet kubectl
   sudo_if_needed mv kubeadm kubelet kubectl /usr/local/bin/
 
-  echo "🔧 Writing kubelet systemd units (embedded)..."
+  echo "🔧 Writing kubelet systemd units..."
   sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
 
   sudo_if_needed tee /etc/systemd/system/kubelet.service >/dev/null <<'EOF'
@@ -67,7 +64,7 @@ EOF
   sudo_if_needed systemctl enable --now kubelet
 
   echo "📦 Pulling Kubernetes control plane images..."
-  sudo_if_needed kubeadm config images pull
+  sudo_if_needed kubeadm config images pull --kubernetes-version="${VERSION}"
 
   echo "✅ Kubernetes binaries + containerd installation complete."
 }
