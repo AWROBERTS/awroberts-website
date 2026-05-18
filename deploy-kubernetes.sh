@@ -57,9 +57,8 @@ fi
 main() {
   setup_kubernetes_networking
   preflight_core_tools
-  bootstrap_cluster_if_needed
   ensure_k8s_and_containerd_installed
-  ensure_containerd_config
+  bootstrap_cluster_if_needed
   verify_kubelet_cgroup
   cluster_targeting
   info_and_validate_context
