@@ -14,9 +14,18 @@ bootstrap_cluster_if_needed() {
     NEED_INIT="false"
 
   elif is_control_plane_present; then
-    echo "Existing kubeadm control plane detected; skipping kubeadm init."
+    echo "Existing kubeadm control plane detected; configuring kubeconfig."
     configure_kubeconfig_if_exists
-    wait_for_nodes_ready
+
+    prepare_flannel_host_paths
+    cleanup_old_cni_configs
+    install_cni_plugins
+    install_flannel_cni
+    wait_for_flannel_ready
+    allow_control_plane_scheduling
+    wait_for_node_ready
+
+    return
 
   else
     NEED_INIT="true"
