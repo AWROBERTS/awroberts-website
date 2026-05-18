@@ -14,14 +14,15 @@ ensure_traefik_helm() {
   helm repo add traefik https://traefik.github.io/charts >/dev/null 2>&1 || true
   helm repo update >/dev/null 2>&1
 
-  echo "📦 Installing Traefik (skipping CRDs)..."
+  echo "📦 Installing Traefik with Gateway API enabled..."
+
+  # Traefik must see the CRDs at install time to activate the gateway controller.
   helm upgrade --install traefik traefik/traefik \
     --namespace traefik \
     --create-namespace \
-    --skip-crds \
     -f "${PROJECT_ROOT}/traefik/traefik-values.yaml"
 
-  echo "🔄 Restarting Traefik to load new CRDs..."
+  echo "🔄 Restarting Traefik to ensure new args are loaded..."
   kubectl rollout restart deploy/traefik -n traefik
 
   echo "✅ Traefik installed or updated."
