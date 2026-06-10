@@ -11,7 +11,7 @@ additionalArguments:
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
-  enabled: true
+  enabled: false
   name: traefik
 
 rbac:
