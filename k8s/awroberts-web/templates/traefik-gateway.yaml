@@ -10,6 +10,7 @@ spec:
   gatewayClassName: {{ .Values.gateway.className }}
 
   listeners:
+    # HTTPS listener for root domain
     - name: websecure-root
       protocol: HTTPS
       port: 443
@@ -24,6 +25,7 @@ spec:
         namespaces:
           from: All
 
+    # HTTPS listener for wildcard (www)
     - name: websecure-wildcard
       protocol: HTTPS
       port: 443
@@ -38,6 +40,7 @@ spec:
         namespaces:
           from: All
 
+    # HTTP listener (for redirects)
     - name: web
       protocol: HTTP
       port: 80
