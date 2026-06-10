@@ -7,7 +7,6 @@ logs:
 
 additionalArguments:
   - "--providers.kubernetesgateway=true"
-  - "--providers.kubernetesgateway.controller=traefik.io/gateway-controller"
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
