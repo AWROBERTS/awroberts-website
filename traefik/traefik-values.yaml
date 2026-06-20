@@ -8,6 +8,7 @@ accessLog:
 additionalArguments:
   - "--providers.kubernetesgateway=true"
   - "--providers.kubernetesgateway.namespaces=traefik,awroberts"
+  - "--providers.kubernetesgateway.experimentalchannel=false"
   - "--entrypoints.websecure.http.tls=true"
 
 gateway:
