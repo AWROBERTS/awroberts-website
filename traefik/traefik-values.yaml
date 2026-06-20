@@ -1,9 +1,9 @@
-logs:
-  general:
-    level: INFO
-  access:
-    enabled: true
-    format: json
+log:
+  level: INFO
+
+accessLog:
+  enabled: true
+  format: json
 
 additionalArguments:
   - "--providers.kubernetesgateway=true"
