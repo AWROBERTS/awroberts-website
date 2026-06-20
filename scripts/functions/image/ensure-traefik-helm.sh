@@ -6,7 +6,7 @@ ensure_traefik_helm() {
   # Delete all existing gateway CRDs before applying. This avoids the ValidatingAdmissionPolicy
   # that blocks experimental CRDs being installed on top of standard-channel CRDs.
   # GatewayClass/Gateway/HTTPRoute objects are recreated by the Helm deploy below.
-  kubectl get crd -o name | grep gateway.networking.k8s.io | xargs --no-run-if-empty kubectl delete --ignore-not-found
+  kubectl get crd -o name | grep gateway.networking.k8s.io | xargs --no-run-if-empty kubectl delete --ignore-not-found || true
 
   kubectl apply --server-side --force-conflicts \
     -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml
