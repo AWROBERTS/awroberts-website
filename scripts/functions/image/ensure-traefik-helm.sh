@@ -23,7 +23,11 @@ ensure_traefik_helm() {
     -f "${PROJECT_ROOT}/traefik/traefik-values.yaml"
 
   echo "🔄 Restarting Traefik to ensure new args are loaded..."
-  kubectl rollout restart deploy/traefik -n traefik
+  # With hostNetwork: true + Recreate strategy, rollout restart deadlocks.
+  # Scale to 0 first to release host ports, then let the deployment scale back up.
+  kubectl scale deploy/traefik --replicas=0 -n traefik
+  kubectl wait --for=delete pod -l app.kubernetes.io/name=traefik -n traefik --timeout=60s 2>/dev/null || true
+  kubectl scale deploy/traefik --replicas=1 -n traefik
 
   echo "✅ Traefik installed or updated."
 }
