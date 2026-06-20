@@ -1,13 +1,13 @@
 ensure_traefik_helm() {
   echo "🔧 Ensuring Traefik controller is installed via Helm..."
 
-  echo "📡 Installing Gateway API CRDs (v1.2.0)..."
+  echo "📡 Installing Gateway API CRDs (v1.3.0)..."
 
   # Install stable v1 CRDs
-  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
 
   # Install extended CRDs (TLSRoute, BackendTLSPolicy, GRPCRoute, etc.)
-  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/experimental-install.yaml
+  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml
 
   echo "✅ Gateway API CRDs applied."
 
