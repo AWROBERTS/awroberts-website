@@ -3,11 +3,10 @@ ensure_traefik_helm() {
 
   echo "📡 Installing Gateway API CRDs (v1.5.1)..."
 
-  # Use experimental-install only — it is a superset of standard-install and avoids the
-  # ValidatingAdmissionPolicy conflict that occurs when both are applied in sequence.
-  # Remove any pre-existing safe-upgrades policy so the experimental install can apply cleanly.
-  kubectl delete validatingadmissionpolicy safe-upgrades.gateway.networking.k8s.io --ignore-not-found
-  kubectl delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io --ignore-not-found
+  # Delete all existing gateway CRDs before applying. This avoids the ValidatingAdmissionPolicy
+  # that blocks experimental CRDs being installed on top of standard-channel CRDs.
+  # GatewayClass/Gateway/HTTPRoute objects are recreated by the Helm deploy below.
+  kubectl get crd -o name | grep gateway.networking.k8s.io | xargs --no-run-if-empty kubectl delete --ignore-not-found
 
   kubectl apply --server-side --force-conflicts \
     -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml
