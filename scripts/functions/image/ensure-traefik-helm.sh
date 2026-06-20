@@ -3,8 +3,9 @@ ensure_traefik_helm() {
 
   echo "📡 Installing Gateway API CRDs (v1.5.1)..."
 
-  # Install stable v1 CRDs
-  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+  # Install stable v1 CRDs (server-side apply avoids annotation size limits on repeated upgrades)
+  kubectl apply --server-side --force-conflicts \
+    -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
 
   # The standard install includes a ValidatingAdmissionPolicy that blocks experimental CRDs.
   # Remove it before applying experimental CRDs.
@@ -12,7 +13,8 @@ ensure_traefik_helm() {
   kubectl delete validatingadmissionpolicybinding safe-upgrades.gateway.networking.k8s.io --ignore-not-found
 
   # Install extended CRDs (TLSRoute, BackendTLSPolicy, GRPCRoute, etc.)
-  kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml
+  kubectl apply --server-side --force-conflicts \
+    -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml
 
   echo "✅ Gateway API CRDs applied."
 
