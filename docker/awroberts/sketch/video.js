@@ -84,6 +84,27 @@ export function initVideoSystem() {
   setupVideoEvents();
   setupHLS();
 
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !bgVideoEl) return;
+    console.log("Tab visible — seeking to live edge");
+    if (hlsInstance) {
+      hlsInstance.startLoad(-1);
+      const livePos = hlsInstance.liveSyncPosition;
+      if (livePos != null && isFinite(livePos)) {
+        bgVideoEl.currentTime = livePos;
+      }
+    } else {
+      // Native HLS (Safari)
+      const seekable = bgVideoEl.seekable;
+      if (seekable && seekable.length > 0) {
+        bgVideoEl.currentTime = seekable.end(seekable.length - 1);
+      }
+    }
+    if (bgVideoEl.paused) {
+      bgVideoEl.play().catch(err => console.warn("play() after visibility:", err));
+    }
+  });
+
   setInterval(() => {
     if (!videoReady) {
       bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
@@ -180,11 +201,13 @@ function setupHLS() {
     hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 15,
-      maxBufferSize: 30 * 1000 * 1000,
-      maxMaxBufferLength: 30,
+      maxBufferLength: 4,
+      maxBufferSize: 10 * 1000 * 1000,
+      maxMaxBufferLength: 8,
       backBufferLength: 0,
-      startPosition: -1
+      startPosition: -1,
+      liveSyncDurationCount: 2,
+      liveMaxLatencyDurationCount: 4
     });
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
