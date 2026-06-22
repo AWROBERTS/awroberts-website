@@ -190,7 +190,7 @@ function setupVideoEvents() {
 }
 
 // -----------------------------
-// HLS INITIALIZATION
+// HLS INITIALISATION
 // -----------------------------
 function setupHLS() {
   console.log("setupHLS(): HlsGlobal =", HlsGlobal);
