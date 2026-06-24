@@ -60,7 +60,7 @@ spec:
                     fi
                   fi
 
-                  sleep 10
+                  sleep 4
                 done
               }
 

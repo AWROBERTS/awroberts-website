@@ -109,7 +109,7 @@ export function initVideoSystem() {
     if (!videoReady) {
       bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
     }
-  }, 10000);
+  }, 4000);
 
   // Watchdog: restart HLS if currentTime hasn't advanced for 5s while not paused
   let watchdogLastTime = -1;
