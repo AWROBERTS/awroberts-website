@@ -16,7 +16,7 @@ import {
   bindUIP5
 } from './ui.js';
 
-import { getOverlayPixelDensity } from './utils.js';
+import { getOverlayPixelDensity, isMobileDevice } from './utils.js';
 
 import {
   initChromaticAberration,
@@ -52,7 +52,14 @@ const sketch = (awrWeb) => {
     canvas.style('top', '0');
     canvas.style('left', '0');
     canvas.style('z-index', '1');
-    canvas.style('filter', 'url(#chromab) saturate(1.8) contrast(1.08)');
+    // On mobile: skip the multi-pass SVG chromatic aberration filter (expensive GPU op)
+    // and cap the frame rate to reduce overall rendering load.
+    if (isMobileDevice()) {
+      canvas.style('filter', 'saturate(1.8) contrast(1.08)');
+      awrWeb.frameRate(30);
+    } else {
+      canvas.style('filter', 'url(#chromab) saturate(1.8) contrast(1.08)');
+    }
 
     awrWeb.noCursor();
 
