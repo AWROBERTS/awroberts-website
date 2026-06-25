@@ -86,7 +86,7 @@ notes_and_status() {
   echo "=============================="
 
   echo "Node IPs:"
-  kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+  kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
   echo
 
   echo "Public IP:"

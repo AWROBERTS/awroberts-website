@@ -30,6 +30,7 @@ ensure_traefik_helm() {
   kubectl scale deploy/traefik --replicas=0 -n traefik
   kubectl wait --for=delete pod -l app.kubernetes.io/name=traefik -n traefik --timeout=60s 2>/dev/null || true
   kubectl scale deploy/traefik --replicas=1 -n traefik
+  kubectl rollout status deploy/traefik -n traefik --timeout=120s
 
   echo "✅ Traefik installed or updated."
 }
