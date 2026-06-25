@@ -4,6 +4,7 @@ import {
   preloadVideoAssets,
   initVideoSystem,
   drawBackgroundFallback,
+  getVideoFadeAlpha,
   bindVideoP5
 } from './video.js';
 
@@ -75,7 +76,17 @@ const sketch = (awrWeb) => {
 
   awrWeb.draw = () => {
     awrWeb.clear();
-    drawBackgroundFallback();
+    // Draw the poster only while the video is loading / fading in.
+    // Once the video is at full opacity the gap rows should be black
+    // (body background) so scan lines look like CRT dark bands, not frozen
+    // poster stripes.
+    const fadeAlpha = getVideoFadeAlpha();
+    if (fadeAlpha < 1) {
+      awrWeb.push();
+      awrWeb.tint(255, Math.round(255 * (1 - fadeAlpha)));
+      drawBackgroundFallback();
+      awrWeb.pop();
+    }
     updateScanLines();
     drawScanLines();
     drawUI();
