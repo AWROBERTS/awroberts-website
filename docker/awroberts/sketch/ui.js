@@ -187,7 +187,7 @@ function drawSocialIcons() {
 
     if (icon && icon.width > 0 && icon.height > 0) {
       awrWeb.push();
-      awrWeb.tint(255, alpha);
+      awrWeb.drawingContext.globalAlpha = alpha / 255;
       awrWeb.image(icon, x, y, size, size);
       awrWeb.pop();
     }

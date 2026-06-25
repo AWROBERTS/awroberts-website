@@ -393,7 +393,7 @@ export function drawVideo() {
   }
 
   awrWeb.push();
-  awrWeb.tint(255, alpha);
+  awrWeb.drawingContext.globalAlpha = alpha / 255;
   awrWeb.image(videoLayer, 0, 0, awrWeb.width, awrWeb.height);
   awrWeb.pop();
 }
