@@ -71,7 +71,7 @@ export function initVideoSystem() {
 
   // Offscreen canvas for raw video frame
   videoSourceCanvas = document.createElement("canvas");
-  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
+  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
   videoSourceReady = true;
 
   // p5 graphics layer for scaled output
