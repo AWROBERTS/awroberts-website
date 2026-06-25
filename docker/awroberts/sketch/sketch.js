@@ -3,9 +3,8 @@
 import {
   preloadVideoAssets,
   initVideoSystem,
-  drawVideo,
-  bindVideoP5,
-  sampleVideoColor
+  drawBackgroundFallback,
+  bindVideoP5
 } from './video.js';
 
 import {
@@ -69,7 +68,7 @@ const sketch = (awrWeb) => {
 
   awrWeb.draw = () => {
     awrWeb.clear();
-    drawVideo();
+    drawBackgroundFallback();
     updateScanLines();
     drawScanLines();
     drawUI();
