@@ -31,10 +31,26 @@ const BRIGHT_BAND_ALPHA  = 18;
 const DROPOUT_CHANCE     = 0.005;
 const STYLE_BLEND_SPEED  = 0.002; // full oscillation ~52s at 60fps
 
+// Three evenly-spaced x positions sampled for horizontal colour variation
+const NUM_COL_SAMPLES = 3;
+
 // Deterministic per-line hash — stable across frames, avoids per-frame jitter noise
 function lineHash(y, seed) {
   const v = Math.sin((y + seed) * 127.1) * 43758.5453;
   return v - Math.floor(v); // 0–1
+}
+
+// Linearly interpolate between two values
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+// Sample video RGB at a given column and row from a Uint8ClampedArray column buffer
+function colRGB(colData, colHeight, y) {
+  if (!colData || colHeight === 0) return [0, 0, 0];
+  const vidY = Math.min(Math.max(Math.floor(y), 0), colHeight - 1);
+  const idx  = vidY * 4;
+  return [colData[idx], colData[idx + 1], colData[idx + 2]];
 }
 
 // -----------------------------
@@ -67,9 +83,16 @@ export function updateScanLines() {
   // 0 = original simple style, 1 = full enhanced — slow sine oscillation
   const styleBlend = 0.5 + 0.5 * Math.sin(styleBlendT);
 
-  // Sample video column once per frame — one getImageData call for all scan lines
-  const colData   = sampleVideoColumn(Math.floor(w / 2));
-  const colHeight = colData ? colData.length / 4 : 0;
+  // Sample three vertical columns for horizontal colour variation —
+  // three getImageData calls cover left, centre, right of the frame.
+  const cols = [];
+  for (let i = 0; i < NUM_COL_SAMPLES; i++) {
+    cols.push(sampleVideoColumn(Math.floor(w * (i + 0.5) / NUM_COL_SAMPLES)));
+  }
+  const colHeight = cols[0] ? cols[0].length / 4 : 0;
+
+  // Segment width for horizontal splits
+  const segW = Math.floor(w / NUM_COL_SAMPLES);
 
   scanLayer.clear();
   scanLayer.push();
@@ -94,39 +117,52 @@ export function updateScanLines() {
     const flicker = (Math.random() - 0.5) * 12;
     let lineAlpha = LINE_ALPHA_MIN + (LINE_ALPHA_MAX - LINE_ALPHA_MIN) * combinedIntensity + flicker;
 
-    // Video brightness modulation — brighter video = slightly more opaque scan lines,
-    // simulating the higher contrast of lit phosphors against dark gaps.
-    // Effect scales with styleBlend so original mode is unaffected.
-    if (colData && colHeight > 0) {
-      const vidY = Math.min(Math.max(Math.floor(jy), 0), colHeight - 1);
-      const idx  = vidY * 4;
-      const brightness = (colData[idx] + colData[idx + 1] + colData[idx + 2]) / 3;
-      lineAlpha *= (1 + (brightness / 255) * 0.25 * styleBlend);
-    }
-
     // Stable line height — 1% chance of 2px, only in enhanced mode
     const lh = (styleBlend > 0.5 && lineHash(y, 100) < 0.01) ? 2 : 1;
 
     // Stable horizontal micro-jitter — ±1px, scales with styleBlend
     const xOff = Math.round((lineHash(y, 200) - 0.5) * 2 * styleBlend);
 
-    scanLayer.fill(0, 0, 0, lineAlpha);
-    scanLayer.rect(xOff, jy, w, lh);
+    // Draw scan line in NUM_COL_SAMPLES segments, each tinted with the local video colour.
+    // Brighter video = slightly more opaque scan line (higher contrast of lit phosphors vs dark gap).
+    for (let si = 0; si < NUM_COL_SAMPLES; si++) {
+      const segX = si * segW + xOff;
+      const segWidth = si === NUM_COL_SAMPLES - 1 ? w - si * segW : segW;
+
+      const [vR, vG, vB] = colRGB(cols[si], colHeight, jy);
+
+      // Video brightness modulation (scales with styleBlend)
+      const brightness  = (vR + vG + vB) / 3;
+      const brightnessAlpha = lineAlpha * (1 + (brightness / 255) * 0.25 * styleBlend);
+
+      // Dark gap: tinted with video colour at 15% instead of pure black
+      // — makes the scan lines feel like shadowed phosphors rather than a separate overlay
+      const tint = 0.15 * styleBlend;
+      scanLayer.fill(vR * tint, vG * tint, vB * tint, brightnessAlpha);
+      scanLayer.rect(segX, jy, segWidth, lh);
+
+      // Phosphor edge glow — subtle video-coloured bleed at the top edge of the dark band,
+      // simulating adjacent lit phosphors leaking light into the gap
+      const glowAlpha = brightnessAlpha * 0.18 * styleBlend;
+      if (glowAlpha >= 1 && jy - 1 >= 0) {
+        scanLayer.fill(vR, vG, vB, glowAlpha);
+        scanLayer.rect(segX, jy - 1, segWidth, 1);
+      }
+    }
   }
 
   // Rolling bright band — alpha scales with styleBlend (invisible in original mode)
   const bandTop = brightBandY - BRIGHT_BAND_HEIGHT;
 
-  // Tint the band toward the video color at its centre position
-  let bandR = 255, bandG = 255, bandB = 255;
-  if (colData && colHeight > 0) {
-    const bandCenterY = Math.min(Math.max(Math.floor(brightBandY - BRIGHT_BAND_HEIGHT * 0.5), 0), colHeight - 1);
-    const idx = bandCenterY * 4;
-    // 70% white + 30% video colour so the band picks up the scene's hue
-    bandR = Math.round(255 * 0.7 + colData[idx]     * 0.3);
-    bandG = Math.round(255 * 0.7 + colData[idx + 1] * 0.3);
-    bandB = Math.round(255 * 0.7 + colData[idx + 2] * 0.3);
-  }
+  // Tint the band toward the video colour at its centre position
+  const [centR, centG, centB] = colRGB(
+    cols[Math.floor(NUM_COL_SAMPLES / 2)],
+    colHeight,
+    brightBandY - BRIGHT_BAND_HEIGHT * 0.5
+  );
+  const bandR = Math.round(255 * 0.7 + centR * 0.3);
+  const bandG = Math.round(255 * 0.7 + centG * 0.3);
+  const bandB = Math.round(255 * 0.7 + centB * 0.3);
 
   for (let i = 0; i < BRIGHT_BAND_HEIGHT; i++) {
     const lineY = bandTop + i;
