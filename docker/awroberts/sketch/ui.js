@@ -12,7 +12,6 @@ export function bindUIP5(p) {
 // -----------------------------
 // UI STATE
 // -----------------------------
-let curwenFont;
 export let emailText = 'info@awroberts.co.uk';
 let emailSize;
 let isHoveringEmail = false;
@@ -34,7 +33,6 @@ let diag;
 // PRELOAD
 // -----------------------------
 export async function preloadUIAssets() {
-  curwenFont = await awrWeb.loadFont('/awroberts-media/CURWENFONT.ttf');
   diag = await awrWeb.loadJSON('/deployment.json');
 
   icons.github = await awrWeb.loadImage('/assets/github.png');
@@ -59,7 +57,7 @@ export function initUI() {
     70
   );
 
-  awrWeb.textFont(curwenFont);
+  awrWeb.textFont('CURWENFONT');
   awrWeb.textSize(emailSize);
   awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
 

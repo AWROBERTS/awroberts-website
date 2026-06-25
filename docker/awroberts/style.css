@@ -1,3 +1,8 @@
+@font-face {
+  font-family: 'CURWENFONT';
+  src: url('/awroberts-media/CURWENFONT.ttf') format('truetype');
+}
+
 html, body {
   margin: 0;
   padding: 0;
