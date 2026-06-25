@@ -5,6 +5,5 @@ export function isMobileDevice() {
 }
 
 export function getOverlayPixelDensity() {
-  if (!isMobileDevice()) return 1;
-  return Math.min(window.devicePixelRatio || 1, 2);
+  return 1;
 }
