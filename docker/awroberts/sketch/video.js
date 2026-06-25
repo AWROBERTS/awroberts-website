@@ -44,8 +44,8 @@ const POSTER_URL = "/background-poster.png";
 // -----------------------------
 // PRELOAD
 // -----------------------------
-export function preloadVideoAssets() {
-  bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
+export async function preloadVideoAssets() {
+  bgPosterImg = await awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
 }
 
 // -----------------------------
