@@ -33,20 +33,20 @@ let diag;
 // -----------------------------
 // PRELOAD
 // -----------------------------
-export function preloadUIAssets() {
-  curwenFont = awrWeb.loadFont('/awroberts-media/CURWENFONT.ttf');
-  diag = awrWeb.loadJSON('/deployment.json');
+export async function preloadUIAssets() {
+  curwenFont = await awrWeb.loadFont('/awroberts-media/CURWENFONT.ttf');
+  diag = await awrWeb.loadJSON('/deployment.json');
 
-  icons.github = awrWeb.loadImage('/assets/github.png');
-  icons.linkedin = awrWeb.loadImage('/assets/linkedin.png');
-  icons.bandcamp = awrWeb.loadImage('/assets/bandcamp.png');
-  icons.youtube = awrWeb.loadImage('/assets/youtube.png');
+  icons.github = await awrWeb.loadImage('/assets/github.png');
+  icons.linkedin = await awrWeb.loadImage('/assets/linkedin.png');
+  icons.bandcamp = await awrWeb.loadImage('/assets/bandcamp.png');
+  icons.youtube = await awrWeb.loadImage('/assets/youtube.png');
 
-  icons['logo-kubernetes'] = awrWeb.loadImage('/assets/logos/kubernetes.png');
-  icons['logo-helm']       = awrWeb.loadImage('/assets/logos/helm.png');
-  icons['logo-traefik']    = awrWeb.loadImage('/assets/logos/traefik.png');
-  icons['logo-hlsjs']      = awrWeb.loadImage('/assets/logos/hlsjs.png');
-  icons['logo-p5js']       = awrWeb.loadImage('/assets/logos/p5js.png');
+  icons['logo-kubernetes'] = await awrWeb.loadImage('/assets/logos/kubernetes.png');
+  icons['logo-helm']       = await awrWeb.loadImage('/assets/logos/helm.png');
+  icons['logo-traefik']    = await awrWeb.loadImage('/assets/logos/traefik.png');
+  icons['logo-hlsjs']      = await awrWeb.loadImage('/assets/logos/hlsjs.png');
+  icons['logo-p5js']       = await awrWeb.loadImage('/assets/logos/p5js.png');
 }
 
 // -----------------------------
