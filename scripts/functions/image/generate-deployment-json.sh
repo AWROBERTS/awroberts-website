@@ -239,7 +239,22 @@ EOF
   echo
   echo "📤 Copying JSON into running pod"
 
-  kubectl cp "${output_file}" "${NAMESPACE}/${web_pod_name}":/usr/share/nginx/html/deployment.json
+  local copy_pod_name
+  for i in 1 2 3; do
+    copy_pod_name="$(get_first_running_pod_for_deployment "${DEPLOYMENT_NAME}" || true)"
+    if [[ -n "${copy_pod_name:-}" ]]; then
+      break
+    fi
+    echo "⏳ Waiting for a running pod (attempt ${i}/3)..."
+    sleep 5
+  done
+
+  if [[ -z "${copy_pod_name:-}" ]]; then
+    echo "❌ No running pod found to copy deployment.json into" >&2
+    return 1
+  fi
+
+  kubectl cp "${output_file}" "${NAMESPACE}/${copy_pod_name}":/usr/share/nginx/html/deployment.json
 
   echo "deployment.json copied to pod."
 }
