@@ -83,7 +83,7 @@ const sketch = (awrWeb) => {
     const fadeAlpha = getVideoFadeAlpha();
     if (fadeAlpha < 1) {
       awrWeb.push();
-      awrWeb.tint(255, Math.round(255 * (1 - fadeAlpha)));
+      awrWeb.drawingContext.globalAlpha = 1 - fadeAlpha;
       drawBackgroundFallback();
       awrWeb.pop();
     }
