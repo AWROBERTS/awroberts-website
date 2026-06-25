@@ -334,6 +334,20 @@ export function updateVideoFrame() {
 // -----------------------------
 // COLOUR SAMPLER
 // -----------------------------
+
+// Returns a full vertical column of pixel data as a Uint8ClampedArray
+// (r,g,b,a per row) — one getImageData call for the whole height,
+// far cheaper than calling sampleVideoColor once per scan line.
+export function sampleVideoColumn(x) {
+  if (!videoLayerReady || !hasVideoFrame) return null;
+  try {
+    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
+    return videoLayerCtx.getImageData(px, 0, 1, videoLayer.height).data;
+  } catch {
+    return null;
+  }
+}
+
 export function sampleVideoColor(x, y) {
   if (!videoLayerReady || !hasVideoFrame) return [200, 200, 200];
   try {
