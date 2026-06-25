@@ -262,6 +262,16 @@ function setupHLS() {
 // -----------------------------
 // FRAME COPY
 // -----------------------------
+export function getVideoLayerCanvas() {
+  return (videoLayerReady && videoLayerCtx) ? videoLayerCtx.canvas : null;
+}
+
+export function getVideoFadeAlpha() {
+  if (!hasVideoFrame || videoFadeStart === null) return 0;
+  const t = (awrWeb.millis() - videoFadeStart) / videoFadeDuration;
+  return Math.min(Math.max(t, 0), 1);
+}
+
 export function updateVideoFrame() {
   if (!bgVideoEl || !videoReady || !videoSourceReady || !videoLayerReady) return false;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
