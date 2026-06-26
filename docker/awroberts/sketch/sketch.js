@@ -39,12 +39,10 @@ const sketch = (awrWeb) => {
   bindUIP5(awrWeb);
   bindScanLinesP5(awrWeb);
 
-  awrWeb.preload = async () => {
+  awrWeb.setup = async () => {
     await preloadVideoAssets();
     await preloadUIAssets();
-  };
 
-  awrWeb.setup = () => {
     awrWeb.pixelDensity(getOverlayPixelDensity());
 
     const canvas = awrWeb.createCanvas(awrWeb.windowWidth, awrWeb.windowHeight);
