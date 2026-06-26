@@ -105,12 +105,6 @@ export function initVideoSystem() {
     }
   });
 
-  setInterval(() => {
-    if (!videoReady) {
-      bgPosterImg = awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
-    }
-  }, 4000);
-
   // Watchdog: restart HLS if currentTime hasn't advanced for 5s while not paused
   let watchdogLastTime = -1;
   setInterval(() => {
@@ -191,7 +185,6 @@ function setupVideoEvents() {
 
   bgVideoEl.addEventListener("waiting", () => {
     console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
-    recoverStall();
   });
 
   bgVideoEl.addEventListener("playing", () => {
@@ -233,9 +226,9 @@ function setupHLS() {
     hlsInstance = new HlsGlobal({
       enableWorker: true,
       lowLatencyMode: false,
-      maxBufferLength: 4,
-      maxBufferSize: 10 * 1000 * 1000,
-      maxMaxBufferLength: 8,
+      maxBufferLength: 10,
+      maxBufferSize: 30 * 1000 * 1000,
+      maxMaxBufferLength: 20,
       backBufferLength: 0,
       startPosition: -1,
       liveSyncDurationCount: 2,
