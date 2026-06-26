@@ -135,6 +135,12 @@ export function initVideoSystem() {
         if (hlsInstance) {
           hlsInstance.stopLoad();
           hlsInstance.startLoad(-1);
+        } else {
+          // Native HLS (Safari) — seek to live edge to force re-buffering
+          const seekable = bgVideoEl.seekable;
+          if (seekable && seekable.length > 0) {
+            bgVideoEl.currentTime = seekable.end(seekable.length - 1);
+          }
         }
         bgVideoEl.play().catch(err => console.warn("Watchdog play() failed:", err));
       }
@@ -161,16 +167,42 @@ function setupVideoEvents() {
     setupHLS();
   });
 
+  let stalledTimer = null;
+
+  const recoverStall = () => {
+    if (stalledTimer) return;
+    stalledTimer = setTimeout(() => {
+      stalledTimer = null;
+      if (!bgVideoEl || bgVideoEl.ended) return;
+      console.warn("Video stall recovery triggered");
+      if (hlsInstance) {
+        const livePos = hlsInstance.liveSyncPosition;
+        if (livePos != null && isFinite(livePos)) bgVideoEl.currentTime = livePos;
+        hlsInstance.startLoad(-1);
+      }
+      bgVideoEl.play().catch(err => console.warn("Stall recovery play() failed:", err));
+    }, 3000);
+  };
+
   bgVideoEl.addEventListener("stalled", () => {
     console.warn("Video event: stalled — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
+    recoverStall();
   });
 
   bgVideoEl.addEventListener("waiting", () => {
     console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
+    recoverStall();
+  });
+
+  bgVideoEl.addEventListener("playing", () => {
+    if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
   });
 
   bgVideoEl.addEventListener("pause", () => {
     console.warn("Video event: pause — ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
+    if (!bgVideoEl.ended) {
+      bgVideoEl.play().catch(err => console.warn("Auto-resume play() failed:", err));
+    }
   });
 
   const markVideoReady = () => {
