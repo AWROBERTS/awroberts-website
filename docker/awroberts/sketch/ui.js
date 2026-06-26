@@ -32,19 +32,30 @@ let diag;
 // -----------------------------
 // PRELOAD
 // -----------------------------
-export function preloadUIAssets() {
-  diag = awrWeb.loadJSON('/deployment.json');
+export async function preloadUIAssets() {
+  diag = await fetch('/deployment.json').then(r => r.json()).catch(() => null);
 
-  icons.github = awrWeb.loadImage('/assets/github.png');
-  icons.linkedin = awrWeb.loadImage('/assets/linkedin.png');
-  icons.bandcamp = awrWeb.loadImage('/assets/bandcamp.png');
-  icons.youtube = awrWeb.loadImage('/assets/youtube.png');
-
-  icons['logo-kubernetes'] = awrWeb.loadImage('/assets/logos/kubernetes.png');
-  icons['logo-helm']       = awrWeb.loadImage('/assets/logos/helm.png');
-  icons['logo-traefik']    = awrWeb.loadImage('/assets/logos/traefik.png');
-  icons['logo-hlsjs']      = awrWeb.loadImage('/assets/logos/hlsjs.png');
-  icons['logo-p5js']       = awrWeb.loadImage('/assets/logos/p5js.png');
+  [
+    icons.github,
+    icons.linkedin,
+    icons.bandcamp,
+    icons.youtube,
+    icons['logo-kubernetes'],
+    icons['logo-helm'],
+    icons['logo-traefik'],
+    icons['logo-hlsjs'],
+    icons['logo-p5js'],
+  ] = await Promise.all([
+    awrWeb.loadImage('/assets/github.png'),
+    awrWeb.loadImage('/assets/linkedin.png'),
+    awrWeb.loadImage('/assets/bandcamp.png'),
+    awrWeb.loadImage('/assets/youtube.png'),
+    awrWeb.loadImage('/assets/logos/kubernetes.png'),
+    awrWeb.loadImage('/assets/logos/helm.png'),
+    awrWeb.loadImage('/assets/logos/traefik.png'),
+    awrWeb.loadImage('/assets/logos/hlsjs.png'),
+    awrWeb.loadImage('/assets/logos/p5js.png'),
+  ]);
 }
 
 // -----------------------------
