@@ -39,9 +39,9 @@ const sketch = (awrWeb) => {
   bindUIP5(awrWeb);
   bindScanLinesP5(awrWeb);
 
-  awrWeb.preload = async () => {
-    await preloadVideoAssets();
-    await preloadUIAssets();
+  awrWeb.preload = () => {
+    preloadVideoAssets();
+    preloadUIAssets();
   };
 
   awrWeb.setup = () => {
