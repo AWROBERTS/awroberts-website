@@ -24,13 +24,20 @@ generate_deployment_json() {
     kubectl get ds -n kube-flannel kube-flannel-ds \
       -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
       | awk -F: '{print $NF}' \
+      | sed 's/^v\+//' \
       || echo "unknown"
   }
 
   get_gateway_api_version() {
-    kubectl get crd gatewayclasses.gateway.networking.k8s.io \
-      -o jsonpath='{.metadata.labels.gateway\.networking\.k8s\.io/version}' 2>/dev/null \
-      || echo "unknown"
+    local raw
+    raw="$(kubectl get crd gatewayclasses.gateway.networking.k8s.io \
+            -o jsonpath='{.metadata.labels.gateway\.networking\.k8s\.io/version}' 2>/dev/null)"
+
+    if [[ -z "$raw" ]]; then
+      echo "unknown"
+    else
+      echo "$raw" | sed 's/^v\+//'
+    fi
   }
 
   get_helm_version() {
