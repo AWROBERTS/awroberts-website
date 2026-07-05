@@ -4,15 +4,14 @@ generate_deployment_json() {
   local output_file="${1:-deployment.json}"
 
   get_kubernetes_version() {
-    kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
+    kubectl version --client -o json 2>/dev/null \
+      | jq -r '.clientVersion.gitVersion // "unknown"' \
+      | sed 's/^v\+//'
   }
 
   get_containerd_version() {
-    # capture only the version line, ignore all warnings
     local version_line
     version_line="$(ctr version 2>&1 | grep -m1 'Version:' || true)"
-
-    # extract the number cleanly
     echo "${version_line}" | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]'
   }
 
@@ -41,7 +40,9 @@ generate_deployment_json() {
   }
 
   get_helm_version() {
-    helm version --short 2>/dev/null || echo ""
+    helm version --short 2>/dev/null \
+      | sed 's/^v\+//' \
+      || echo ""
   }
 
   get_service_name() {
@@ -62,10 +63,7 @@ generate_deployment_json() {
 
   get_first_running_pod_from_selector() {
     local selector="$1"
-
-    if [[ -z "${selector:-}" ]]; then
-      return 1
-    fi
+    if [[ -z "${selector:-}" ]]; then return 1; fi
 
     kubectl get pod -n "${NAMESPACE}" \
       -l "${selector}" \
@@ -83,20 +81,13 @@ generate_deployment_json() {
         | sed 's/,$//'
     )"
 
-    if [[ -z "${selector:-}" ]]; then
-      return 1
-    fi
-
+    if [[ -z "${selector:-}" ]]; then return 1; fi
     get_first_running_pod_from_selector "${selector}"
   }
 
   get_pod_ip() {
     local pod_name="$1"
-
-    if [[ -z "${pod_name:-}" ]]; then
-      echo ""
-      return 0
-    fi
+    if [[ -z "${pod_name:-}" ]]; then echo ""; return 0; fi
 
     kubectl get pod "${pod_name}" -n "${NAMESPACE}" \
       -o jsonpath='{.status.podIP}' 2>/dev/null || echo ""
@@ -105,7 +96,6 @@ generate_deployment_json() {
   get_first_running_pod_ip_for_deployment() {
     local deployment_name="$1"
     local pod_name
-
     pod_name="$(get_first_running_pod_for_deployment "${deployment_name}" || true)"
     get_pod_ip "${pod_name}"
   }
@@ -123,31 +113,21 @@ generate_deployment_json() {
   get_hls_js_version() {
     local pod_name="$1"
     local version=""
-
     version="$(get_library_version_from_index_html "${pod_name}" "hls.js" || true)"
 
-    if [[ -n "${version:-}" ]]; then
-      echo "${version}"
-    else
-      echo "unknown"
-    fi
+    if [[ -n "${version:-}" ]]; then echo "${version}"; else echo "unknown"; fi
   }
 
   get_p5_js_version() {
     local pod_name="$1"
     local version=""
-
     version="$(get_library_version_from_index_html "${pod_name}" "p5.js" || true)"
 
     if [[ -z "${version:-}" ]]; then
       version="$(get_library_version_from_index_html "${pod_name}" "p5" || true)"
     fi
 
-    if [[ -n "${version:-}" ]]; then
-      echo "${version}"
-    else
-      echo "unknown"
-    fi
+    if [[ -n "${version:-}" ]]; then echo "${version}"; else echo "unknown"; fi
   }
 
   get_traefik_deployment_name() {
@@ -158,7 +138,6 @@ generate_deployment_json() {
 
   get_traefik_image() {
     local traefik_deploy_name="$1"
-
     kubectl get deploy "${traefik_deploy_name}" -n traefik \
       -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null
   }
@@ -168,7 +147,7 @@ generate_deployment_json() {
     local image_tag="${traefik_image_ref##*:}"
 
     if [[ -n "${image_tag}" && "${image_tag}" != "${traefik_image_ref}" ]]; then
-      echo "${image_tag}"
+      echo "${image_tag}" | sed 's/^v\+//'
     else
       echo "unknown"
     fi
@@ -176,7 +155,6 @@ generate_deployment_json() {
 
   local service_name
   service_name="$(get_service_name)"
-
   if [[ -z "${service_name:-}" ]]; then
     echo "❌ No web service found in namespace '${NAMESPACE}'" >&2
     return 1
@@ -186,9 +164,8 @@ generate_deployment_json() {
 
   local web_pod_name
   web_pod_name="$(get_first_running_pod_for_deployment "${DEPLOYMENT_NAME}" || true)"
-
   if [[ -z "${web_pod_name:-}" ]]; then
-    echo "❌ No running web pod found for deployment '${DEPLOYMENT_NAME}' in namespace '${NAMESPACE}'" >&2
+    echo "❌ No running web pod found" >&2
     return 1
   fi
 
@@ -299,9 +276,7 @@ EOF
   local copy_pod_name
   for i in 1 2 3; do
     copy_pod_name="$(get_first_running_pod_for_deployment "${DEPLOYMENT_NAME}" || true)"
-    if [[ -n "${copy_pod_name:-}" ]]; then
-      break
-    fi
+    if [[ -n "${copy_pod_name:-}" ]]; then break; fi
     echo "⏳ Waiting for a running pod (attempt ${i}/3)..."
     sleep 5
   done
