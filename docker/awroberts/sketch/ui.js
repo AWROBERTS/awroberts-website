@@ -247,7 +247,7 @@ function drawDeploymentInfo() {
     { label: 'background ffmpeg pod',   value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
   ];
 
-  const logoH = baseSize;
+  const boxSize = baseSize;
   const labelColW = Math.max(
     baseSize * 4,
     entries.filter(e => !e.logoKey).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0)
@@ -262,13 +262,19 @@ function drawDeploymentInfo() {
       if (logoKey) {
         const img = icons[logoKey];
         if (img && img.width > 0) {
-          const logoW = img.width * (logoH / img.height);
-          awrWeb.image(img, x, y, logoW, logoH);
+          const scale = Math.min(boxSize / img.width, boxSize / img.height);
+          const w = img.width * scale;
+          const h = img.height * scale;
+          const cx = x + (boxSize - w) / 2;
+          const cy = y + (boxSize - h) / 2;
+
+          awrWeb.image(img, cx, cy, w, h);
         }
       } else {
         awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
         awrWeb.text(label + ':', x, y);
       }
+
       awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
       awrWeb.text(value, rightEdge, y);
     }
