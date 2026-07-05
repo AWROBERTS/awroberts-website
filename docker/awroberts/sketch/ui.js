@@ -233,7 +233,7 @@ function drawDeploymentInfo() {
   const entries = [
     { label: 'containerd',              logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
     { label: 'docker',                  logoKey: 'logo-docker',     value: diag.docker?.version ?? 'N/A' },
-    { label: 'flannel',                 logoKey: 'logo-flannel',    value: diag.flannel?.image ?? 'N/A' },
+    { label: 'flannel',                 logoKey: 'logo-flannel',    value: diag.flannel?.version ?? 'N/A' },
     { label: 'kubernetes',              logoKey: 'logo-kubernetes', value: diag.kubernetes?.version ?? 'N/A' },
     { label: 'gateway api',             logoKey: 'logo-gatewayapi', value: diag.gatewayAPI?.version ?? 'N/A' },
     { label: 'helm',                    logoKey: 'logo-helm',       value: diag.helm?.version ?? 'N/A' },
