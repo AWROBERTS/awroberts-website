@@ -29,8 +29,9 @@ generate_deployment_json() {
 
   get_gateway_api_version() {
     local raw
+
     raw="$(kubectl get crd gatewayclasses.gateway.networking.k8s.io \
-            -o jsonpath='{.metadata.labels.gateway\.networking\.k8s\.io/version}' 2>/dev/null)"
+            -o jsonpath='{.spec.versions[0].name}' 2>/dev/null)"
 
     if [[ -z "$raw" ]]; then
       echo "unknown"
