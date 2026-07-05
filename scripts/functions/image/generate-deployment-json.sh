@@ -8,11 +8,13 @@ generate_deployment_json() {
   }
 
   get_containerd_version() {
-    ctr version 2>/dev/null \
-    | grep -m1 'Version:' \
-    | sed 's/.*Version:[[:space:]]*//' \
-    || echo "unknown"
-    }
+    # capture only the version line, ignore all warnings
+    local version_line
+    version_line="$(ctr version 2>&1 | grep -m1 'Version:' || true)"
+
+    # extract the number cleanly
+    echo "${version_line}" | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]'
+  }
 
   get_docker_version() {
     docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown"
