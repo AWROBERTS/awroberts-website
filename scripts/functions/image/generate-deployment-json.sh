@@ -7,6 +7,24 @@ generate_deployment_json() {
     kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion // "unknown"'
   }
 
+  get_containerd_version() {
+    ctr version 2>/dev/null | awk '/Version:/ {print $2}' || echo "unknown"
+  }
+
+  get_docker_version() {
+    docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown"
+  }
+
+  get_flannel_image() {
+    kubectl get ds -n kube-flannel kube-flannel-ds \
+      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "unknown"
+  }
+
+  get_gateway_api_version() {
+    kubectl get crd gateways.gateway.networking.k8s.io \
+      -o jsonpath='{.metadata.labels.gateway\.networking\.k8s\.io/version}' 2>/dev/null || echo "unknown"
+  }
+
   get_helm_version() {
     helm version --short 2>/dev/null || echo ""
   }
@@ -186,6 +204,18 @@ generate_deployment_json() {
   local kubernetes_version
   kubernetes_version="$(get_kubernetes_version)"
 
+  local containerd_version
+  containerd_version="$(get_containerd_version)"
+
+  local docker_version
+  docker_version="$(get_docker_version)"
+
+  local flannel_image
+  flannel_image="$(get_flannel_image)"
+
+  local gateway_api_version
+  gateway_api_version="$(get_gateway_api_version)"
+
   local helm_version
   helm_version="$(get_helm_version)"
 
@@ -197,8 +227,20 @@ generate_deployment_json() {
 
   cat > "${output_file}" <<EOF
 {
+  "containerd": {
+    "version": "${containerd_version}"
+  },
+  "docker": {
+    "version": "${docker_version}"
+  },
+  "flannel": {
+    "image": "${flannel_image}"
+  },
   "kubernetes": {
     "version": "${kubernetes_version}"
+  },
+  "gatewayAPI": {
+    "version": "${gateway_api_version}"
   },
   "helm": {
     "version": "${helm_version}"
