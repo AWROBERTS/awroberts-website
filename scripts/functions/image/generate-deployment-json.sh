@@ -8,7 +8,7 @@ generate_deployment_json() {
   }
 
   get_containerd_version() {
-    ctr version 2>/dev/null | awk '/Version:/ {print $2}' || echo "unknown"
+    ctr version 2>/dev/null | awk -F': ' '/Version:/ {print $2; exit}' || echo "unknown"
   }
 
   get_docker_version() {
@@ -21,7 +21,7 @@ generate_deployment_json() {
   }
 
   get_gateway_api_version() {
-    kubectl get crd gateways.gateway.networking.k8s.io \
+    kubectl get crd gatewayclasses.gateway.networking.k8s.io \
       -o jsonpath='{.metadata.labels.gateway\.networking\.k8s\.io/version}' 2>/dev/null || echo "unknown"
   }
 
