@@ -15,12 +15,9 @@ bootstrap_cluster_if_needed() {
     echo "Control plane detected; configuring kubeconfig."
     configure_kubeconfig_if_exists
 
-    echo "Ensuring CNI is installed (Flannel)..."
-    prepare_flannel_host_paths
-    cleanup_old_cni_configs
-    install_cni_plugins
-    install_flannel_cni
-    wait_for_flannel_ready
+    echo "Ensuring CNI is installed (Cilium)..."
+    install_cilium
+    wait_for_cilium_ready
     allow_control_plane_scheduling
     wait_for_node_ready
 
@@ -40,12 +37,9 @@ bootstrap_cluster_if_needed() {
     sleep 2
   done
 
-  echo "Installing CNI (Flannel) for new cluster..."
-  prepare_flannel_host_paths
-  cleanup_old_cni_configs
-  install_cni_plugins
-  install_flannel_cni
-  wait_for_flannel_ready
+  echo "Installing CNI (Cilium) for new cluster..."
+  install_cilium
+  wait_for_cilium_ready
   allow_control_plane_scheduling
   wait_for_node_ready
   cleanup_gateway_api_resources
