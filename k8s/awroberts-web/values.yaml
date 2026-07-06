@@ -101,6 +101,14 @@ backgroundVideo:
       name: hls-output
       hostPath: /var/www/html/awroberts/awroberts-media
 
+  desktop:
+    enabled: true
+    scale: "3840:-1"
+    bitrate: "8000k"
+    maxrate: "10000k"
+    bufsize: "20000k"
+    preset: "veryfast"
+
   hls:
     segmentDuration: 2
     liveWindow: 10
