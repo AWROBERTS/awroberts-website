@@ -1,7 +1,6 @@
 install_flannel_cni() {
   echo "Removing any existing Flannel CNI..."
 
-  # Delete old Flannel
   kubectl delete daemonset kube-flannel-ds -n kube-flannel --ignore-not-found
   kubectl delete -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml --ignore-not-found
 
@@ -10,16 +9,16 @@ install_flannel_cni() {
 
   echo "Detecting latest valid Flannel image tags from GHCR..."
 
-  # Fetch latest valid Flannel daemon tag
-  FLANNEL_VERSION=$(curl -s https://ghcr.io/v2/flannel-io/flannel/tags/list \
-    | jq -r '.tags[]' \
+  FLANNEL_VERSION=$(curl -s -H "Accept: application/vnd.oci.image.index.v1+json" \
+    https://ghcr.io/v2/flannel-io/flannel/tags/list \
+    | jq -r '.tags // [] | .[]' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
     | sort -V \
     | tail -n 1)
 
-  # Fetch latest valid Flannel CNI plugin tag
-  CNI_VERSION=$(curl -s https://ghcr.io/v2/flannel-io/flannel-cni-plugin/tags/list \
-    | jq -r '.tags[]' \
+  CNI_VERSION=$(curl -s -H "Accept: application/vnd.oci.image.index.v1+json" \
+    https://ghcr.io/v2/flannel-io/flannel-cni-plugin/tags/list \
+    | jq -r '.tags // [] | .[]' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+.*$' \
     | sort -V \
     | tail -n 1)
