@@ -45,7 +45,7 @@ export async function preloadUIAssets() {
     icons['logo-traefik'],
     icons['logo-hlsjs'],
     icons['logo-p5js'],
-    icons['logo-flannel'],
+    icons['logo-cilium'],
     icons['logo-docker'],
     icons['logo-containerd'],
     icons['logo-gatewayapi'],
@@ -59,7 +59,7 @@ export async function preloadUIAssets() {
     awrWeb.loadImage('/assets/logos/traefik.png'),
     awrWeb.loadImage('/assets/logos/hlsjs.png'),
     awrWeb.loadImage('/assets/logos/p5js.png'),
-    awrWeb.loadImage('/assets/logos/flannel.png'),
+    awrWeb.loadImage('/assets/logos/cilium.png'),
     awrWeb.loadImage('/assets/logos/docker.png'),
     awrWeb.loadImage('/assets/logos/containerd.png'),
     awrWeb.loadImage('/assets/logos/gatewayapi.png'),
@@ -233,7 +233,7 @@ function drawDeploymentInfo() {
   const entries = [
     { label: 'containerd',              logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
     { label: 'docker',                  logoKey: 'logo-docker',     value: diag.docker?.version ?? 'N/A' },
-    { label: 'flannel',                 logoKey: 'logo-flannel',    value: diag.flannel?.version ?? 'N/A' },
+    { label: 'cilium',                  logoKey: 'logo-cilium',     value: diag.cilium?.version ?? 'N/A' },   // UPDATED
     { label: 'kubernetes',              logoKey: 'logo-kubernetes', value: diag.kubernetes?.version ?? 'N/A' },
     { label: 'gateway api',             logoKey: 'logo-gatewayapi', value: diag.gatewayAPI?.version ?? 'N/A' },
     { label: 'helm',                    logoKey: 'logo-helm',       value: diag.helm?.version ?? 'N/A' },
