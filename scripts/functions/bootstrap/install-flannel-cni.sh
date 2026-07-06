@@ -7,16 +7,15 @@ install_flannel_cni() {
   echo "Installing upstream Flannel manifest..."
   kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
 
+  echo "Using stable Flannel daemon version..."
+
   FLANNEL_VERSION="v0.28.5"
-  CNI_VERSION="v1.9.1-flannel2"
 
   echo "Flannel daemon: $FLANNEL_VERSION"
-  echo "Flannel CNI plugin: $CNI_VERSION"
 
-  echo "Patching Flannel DaemonSet with stable image tags..."
+  echo "Patching the Flannel daemon image..."
   kubectl set image daemonset/kube-flannel-ds -n kube-flannel \
-    kube-flannel=ghcr.io/flannel-io/flannel:$FLANNEL_VERSION \
-    install-cni=ghcr.io/flannel-io/flannel-cni-plugin:$CNI_VERSION
+    kube-flannel=ghcr.io/flannel-io/flannel:$FLANNEL_VERSION
 
   echo "Waiting for Flannel pods to become Ready..."
   kubectl rollout status daemonset/kube-flannel-ds -n kube-flannel
