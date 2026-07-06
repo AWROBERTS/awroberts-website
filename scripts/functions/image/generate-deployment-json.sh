@@ -19,13 +19,11 @@ generate_deployment_json() {
     docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown"
   }
 
-  get_flannel_version() {
-    kubectl get ds -n kube-flannel kube-flannel-ds \
-    -o jsonpath='{.spec.template.spec.containers[*].image}' 2>/dev/null \
-    | tr ' ' '\n' \
-    | grep 'flannel-io/flannel' \
-    | awk -F: '{print $NF}' \
-    || echo "unknown"
+  get_cilium_version() {
+    kubectl get ds -n kube-system cilium \
+      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
+      | awk -F: '{print $NF}' \
+      || echo "unknown"
   }
 
   get_gateway_api_version() {
@@ -204,8 +202,8 @@ generate_deployment_json() {
   local docker_version
   docker_version="$(get_docker_version)"
 
-  local flannel_version
-  flannel_version="$(get_flannel_version)"
+  local cilium_version
+  cilium_version="$(get_cilium_version)"
 
   local gateway_api_version
   gateway_api_version="$(get_gateway_api_version)"
@@ -227,8 +225,8 @@ generate_deployment_json() {
   "docker": {
     "version": "${docker_version}"
   },
-  "flannel": {
-    "version": "${flannel_version}"
+  "cilium": {
+    "version": "${cilium_version}"
   },
   "kubernetes": {
     "version": "${kubernetes_version}"
