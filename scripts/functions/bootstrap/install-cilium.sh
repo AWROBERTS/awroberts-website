@@ -4,16 +4,14 @@ install_cilium() {
   helm repo add cilium https://helm.cilium.io
   helm repo update
 
-  helm install cilium cilium/cilium \
-    --version 1.16.3 \
-    --namespace kube-system \
-    --set kubeProxyReplacement=strict \
-    --set k8sServiceHost="${CONTROL_PLANE_IP}" \
-    --set k8sServicePort=6443 \
-    --set ipam.mode=kubernetes \
-    --set hubble.enabled=true \
-    --set hubble.relay.enabled=true \
-    --set hubble.ui.enabled=true
+  helm upgrade --install cilium cilium/cilium \
+  --namespace kube-system \
+  --set k8sServiceHost="${CONTROL_PLANE_IP}" \
+  --set k8sServicePort=6443 \
+  --set kubeProxyReplacement=true \
+  --set hubble.enabled=true \
+  --set hubble.relay.enabled=true \
+  --set hubble.ui.enabled=true
 
   echo "Cilium installation triggered."
 }
