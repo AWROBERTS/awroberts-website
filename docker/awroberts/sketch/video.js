@@ -42,8 +42,7 @@ const HlsGlobal = window.Hls;
 // MOBILE / DESKTOP STREAM SELECTION
 // -----------------------------
 const isMobile =
-  /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) ||
-  window.innerWidth < 900;
+  /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
 
 const VIDEO_URL = isMobile
   ? "https://awroberts.co.uk/stream/mobile/index.m3u8?v=" + Date.now()
