@@ -73,7 +73,12 @@ spec:
                 -re \
                 -stream_loop -1 \
                 -i {{ .Values.backgroundVideo.source }} \
-                -c copy \
+                -vf scale={{ .Values.backgroundVideo.desktop.scale }} \
+                -c:v libx264 -preset {{ .Values.backgroundVideo.desktop.preset }} \
+                -b:v {{ .Values.backgroundVideo.desktop.bitrate }} \
+                -maxrate {{ .Values.backgroundVideo.desktop.maxrate }} \
+                -bufsize {{ .Values.backgroundVideo.desktop.bufsize }} \
+                -c:a aac -b:a 128k \
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
                 -hls_list_size {{ .Values.backgroundVideo.hls.liveWindow }} \
