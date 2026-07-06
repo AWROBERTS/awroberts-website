@@ -127,11 +127,11 @@ backgroundVideo:
   mobile:
     enabled: true
     scale: "1280:-1"
-    bitrate: "1200k"
-    maxrate: "1500k"
-    bufsize: "3000k"
+    bitrate: "1000k"
+    maxrate: "1200k"
+    bufsize: "2000k"
     audioBitrate: "128k"
     liveWindow: 10
     outputDir: "/var/www/html/awroberts/awroberts-media/stream/mobile"
     segmentPrefix: "mobile_"
-    preset: "veryfast"
+    preset: "faster"
