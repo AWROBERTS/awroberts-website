@@ -1,7 +1,6 @@
 install_flannel_cni() {
   echo "Removing any existing Flannel CNI..."
 
-  # Delete old Flannel
   kubectl delete daemonset kube-flannel-ds -n kube-flannel --ignore-not-found
   kubectl delete -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml --ignore-not-found
 
@@ -36,8 +35,15 @@ install_flannel_cni() {
     | tail -n 1)
 
   # Fallbacks if GHCR fails or returns empty
-  [[ -z "$FLANNEL_VERSION" ]] && FLANNEL_VERSION="v0.28.5"
-  [[ -z "$CNI_VERSION" ]] && CNI_VERSION="v1.9.1-flannel2"
+  if [[ -z "$FLANNEL_VERSION" ]]; then
+    echo "⚠️ GHCR returned no Flannel tags — using fallback v0.28.5"
+    FLANNEL_VERSION="v0.28.5"
+  fi
+
+  if [[ -z "$CNI_VERSION" ]]; then
+    echo "⚠️ GHCR returned no CNI plugin tags — using fallback v1.9.1-flannel2"
+    CNI_VERSION="v1.9.1-flannel2"
+  fi
 
   echo "Latest Flannel daemon tag: $FLANNEL_VERSION"
   echo "Latest Flannel CNI plugin tag: $CNI_VERSION"
