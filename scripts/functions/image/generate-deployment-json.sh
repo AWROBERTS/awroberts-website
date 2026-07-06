@@ -21,10 +21,11 @@ generate_deployment_json() {
 
   get_flannel_version() {
     kubectl get ds -n kube-flannel kube-flannel-ds \
-      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
-      | awk -F: '{print $NF}' \
-      | sed 's/^v\+//' \
-      || echo "unknown"
+    -o jsonpath='{.spec.template.spec.containers[*].image}' 2>/dev/null \
+    | tr ' ' '\n' \
+    | grep 'flannel-io/flannel' \
+    | awk -F: '{print $NF}' \
+    || echo "unknown"
   }
 
   get_gateway_api_version() {
