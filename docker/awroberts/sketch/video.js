@@ -38,7 +38,17 @@ let watchdogFrozenSince = null;
 
 const HlsGlobal = window.Hls;
 
-const VIDEO_URL = "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+// -----------------------------
+// MOBILE / DESKTOP STREAM SELECTION
+// -----------------------------
+const isMobile =
+  /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent) ||
+  window.innerWidth < 900;
+
+const VIDEO_URL = isMobile
+  ? "https://awroberts.co.uk/stream/mobile/index.m3u8?v=" + Date.now()
+  : "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
+
 const POSTER_URL = "/background-poster.png";
 
 // -----------------------------
@@ -370,9 +380,6 @@ export function updateVideoFrame() {
 // COLOUR SAMPLER
 // -----------------------------
 
-// Returns a full vertical column of pixel data as a Uint8ClampedArray
-// (r,g,b,a per row) — one getImageData call for the whole height,
-// far cheaper than calling sampleVideoColor once per scan line.
 export function sampleVideoColumn(x) {
   if (!videoLayerReady || !hasVideoFrame) return null;
   try {

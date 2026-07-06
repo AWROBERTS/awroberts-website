@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "awroberts.fullname" . }}-background-ffmpeg-mobile
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg-mobile
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: background-ffmpeg-mobile
+
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg-mobile
+      app.kubernetes.io/component: background-ffmpeg-mobile
+      app.kubernetes.io/instance: {{ .Release.Name }}
+
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "awroberts.fullname" . }}-background-ffmpeg-mobile
+        app.kubernetes.io/component: background-ffmpeg-mobile
+        app.kubernetes.io/instance: {{ .Release.Name }}
+
+    spec:
+      terminationGracePeriodSeconds: 10
+
+      containers:
+        - name: ffmpeg-mobile
+          image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
+          imagePullPolicy: {{ .Values.backgroundVideo.ffmpeg.image.pullPolicy }}
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -u
+
+              OUTPUT_DIR="{{ .Values.backgroundVideo.mobile.outputDir }}"
+              SEGMENT_PREFIX="{{ .Values.backgroundVideo.mobile.segmentPrefix }}"
+
+              mkdir -p "$OUTPUT_DIR"
+
+              ffmpeg -y \
+                -re \
+                -stream_loop -1 \
+                -i {{ .Values.backgroundVideo.source }} \
+                -vf scale={{ .Values.backgroundVideo.mobile.scale }} \
+                -c:v libx264 -preset {{ .Values.backgroundVideo.mobile.preset }} \
+                -b:v {{ .Values.backgroundVideo.mobile.bitrate }} \
+                -maxrate {{ .Values.backgroundVideo.mobile.maxrate }} \
+                -bufsize {{ .Values.backgroundVideo.mobile.bufsize }} \
+                -c:a aac -b:a {{ .Values.backgroundVideo.mobile.audioBitrate }} \
+                -f hls \
+                -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
+                -hls_list_size {{ .Values.backgroundVideo.mobile.liveWindow }} \
+                -hls_flags delete_segments+omit_endlist \
+                -hls_segment_filename "$OUTPUT_DIR/${SEGMENT_PREFIX}%03d.ts" \
+                "$OUTPUT_DIR/index.m3u8"
+
+          volumeMounts:
+            - name: hls-input
+              mountPath: /usr/share/nginx/html/hls
+
+            - name: hls-output
+              mountPath: /var/www/html/awroberts/awroberts-media
+
+          resources:
+            requests:
+              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.requests.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpeg.requests.memory }}
+            limits:
+              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.limits.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpeg.limits.memory }}
+
+      volumes:
+        - name: hls-input
+          hostPath:
+            path: {{ .Values.media.hostPath }}/hls
+            type: Directory
+
+        - name: hls-output
+          hostPath:
+            path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
+            type: DirectoryOrCreate
