@@ -83,7 +83,7 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  source: "/usr/share/nginx/html/hls/stream.m3u8"
+  source: "/srv/input-hls/stream.m3u8"
 
   ffmpeg:
     image:
