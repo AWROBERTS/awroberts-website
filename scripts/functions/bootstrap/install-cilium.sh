@@ -56,5 +56,14 @@ install_cilium() {
     fi
   done
 
+  echo "⏳ Waiting for Cilium endpoint API to fully stabilise..."
+
+  until kubectl -n kube-system exec ds/cilium -- cilium-dbg status 2>/dev/null | grep -q "OK"; do
+    echo "   Cilium not ready yet..."
+    sleep 2
+  done
+
+  echo "✔️ Cilium endpoint API is fully ready."
+
   echo "🎉 Cilium installation complete and verified."
 }
