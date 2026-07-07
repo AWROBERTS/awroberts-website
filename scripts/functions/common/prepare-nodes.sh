@@ -1,4 +1,6 @@
 prepare_nodes() {
+  ensure_containerd_running
+
   echo "🧱 Preparing all Kubernetes nodes..."
 
   VERSION="$(curl -sL https://dl.k8s.io/release/stable.txt)"
@@ -108,4 +110,12 @@ EOF
   done
 
   echo "🎉 All nodes fully prepared."
+}
+
+ensure_containerd_running() {
+  for NODE in $(kubectl get nodes -o name | sed 's/node\///'); do
+    kubectl debug node/$NODE -it --image=busybox -- chroot /host sh -c "
+      systemctl start containerd || true
+    "
+  done
 }
