@@ -6,9 +6,18 @@ ensure_metrics_server() {
   kubectl patch deployment metrics-server -n kube-system \
     --type='json' \
     -p='[
+      {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--secure-port=4443"},
       {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"},
       {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"}
-    ]' || true
+    ]'
+
+  echo "🔧 Ensuring metrics-server Service uses correct ports..."
+  kubectl patch service metrics-server -n kube-system \
+    --type='json' \
+    -p='[
+      {"op": "replace", "path": "/spec/ports/0/port", "value": 443},
+      {"op": "replace", "path": "/spec/ports/0/targetPort", "value": 4443}
+    ]'
 
   echo "⏳ Waiting for metrics-server rollout..."
   kubectl rollout status deployment metrics-server -n kube-system --timeout=60s
