@@ -1,4 +1,4 @@
-prepare_node() {
+prepare_nodes() {
   echo "🧱 Preparing all Kubernetes nodes..."
 
   VERSION="$(curl -sL https://dl.k8s.io/release/stable.txt)"
