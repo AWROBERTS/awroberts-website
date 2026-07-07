@@ -81,7 +81,6 @@ build_image_arm() {
   echo "🔨 [ARM] Building ${IMAGE}"
   echo "   → Context (streamed): ${CONTEXT}"
 
-  # Stream build context via tar → ssh → docker build -
   tar -C "${CONTEXT}" -cf - . \
     | ssh "${ARM_NODE}" "
         docker build \
@@ -102,72 +101,65 @@ build_image_arm() {
 # -----------------------------
 build_all_images() {
   local TAG
-  TAG="$(git_sha_tag)"
+  TAG=\"$(git_sha_tag)\"
 
-  echo "📦 Preparing to build images with tag: ${TAG}"
-  echo "  APP_IMAGE_NAME: ${APP_IMAGE_NAME}"
-  echo "  BACKGROUND_IMAGE_NAME: ${BACKGROUND_IMAGE_NAME}"
+  echo \"📦 Preparing to build images with tag: ${TAG}\"
+  echo \"  APP_IMAGE_NAME: ${APP_IMAGE_NAME}\"
+  echo \"  BACKGROUND_IMAGE_NAME: ${BACKGROUND_IMAGE_NAME}\"
 
-  # -------------------------
-  # WEB IMAGE (x86 build)
-  # -------------------------
-  echo "🚀 Building APP image on awr (x86)..."
-  image_vars_for "${APP_IMAGE_NAME}" "${TAG}"
-  APP_FULL_IMAGE="${FULL_IMAGE}"
-  APP_LATEST_IMAGE="${LATEST_IMAGE}"
+  echo \"🚀 Building APP image on awr (x86)...\"
+  image_vars_for \"${APP_IMAGE_NAME}\" \"${TAG}\"
+  APP_FULL_IMAGE=\"${FULL_IMAGE}\"
+  APP_LATEST_IMAGE=\"${LATEST_IMAGE}\"
   build_image_x86 \
-    "${APP_FULL_IMAGE}" \
-    "${APP_LATEST_IMAGE}" \
-    "${PROJECT_ROOT}/docker/awroberts" \
-    "${TAG}" \
-    "${GIT_REMOTE_URL:-}"
+    \"${APP_FULL_IMAGE}\" \
+    \"${APP_LATEST_IMAGE}\" \
+    \"${PROJECT_ROOT}/docker/awroberts\" \
+    \"${TAG}\" \
+    \"${GIT_REMOTE_URL:-}\"
 
-  # -------------------------
-  # BACKGROUND VIDEO (ARM build)
-  # -------------------------
-  echo "🎞️ Building BACKGROUND VIDEO image on awr-ffmpeg (ARM)..."
-  image_vars_for "${BACKGROUND_IMAGE_NAME}" "${TAG}"
-  BG_FULL_IMAGE="${FULL_IMAGE}"
-  BG_LATEST_IMAGE="${LATEST_IMAGE}"
+  echo \"🎞️ Building BACKGROUND VIDEO image on awr-ffmpeg (ARM)...\"
+  image_vars_for \"${BACKGROUND_IMAGE_NAME}\" \"${TAG}\"
+  BG_FULL_IMAGE=\"${FULL_IMAGE}\"
+  BG_LATEST_IMAGE=\"${LATEST_IMAGE}\"
   build_image_arm \
-    "${BG_FULL_IMAGE}" \
-    "${BG_LATEST_IMAGE}" \
-    "${PROJECT_ROOT}/docker/background-video" \
-    "${TAG}" \
-    "${GIT_REMOTE_URL:-}"
+    \"${BG_FULL_IMAGE}\" \
+    \"${BG_LATEST_IMAGE}\" \
+    \"${PROJECT_ROOT}/docker/background-video\" \
+    \"${TAG}\" \
+    \"${GIT_REMOTE_URL:-}\"
 }
 
 # -----------------------------
 # IMPORT (LOCAL X86)
 # -----------------------------
 import_image_x86() {
-  local IMAGE="$1"
+  local IMAGE=\"$1\"
 
-  echo "📦 [x86] Importing ${IMAGE} into containerd"
-  docker save "${IMAGE}" | sudo ctr -n k8s.io images import -
+  echo \"📦 [x86] Importing ${IMAGE} into containerd\"
+  docker save \"${IMAGE}\" | sudo ctr -n k8s.io images import -
 }
 
 # -----------------------------
-# IMPORT (REMOTE ARM via TAR STREAMING)
+# IMPORT (REMOTE ARM)
 # -----------------------------
 import_image_arm() {
-  local IMAGE="$1"
+  local IMAGE=\"$1\"
 
-  echo "📦 [ARM] Importing ${IMAGE} into containerd"
+  echo \"📦 [ARM] Importing ${IMAGE} into containerd\"
 
-  docker save "${IMAGE}" \
-    | ssh "${ARM_NODE}" "sudo ctr -n k8s.io images import -"
+  ssh \"${ARM_NODE}\" "
+    docker save '${IMAGE}' | sudo ctr -n k8s.io images import -
+  "
 }
 
 # -----------------------------
 # IMPORT ALL IMAGES
 # -----------------------------
 import_all_images() {
-  # WEB IMAGE → import on awr
-  import_image_x86 "${APP_FULL_IMAGE}"
-  import_image_x86 "${APP_LATEST_IMAGE}"
+  import_image_x86 \"${APP_FULL_IMAGE}\"
+  import_image_x86 \"${APP_LATEST_IMAGE}\"
 
-  # BACKGROUND VIDEO → import on ARM
-  import_image_arm "${BG_FULL_IMAGE}"
-  import_image_arm "${BG_LATEST_IMAGE}"
+  import_image_arm \"${BG_FULL_IMAGE}\"
+  import_image_arm \"${BG_LATEST_IMAGE}\"
 }
