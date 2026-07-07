@@ -28,7 +28,7 @@ spec:
       terminationGracePeriodSeconds: 10
 
       nodeSelector:
-        node-role.kubernetes.io/ffmpeg: ""
+        arch: arm
 
       containers:
         - name: ffmpeg
