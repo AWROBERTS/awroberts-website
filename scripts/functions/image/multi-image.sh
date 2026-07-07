@@ -111,6 +111,8 @@ build_all_images() {
   image_vars_for "${APP_IMAGE_NAME}" "${TAG}"
   APP_FULL_IMAGE="${FULL_IMAGE}"
   APP_LATEST_IMAGE="${LATEST_IMAGE}"
+  APP_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
+
   build_image_x86 \
     "${APP_FULL_IMAGE}" \
     "${APP_LATEST_IMAGE}" \
@@ -122,6 +124,8 @@ build_all_images() {
   image_vars_for "${BACKGROUND_IMAGE_NAME}" "${TAG}"
   BG_FULL_IMAGE="${FULL_IMAGE}"
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
+  BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
+
   build_image_arm \
     "${BG_FULL_IMAGE}" \
     "${BG_LATEST_IMAGE}" \
