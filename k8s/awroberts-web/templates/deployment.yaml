@@ -31,6 +31,9 @@ spec:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/nginx-config-map.yaml") . | sha256sum }}
 
     spec:
+      nodeSelector:
+        arch: x86
+
       containers:
         - name: {{ include "awroberts.fullname" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
