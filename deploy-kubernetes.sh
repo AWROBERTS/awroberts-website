@@ -57,14 +57,22 @@ fi
 main() {
   setup_kubernetes_networking
   preflight_core_tools
+
+  prepare_nodes
   ensure_k8s_and_containerd_installed
+
   bootstrap_cluster_if_needed
+  get_join_command
+  join_worker_nodes
+
   verify_kubelet_cgroup
   cluster_targeting
   info_and_validate_context
+
   build_all_images
   import_all_images
   validate_background_video
+
   ensure_metrics_server
   ensure_traefik_helm
   deploy_with_helm
