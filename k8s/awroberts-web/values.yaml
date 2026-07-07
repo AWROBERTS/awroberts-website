@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: awroberts
+  repository: docker.io/library/awroberts
   tag: latest
   pullPolicy: Never
 
@@ -88,12 +88,12 @@ backgroundVideo:
   ffmpeg:
     image:
       repository: jrottenberg/ffmpeg
-      tag: "8-alpine"
+      tag: "8.1-scratch"
       pullPolicy: IfNotPresent
 
   nginx:
     image:
-      repository: background-video
+      repository: docker.io/library/background-video
       tag: latest
       pullPolicy: Never
 

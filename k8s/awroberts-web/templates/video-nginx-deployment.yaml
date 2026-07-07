@@ -24,6 +24,9 @@ spec:
         checksum/nginx-conf: {{ include (print $.Template.BasePath "/video-nginx-config-map.yaml") . | sha256sum }}
 
     spec:
+      nodeSelector:
+        arch: arm
+
       containers:
         - name: {{ include "awroberts.fullname" . }}-background
           image: "{{ .Values.backgroundVideo.nginx.image.repository }}:{{ .Values.backgroundVideo.nginx.image.tag }}"
@@ -51,10 +54,10 @@ spec:
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
 
-            - name: hls-output
+            - name: hls-output-media
               mountPath: /var/www/html/awroberts/awroberts-media
 
-            - name: hls-output
+            - name: hls-output-hls
               mountPath: {{ .Values.backgroundVideo.hls.outputDir }}
 
       volumes:
@@ -62,7 +65,12 @@ spec:
           configMap:
             name: {{ include "awroberts.fullname" . }}-background-nginx
 
-        - name: hls-output
+        - name: hls-output-media
           hostPath:
             path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
+            type: DirectoryOrCreate
+
+        - name: hls-output-hls
+          hostPath:
+            path: {{ .Values.backgroundVideo.hls.outputDir }}
             type: DirectoryOrCreate
