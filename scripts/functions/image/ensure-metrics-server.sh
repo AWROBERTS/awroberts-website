@@ -23,13 +23,10 @@ ensure_metrics_server() {
   kubectl patch deployment metrics-server -n kube-system \
     --type='json' \
     -p='[
-      {
-        "op": "replace",
-        "path": "/spec/template/spec/containers/0/ports",
-        "value": [
+      { "op": "remove", "path": "/spec/template/spec/containers/0/ports" },
+      { "op": "add", "path": "/spec/template/spec/containers/0/ports", "value": [
           { "containerPort": 4443, "name": "https", "protocol": "TCP" }
-        ]
-      }
+      ]}
     ]'
 
   echo "🔧 Ensuring metrics-server Service uses correct ports..."
