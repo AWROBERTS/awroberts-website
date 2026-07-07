@@ -1,6 +1,12 @@
 ensure_metrics_server() {
   echo "📦 Ensuring metrics-server is installed..."
-  kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+  # Only apply components.yaml if metrics-server Deployment does NOT already exist
+  if ! kubectl -n kube-system get deployment metrics-server >/dev/null 2>&1; then
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  else
+    echo "   metrics-server Deployment already exists; skipping components.yaml apply."
+  fi
 
   echo "🔧 Patching metrics-server for bare-metal (full args replace)..."
   kubectl patch deployment metrics-server -n kube-system \
