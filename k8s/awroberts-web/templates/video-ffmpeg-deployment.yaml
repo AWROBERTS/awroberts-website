@@ -27,6 +27,9 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
 
+      nodeSelector:
+        node-role.kubernetes.io/ffmpeg: ""
+
       containers:
         - name: ffmpeg
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
