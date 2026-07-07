@@ -12,6 +12,13 @@ git_sha_tag() {
 }
 
 # -----------------------------
+# REMOTE HOSTS
+# -----------------------------
+ARM_NODE_HOST="awr-ffmpeg"
+ARM_NODE_USER="awr"
+ARM_NODE="${ARM_NODE_USER}@${ARM_NODE_HOST}"
+
+# -----------------------------
 # IMAGE VARS (PER IMAGE)
 # -----------------------------
 image_vars_for() {
@@ -29,16 +36,16 @@ image_vars_for() {
 }
 
 # -----------------------------
-# BUILD
+# BUILD (LOCAL X86)
 # -----------------------------
-build_image_generic() {
+build_image_x86() {
   local IMAGE="$1"
   local LATEST="$2"
   local CONTEXT="$3"
   local TAG="$4"
   local SOURCE_URL="$5"
 
-  echo "🔨 Building ${IMAGE}"
+  echo "🔨 [x86] Building ${IMAGE}"
   echo "   → Context: ${CONTEXT}"
 
   local start end duration
@@ -58,79 +65,109 @@ build_image_generic() {
   end=$(date +%s)
   duration=$(( end - start ))
 
-  echo "⏱️ Build completed in ${duration}s"
+  echo "⏱️ [x86] Build completed in ${duration}s"
 }
 
+# -----------------------------
+# BUILD (REMOTE ARM via TAR STREAMING)
+# -----------------------------
+build_image_arm() {
+  local IMAGE="$1"
+  local LATEST="$2"
+  local CONTEXT="$3"
+  local TAG="$4"
+  local SOURCE_URL="$5"
+
+  echo "🔨 [ARM] Building ${IMAGE}"
+  echo "   → Context (streamed): ${CONTEXT}"
+
+  # Stream build context via tar → ssh → docker build -
+  tar -C "${CONTEXT}" -cf - . \
+    | ssh "${ARM_NODE}" "
+        docker build \
+          --no-cache \
+          --build-arg BUILD_SHA='${TAG}' \
+          --label 'org.opencontainers.image.revision=${TAG}' \
+          --label 'org.opencontainers.image.version=${TAG}' \
+          --label 'org.opencontainers.image.title=${IMAGE_NAME_BASE}' \
+          ${SOURCE_URL:+--label 'org.opencontainers.image.source=${SOURCE_URL}'} \
+          -t '${IMAGE}' \
+          -t '${LATEST}' \
+          -
+      "
+}
+
+# -----------------------------
+# BUILD ALL IMAGES
+# -----------------------------
 build_all_images() {
   local TAG
   TAG="$(git_sha_tag)"
 
-  local start_all end_all duration_all
-  start_all=$(date +%s)
-
   echo "📦 Preparing to build images with tag: ${TAG}"
   echo "  APP_IMAGE_NAME: ${APP_IMAGE_NAME}"
-  echo "  BACKGROUND_IMAGE_NAME:  ${BACKGROUND_IMAGE_NAME}"
+  echo "  BACKGROUND_IMAGE_NAME: ${BACKGROUND_IMAGE_NAME}"
 
-  # APP
-  echo "🚀 Building APP image..."
+  # -------------------------
+  # WEB IMAGE (x86 build)
+  # -------------------------
+  echo "🚀 Building APP image on awr (x86)..."
   image_vars_for "${APP_IMAGE_NAME}" "${TAG}"
   APP_FULL_IMAGE="${FULL_IMAGE}"
   APP_LATEST_IMAGE="${LATEST_IMAGE}"
-  APP_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
-  echo "  → ${APP_FULL_IMAGE}"
-  build_image_generic \
+  build_image_x86 \
     "${APP_FULL_IMAGE}" \
     "${APP_LATEST_IMAGE}" \
     "${PROJECT_ROOT}/docker/awroberts" \
     "${TAG}" \
     "${GIT_REMOTE_URL:-}"
 
-  # BACKGROUND VIDEO
-  echo "🎞️ Building BACKGROUND VIDEO image..."
+  # -------------------------
+  # BACKGROUND VIDEO (ARM build)
+  # -------------------------
+  echo "🎞️ Building BACKGROUND VIDEO image on awr-ffmpeg (ARM)..."
   image_vars_for "${BACKGROUND_IMAGE_NAME}" "${TAG}"
   BG_FULL_IMAGE="${FULL_IMAGE}"
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
-  BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
-  echo "  → ${BG_FULL_IMAGE}"
-  build_image_generic \
+  build_image_arm \
     "${BG_FULL_IMAGE}" \
     "${BG_LATEST_IMAGE}" \
     "${PROJECT_ROOT}/docker/background-video" \
     "${TAG}" \
     "${GIT_REMOTE_URL:-}"
-
-  end_all=$(date +%s)
-  duration_all=$(( end_all - start_all ))
-
-  echo "🏁 All images built in ${duration_all}s"
 }
 
 # -----------------------------
-# IMPORT
+# IMPORT (LOCAL X86)
 # -----------------------------
-import_image_generic() {
+import_image_x86() {
   local IMAGE="$1"
 
-  echo "📦 Importing ${IMAGE} into containerd"
-  if docker save "${IMAGE}" | sudo_if_needed ctr -n k8s.io images import -; then
-    echo "✅ Imported ${IMAGE}"
-  else
-    local SAFE_NAME
-    SAFE_NAME="$(echo "${IMAGE}" | tr '/:' '__').tar"
-    trap 'rm -f "${SAFE_NAME}"' EXIT
-    docker save -o "${SAFE_NAME}" "${IMAGE}"
-    sudo_if_needed ctr -n k8s.io images import "${SAFE_NAME}"
-  fi
+  echo "📦 [x86] Importing ${IMAGE} into containerd"
+  docker save "${IMAGE}" | sudo ctr -n k8s.io images import -
 }
 
+# -----------------------------
+# IMPORT (REMOTE ARM via TAR STREAMING)
+# -----------------------------
+import_image_arm() {
+  local IMAGE="$1"
+
+  echo "📦 [ARM] Importing ${IMAGE} into containerd"
+
+  docker save "${IMAGE}" \
+    | ssh "${ARM_NODE}" "sudo ctr -n k8s.io images import -"
+}
+
+# -----------------------------
+# IMPORT ALL IMAGES
+# -----------------------------
 import_all_images() {
-  # APP
-  import_image_generic "${APP_FULL_IMAGE}"
-  import_image_generic "${APP_LATEST_IMAGE}"
+  # WEB IMAGE → import on awr
+  import_image_x86 "${APP_FULL_IMAGE}"
+  import_image_x86 "${APP_LATEST_IMAGE}"
 
-  # BACKGROUND VIDEO
-  import_image_generic "${BG_FULL_IMAGE}"
-  import_image_generic "${BG_LATEST_IMAGE}"
+  # BACKGROUND VIDEO → import on ARM
+  import_image_arm "${BG_FULL_IMAGE}"
+  import_image_arm "${BG_LATEST_IMAGE}"
 }
-
