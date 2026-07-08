@@ -1,12 +1,28 @@
 load_env_file() {
-  local env_file="${PROJECT_ROOT}/awroberts.env"
-  if [[ -f "$env_file" ]]; then
-    echo "📦 Loading environment variables from: $env_file"
-    set -a
-    . "$env_file"
-    set +a
-  else
-    echo "❌ Environment file not found: $env_file"
+  local CLUSTER_ENV="${PROJECT_ROOT}/${NAMESPACE}-cluster.env"
+  local CONTROL_PLANE_ENV="${PROJECT_ROOT}/${NAMESPACE}-control-plane.env"
+
+  # Cluster env must always exist
+  if [[ ! -f "$CLUSTER_ENV" ]]; then
+    echo "❌ Cluster environment file not found: $CLUSTER_ENV"
     exit 1
+  fi
+
+  echo "📦 Loading cluster environment variables from: $CLUSTER_ENV"
+  set -a
+  source "$CLUSTER_ENV"
+  set +a
+
+  # Control-plane env only required on Control Plane
+  if [[ "$HOSTNAME" == "$CONTROL_PLANE_HOST" ]]; then
+    if [[ ! -f "$CONTROL_PLANE_ENV" ]]; then
+      echo "❌ Control-plane environment file not found: $CONTROL_PLANE_ENV"
+      exit 1
+    fi
+
+    echo "📦 Loading control-plane environment variables from: $CONTROL_PLANE_ENV"
+    set -a
+    source "$CONTROL_PLANE_ENV"
+    set +a
   fi
 }
