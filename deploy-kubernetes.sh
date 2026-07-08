@@ -1,103 +1,89 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Get project root
-SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-echo "PROJECT_ROOT: $PROJECT_ROOT"
+# ============================================================================
+# Kubernetes Deployment Orchestrator (Module Architecture)
+# ============================================================================
+# This script:
+#   1. Loads environment variables
+#   2. Syncs modules + shared + wrappers to both nodes
+#   3. Runs control-plane bootstrap
+#   4. Runs worker bootstrap
+#
+# This replaces ALL old deploy logic that referenced functions/.
+# ============================================================================
 
-# Load env loader first
-for file in "${PROJECT_ROOT}/scripts/functions/env/"*.sh; do
-  [[ "$file" == *load_env_file.sh ]] && continue  # Already sourced
-  source "$file"
-done
-load_env_file  # Load .env variables before anything else
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHARED_DIR="${SCRIPT_DIR}/shared"
+MODULES_DIR="${SCRIPT_DIR}/modules"
+CONTROL_PLANE_DIR="${SCRIPT_DIR}/control-plane"
+WORKER_DIR="${SCRIPT_DIR}/worker"
 
-# Export all .env variables safely
-set -a
-source "${PROJECT_ROOT}/${NAMESPACE}.env"
-set +a
+source "${SHARED_DIR}/load-env-file.sh"
+source "${SHARED_DIR}/sudo-if-needed.sh"
 
-# Source common functions
-COMMON_DIR="${PROJECT_ROOT}/scripts/functions/common"
-if [ -d "$COMMON_DIR" ]; then
-  for file in "$COMMON_DIR"/*.sh; do
-    [[ "$file" == *load_env_file.sh ]] && continue
-    [ -f "$file" ] && source "$file"
-  done
-else
-  echo "Warning: common directory not found at $COMMON_DIR"
-fi
+# ----------------------------------------------------------------------------
+# Sync scripts to control-plane
+# ----------------------------------------------------------------------------
+sync_to_control_plane() {
+  echo "=== Syncing scripts to control-plane (${CONTROL_PLANE_HOST}) ==="
 
-# Source bootstrap functions
-BOOTSTRAP_DIR="${PROJECT_ROOT}/scripts/functions/bootstrap"
-if [ -d "$BOOTSTRAP_DIR" ]; then
-  for file in "$BOOTSTRAP_DIR"/*.sh; do
-    [ -f "$file" ] && source "$file"
-  done
-else
-  echo "Warning: bootstrap directory not found at $BOOTSTRAP_DIR"
-fi
-
-# Source cluster functions
-CLUSTER_DIR="${PROJECT_ROOT}/scripts/functions/cluster"
-if [ -d "$CLUSTER_DIR" ]; then
-  for file in "$CLUSTER_DIR"/*.sh; do
-    [ -f "$file" ] && source "$file"
-  done
-else
-  echo "Warning: cluster directory not found at $CLUSTER_DIR"
-fi
-
-# Source image functions
-IMAGE_DIR="${PROJECT_ROOT}/scripts/functions/image"
-if [ -d "$IMAGE_DIR" ]; then
-  for file in "$IMAGE_DIR"/*.sh; do
-    [ -f "$file" ] && source "$file"
-  done
-else
-  echo "Warning: image directory not found at $IMAGE_DIR"
-fi
-
-main() {
-  setup_kubernetes_networking
-  preflight_core_tools
-
-  # SSH-based node preparation
-  prepare_nodes
-
-  # SSH-based Kubernetes installation
-  ensure_k8s_and_containerd_installed
-
-  # SSH-based cluster bootstrap
-  bootstrap_control_plane
-  get_join_command
-  join_worker_nodes
-
-  # Control plane scheduling (optional)
-  allow_control_plane_scheduling
-
-  # Cluster context + validation
-  cluster_targeting
-  info_and_validate_context
-
-  # Build + import images
-  build_all_images
-  import_all_images
-  validate_background_video
-
-  # Cluster addons
-  ensure_metrics_server
-  ensure_traefik_helm
-  deploy_with_helm
-  ensure_tls_secret
-
-  # Cleanup
-  cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
-  cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
-
-  notes_and_status
-  generate_deployment_json
+  rsync -avz \
+    "${MODULES_DIR}" \
+    "${SHARED_DIR}" \
+    "${CONTROL_PLANE_DIR}" \
+    "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:~/scripts/"
 }
 
-main "$@"
+# ----------------------------------------------------------------------------
+# Sync scripts to worker
+# ----------------------------------------------------------------------------
+sync_to_worker() {
+  echo "=== Syncing scripts to worker (${WORKER_HOST}) ==="
+
+  rsync -avz \
+    "${MODULES_DIR}" \
+    "${SHARED_DIR}" \
+    "${WORKER_DIR}" \
+    "${WORKER_USER}@${WORKER_HOST}:~/scripts/"
+}
+
+# ----------------------------------------------------------------------------
+# Run control-plane bootstrap
+# ----------------------------------------------------------------------------
+run_control_plane() {
+  echo "=== Running control-plane bootstrap ==="
+
+  ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
+    "bash ~/scripts/control-plane/bootstrap.sh"
+}
+
+# ----------------------------------------------------------------------------
+# Run worker bootstrap
+# ----------------------------------------------------------------------------
+run_worker() {
+  echo "=== Running worker bootstrap ==="
+
+  ssh "${WORKER_USER}@${WORKER_HOST}" \
+    "bash ~/scripts/worker/bootstrap.sh"
+}
+
+# ----------------------------------------------------------------------------
+# Main orchestration
+# ----------------------------------------------------------------------------
+main() {
+  echo "=== Loading environment ==="
+  load_env_file
+
+  sync_to_control_plane
+  sync_to_worker
+
+  run_control_plane
+  run_worker
+
+  echo "=== Deployment complete ==="
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
