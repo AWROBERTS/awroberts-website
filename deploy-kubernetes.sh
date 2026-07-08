@@ -13,6 +13,11 @@ for file in "${PROJECT_ROOT}/scripts/functions/env/"*.sh; do
 done
 load_env_file  # Load .env variables before anything else
 
+# Export all .env variables safely
+set -a
+source "${PROJECT_ROOT}/${NAMESPACE}.env"
+set +a
+
 # Source common functions
 COMMON_DIR="${PROJECT_ROOT}/scripts/functions/common"
 if [ -d "$COMMON_DIR" ]; then
