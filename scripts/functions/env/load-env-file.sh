@@ -9,9 +9,7 @@ load_env_file() {
   fi
 
   echo "📦 Loading cluster environment variables from: $CLUSTER_ENV"
-  set -a
   source "$CLUSTER_ENV"
-  set +a
 
   if [[ "$HOSTNAME" == "$CONTROL_PLANE_HOST" ]]; then
     if [[ ! -f "$CONTROL_PLANE_ENV" ]]; then
@@ -20,8 +18,6 @@ load_env_file() {
     fi
 
     echo "📦 Loading control-plane environment variables from: $CONTROL_PLANE_ENV"
-    set -a
     source "$CONTROL_PLANE_ENV"
-    set +a
   fi
 }
