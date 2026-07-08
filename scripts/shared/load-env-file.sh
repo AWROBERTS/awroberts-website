@@ -1,4 +1,9 @@
 load_env_file() {
+  # Compute project root from this script's location
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local PROJECT_ROOT="${SCRIPT_DIR}/../.."
+
   local CLUSTER_ENV="${PROJECT_ROOT}/awroberts-cluster.env"
   local CONTROL_PLANE_ENV="${PROJECT_ROOT}/awroberts-control-plane.env"
 
