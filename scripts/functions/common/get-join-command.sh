@@ -1,15 +1,10 @@
 get_join_command() {
-  echo "🔍 Generating kubeadm join command..."
+  echo "🔗 Fetching kubeadm join command from $CONTROL_PLANE_HOST"
 
-  # Ensure control plane is initialized
-  if [[ ! -f /etc/kubernetes/admin.conf ]]; then
-    echo "❌ Control plane not initialized yet."
-    exit 1
-  fi
+  JOIN_CMD=$(ssh -i "$SSH_KEY_PATH" \
+      -o StrictHostKeyChecking=accept-new \
+      "$CONTROL_PLANE_USER@$CONTROL_PLANE_HOST" "sudo kubeadm token create --print-join-command")
 
-  JOIN_CMD=$(sudo kubeadm token create --print-join-command)
-  echo "📌 Join command generated."
-
-  # Export for other functions
-  export JOIN_CMD
+  echo "🔗 Join command retrieved:"
+  echo "$JOIN_CMD"
 }

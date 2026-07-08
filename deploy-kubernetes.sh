@@ -58,26 +58,36 @@ main() {
   setup_kubernetes_networking
   preflight_core_tools
 
+  # SSH-based node preparation
   prepare_nodes
+
+  # SSH-based Kubernetes installation
   ensure_k8s_and_containerd_installed
 
-  bootstrap_cluster_if_needed
+  # SSH-based cluster bootstrap
+  bootstrap_control_plane
   get_join_command
   join_worker_nodes
 
-  verify_kubelet_cgroup
+  # Control plane scheduling (optional)
+  allow_control_plane_scheduling
+
+  # Cluster context + validation
   cluster_targeting
   info_and_validate_context
 
+  # Build + import images
   build_all_images
   import_all_images
   validate_background_video
 
+  # Cluster addons
   ensure_metrics_server
   ensure_traefik_helm
   deploy_with_helm
   ensure_tls_secret
 
+  # Cleanup
   cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
   cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
 
