@@ -7,7 +7,7 @@ set -euo pipefail
 # Handles Kubernetes cluster networking:
 #   - installs Cilium via Helm
 #   - waits for Cilium to become Ready
-#   - cleans up Gateway API resources (optional)
+#   - cleans up Gateway API resources
 #   - applies additional networking manifests
 #
 # Replaces:
@@ -63,7 +63,7 @@ wait_for_cilium_ready() {
 }
 
 # ----------------------------------------------------------------------------
-# Cleanup Gateway API resources (optional)
+# Cleanup Gateway API resources
 # ----------------------------------------------------------------------------
 cleanup_gateway_api_resources() {
   echo "Cleaning up Gateway API resources (if any)..."
@@ -94,7 +94,7 @@ setup_networking() {
 }
 
 # ----------------------------------------------------------------------------
-# Main entrypoint (optional)
+# Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
   load_env_file
