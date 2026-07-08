@@ -34,7 +34,7 @@ sync_to_control_plane() {
     "${MODULES_DIR}" \
     "${SHARED_DIR}" \
     "${CONTROL_PLANE_DIR}" \
-    "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:~/scripts/"
+    "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:/var/www/html/awroberts/scripts/"
 }
 
 # ----------------------------------------------------------------------------
@@ -47,7 +47,7 @@ sync_to_worker() {
     "${MODULES_DIR}" \
     "${SHARED_DIR}" \
     "${WORKER_DIR}" \
-    "${WORKER_USER}@${WORKER_HOST}:~/scripts/"
+    "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/scripts/"
 }
 
 # ----------------------------------------------------------------------------
@@ -57,7 +57,7 @@ run_control_plane() {
   echo "=== Running control-plane bootstrap ==="
 
   ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
-    "bash ~/scripts/control-plane/bootstrap.sh"
+    "bash /var/www/html/awroberts/scripts/control-plane/bootstrap.sh"
 }
 
 # ----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ run_worker() {
   echo "=== Running worker bootstrap ==="
 
   ssh "${WORKER_USER}@${WORKER_HOST}" \
-    "bash ~/scripts/worker/bootstrap.sh"
+    "bash /var/www/html/awroberts/scripts/worker/bootstrap.sh"
 }
 
 # ----------------------------------------------------------------------------
