@@ -12,8 +12,6 @@ bootstrap_cluster_if_needed() {
   # CASE 1 — Control plane already exists
   #
   if is_control_plane_present; then
-    echo "Control plane detected; configuring kubeconfig."
-    configure_kubeconfig_if_exists
 
     echo "Ensuring CNI is installed (Cilium)..."
     install_cilium
@@ -29,7 +27,6 @@ bootstrap_cluster_if_needed() {
   #
   echo "🚀 No control plane detected. Bootstrapping with kubeadm..."
 
-  initialise_kubeadm
   configure_kubeconfig
 
   echo "⏳ Waiting for Kubernetes API to become ready..."
