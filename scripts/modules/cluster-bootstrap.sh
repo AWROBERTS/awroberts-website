@@ -8,7 +8,7 @@ set -euo pipefail
 #   - detect if control-plane is already present
 #   - run kubeadm init when needed
 #   - configure kubeconfig
-#   - allow control-plane scheduling (optional)
+#   - allow control-plane scheduling
 #
 # Replaces:
 #   - bootstrap-control-plane.sh
@@ -70,7 +70,7 @@ bootstrap_control_plane() {
 }
 
 # ----------------------------------------------------------------------------
-# Allow scheduling on control-plane (optional)
+# Allow scheduling on control-plane
 # ----------------------------------------------------------------------------
 allow_control_plane_scheduling() {
   kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
@@ -89,7 +89,7 @@ bootstrap_cluster_if_needed() {
 }
 
 # ----------------------------------------------------------------------------
-# Main entrypoint (optional)
+# Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
   load_env_file
