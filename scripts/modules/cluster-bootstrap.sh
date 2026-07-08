@@ -19,7 +19,8 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHARED_DIR="${SCRIPT_DIR}/../shared"
+MODULES_ROOT="${SCRIPT_DIR}/.."
+SHARED_DIR="${MODULES_ROOT}/shared"
 
 source "${SHARED_DIR}/sudo-if-needed.sh"
 source "${SHARED_DIR}/load-env-file.sh"
@@ -63,7 +64,6 @@ bootstrap_control_plane() {
     --pod-network-cidr="${POD_NETWORK_CIDR}" \
     --kubernetes-version="${K8S_VERSION}"
 
-  # Configure kubeconfig
   mkdir -p "$HOME/.kube"
   sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
   sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
