@@ -13,7 +13,6 @@ load_env_file() {
   source "$CLUSTER_ENV"
   set +a
 
-  # Control-plane env only required on Control Plane
   if [[ "$HOSTNAME" == "$CONTROL_PLANE_HOST" ]]; then
     if [[ ! -f "$CONTROL_PLANE_ENV" ]]; then
       echo "❌ Control-plane environment file not found: $CONTROL_PLANE_ENV"
