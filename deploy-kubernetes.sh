@@ -14,10 +14,12 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHARED_DIR="${SCRIPT_DIR}/shared"
-MODULES_DIR="${SCRIPT_DIR}/modules"
-CONTROL_PLANE_DIR="${SCRIPT_DIR}/control-plane"
-WORKER_DIR="${SCRIPT_DIR}/worker"
+SCRIPTS_ROOT="${SCRIPT_DIR}/scripts"
+
+SHARED_DIR="${SCRIPTS_ROOT}/shared"
+MODULES_DIR="${SCRIPTS_ROOT}/modules"
+CONTROL_PLANE_DIR="${SCRIPTS_ROOT}/control-plane"
+WORKER_DIR="${SCRIPTS_ROOT}/worker"
 
 source "${SHARED_DIR}/load-env-file.sh"
 source "${SHARED_DIR}/sudo-if-needed.sh"
