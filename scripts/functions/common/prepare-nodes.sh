@@ -2,12 +2,12 @@ prepare_nodes() {
   echo "🧱 Preparing all nodes via SSH"
 
   # Control plane
-  run_preflight_core_tools_ssh "$CONTROL_PLANE_HOST" "$CONTROL_PLANE_USER"
+  run_preflight_core_tools "$CONTROL_PLANE_HOST" "$CONTROL_PLANE_USER"
   prepare_node "$CONTROL_PLANE_HOST" "$CONTROL_PLANE_USER"
 
   # Workers
   for HOST in $WORKER_HOSTS; do
-    run_preflight_core_tools_ssh "$HOST" "$WORKER_USER"
+    run_preflight_core_tools "$HOST" "$WORKER_USER"
     prepare_node "$HOST" "$WORKER_USER"
   done
 }
