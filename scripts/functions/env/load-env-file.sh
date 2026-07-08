@@ -1,6 +1,6 @@
 load_env_file() {
-  local CLUSTER_ENV="${PROJECT_ROOT}/${NAMESPACE}-cluster.env"
-  local CONTROL_PLANE_ENV="${PROJECT_ROOT}/${NAMESPACE}-control-plane.env"
+  local CLUSTER_ENV="${PROJECT_ROOT}/awroberts-cluster.env"
+  local CONTROL_PLANE_ENV="${PROJECT_ROOT}/awroberts-control-plane.env"
 
   # Cluster env must always exist
   if [[ ! -f "$CLUSTER_ENV" ]]; then
