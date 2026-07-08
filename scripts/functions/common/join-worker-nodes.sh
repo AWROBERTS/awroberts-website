@@ -1,25 +1,14 @@
 join_worker_nodes() {
-  echo "🔗 Joining worker nodes to the cluster..."
+  for HOST in $WORKER_HOSTS; do
+    echo "🔗 Joining worker node: $HOST"
 
-  # Identify control plane node
-  CONTROL_PLANE=$(kubectl get nodes -o json \
-    | jq -r '.items[] | select(.metadata.labels["node-role.kubernetes.io/control-plane"]=="") | .metadata.name')
+    ssh -i "$SSH_KEY_PATH" \
+        -o StrictHostKeyChecking=accept-new \
+        "$WORKER_USER@$HOST" "sudo bash -c '
+          set -e
+          $JOIN_CMD
+        '"
 
-  for NODE in $(kubectl get nodes -o name | sed 's/node\///'); do
-    if [[ "$NODE" == "$CONTROL_PLANE" ]]; then
-      echo "⏭️ Skipping control plane: $NODE"
-      continue
-    fi
-
-    echo "🔧 Joining worker node: $NODE"
-
-    kubectl debug node/$NODE -it --image=busybox -- chroot /host sh -c "
-      set -e
-      echo '📦 Running kubeadm join inside node...'
-      $JOIN_CMD
-      echo '✔️ Node successfully joined: $NODE'
-    "
+    echo "✔️ Worker joined: $HOST"
   done
-
-  echo "🎉 All worker nodes joined."
 }
