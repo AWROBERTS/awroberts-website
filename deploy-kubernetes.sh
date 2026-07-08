@@ -63,6 +63,9 @@ main() {
   setup_kubernetes_networking
   preflight_core_tools
 
+  echo "DEBUG: preflight_core_tools is:"
+  declare -f preflight_core_tools || echo "NOT DEFINED"
+
   # SSH-based node preparation
   prepare_nodes
 
