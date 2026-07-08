@@ -16,7 +16,8 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHARED_DIR="${SCRIPT_DIR}/../shared"
+MODULES_ROOT="${SCRIPT_DIR}/.."
+SHARED_DIR="${MODULES_ROOT}/shared"
 
 source "${SHARED_DIR}/sudo-if-needed.sh"
 source "${SHARED_DIR}/load-env-file.sh"
@@ -48,8 +49,6 @@ validate_kubectl_context() {
 # Determine active cluster target (simple version)
 # ----------------------------------------------------------------------------
 get_cluster_target() {
-  # In your env file you may define CLUSTER_NAME or similar.
-  # If not, fall back to kubectl context.
   if [[ -n "${CLUSTER_NAME:-}" ]]; then
     echo "${CLUSTER_NAME}"
   else

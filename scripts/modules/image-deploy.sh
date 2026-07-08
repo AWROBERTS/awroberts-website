@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHARED_DIR="${SCRIPT_DIR}/../shared"
+SCRIPTS_ROOT="${SCRIPT_DIR}/.."
+SHARED_DIR="${SCRIPTS_ROOT}/shared"
 
 source "${SHARED_DIR}/sudo-if-needed.sh"
 source "${SHARED_DIR}/load-env-file.sh"

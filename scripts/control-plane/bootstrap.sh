@@ -19,8 +19,10 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODULES_DIR="${SCRIPT_DIR}/../modules"
-SHARED_DIR="${SCRIPT_DIR}/../shared"
+CONTROL_PLANE_ROOT="${SCRIPT_DIR}"
+SCRIPTS_ROOT="${CONTROL_PLANE_ROOT}/.."
+MODULES_DIR="${SCRIPTS_ROOT}/modules"
+SHARED_DIR="${SCRIPTS_ROOT}/shared"
 
 # Shared helpers
 source "${SHARED_DIR}/sudo-if-needed.sh"
