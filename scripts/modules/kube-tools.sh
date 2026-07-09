@@ -32,27 +32,32 @@ source "${SHARED_DIR}/sudo-if-needed.sh"
 install_kube_tools() {
   echo "=== Installing Kubernetes tools ==="
 
+  # Single apt update
   sudo_if_needed apt-get update -y
 
+  # Install all required base packages in one go
   sudo_if_needed apt-get install -y \
     apt-transport-https \
     ca-certificates \
-    curl
+    curl \
+    gnupg
 
-  # Ensure keyring directory exists (required for Ubuntu 22.04)
+  # Ensure keyring directory exists
   sudo_if_needed mkdir -p /etc/apt/keyrings
 
   # Import Kubernetes repo key (non-interactive, SSH-safe)
   curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key \
-  | sudo gpg --batch --yes --dearmor \
-  | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.gpg >/dev/null
+    | sudo gpg --batch --yes --dearmor \
+    | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.gpg >/dev/null
 
   # Add Kubernetes apt repository
   echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" \
     | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
+  # Update once more only because we added a new repo
   sudo_if_needed apt-get update -y
 
+  # Install Kubernetes tools
   sudo_if_needed apt-get install -y \
     kubelet \
     kubeadm \
