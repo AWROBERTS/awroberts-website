@@ -68,6 +68,11 @@ bootstrap_control_plane() {
 # Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
+  if [[ -f /etc/kubernetes/admin.conf ]]; then
+    echo "Cluster already bootstrapped. Skipping control-plane bootstrap."
+    return 0
+  fi
+
   bootstrap_control_plane
 }
 
