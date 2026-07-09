@@ -61,8 +61,15 @@ bootstrap_worker() {
 # Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
+  # Hard guard: if worker is already joined, skip bootstrap
+  if [[ -f /etc/kubernetes/kubelet.conf ]]; then
+    echo "Worker already joined. Skipping worker bootstrap."
+    return 0
+  fi
+
   bootstrap_worker
 }
+
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   main "$@"
