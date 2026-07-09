@@ -30,6 +30,10 @@ source "${SHARED_DIR}/sudo-if-needed.sh"
 sync_to_control_plane() {
   echo "=== Syncing scripts to control-plane (${CONTROL_PLANE_HOST}) ==="
 
+  # Ensure remote directory exists and is owned by the correct user
+  ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
+    "sudo mkdir -p /var/www/html/awroberts/scripts && sudo chown ${CONTROL_PLANE_USER}:${CONTROL_PLANE_USER} /var/www/html/awroberts/scripts"
+
   rsync -avz \
     "${MODULES_DIR}" \
     "${SHARED_DIR}" \
@@ -42,6 +46,10 @@ sync_to_control_plane() {
 # ----------------------------------------------------------------------------
 sync_to_worker() {
   echo "=== Syncing scripts to worker (${WORKER_HOST}) ==="
+
+  # Ensure remote directory exists and is owned by the correct user
+  ssh "${WORKER_USER}@${WORKER_HOST}" \
+    "sudo mkdir -p /var/www/html/awroberts/scripts && sudo chown ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts/scripts"
 
   rsync -avz \
     "${MODULES_DIR}" \
