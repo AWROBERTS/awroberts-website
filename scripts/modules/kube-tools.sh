@@ -44,7 +44,7 @@ install_kube_tools() {
 
   # Import Kubernetes repo key (non-interactive, SSH-safe)
   curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key \
-    | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    | sudo gpg --batch --yes --dearmor > /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
   # Add Kubernetes apt repository
   echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" \
