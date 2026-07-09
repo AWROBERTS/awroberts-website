@@ -25,23 +25,14 @@ source "${SHARED_DIR}/load-env-file.sh"
 source "${SHARED_DIR}/sudo-if-needed.sh"
 
 # ----------------------------------------------------------------------------
-# Sync scripts to control-plane
-# ----------------------------------------------------------------------------
-sync_to_control_plane() {
-  echo "=== Syncing scripts to control-plane (${CONTROL_PLANE_HOST}) ==="
-
-  rsync -avz \
-    "${MODULES_DIR}" \
-    "${SHARED_DIR}" \
-    "${CONTROL_PLANE_DIR}" \
-    "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:/var/www/html/awroberts/scripts/"
-}
-
-# ----------------------------------------------------------------------------
 # Sync scripts to worker
 # ----------------------------------------------------------------------------
 sync_to_worker() {
   echo "=== Syncing scripts to worker (${WORKER_HOST}) ==="
+
+  # Ensure remote directory exists and is owned by the correct user
+  ssh "${WORKER_USER}@${WORKER_HOST}" \
+    "sudo mkdir -p /var/www/html/awroberts/scripts && sudo chown ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts/scripts"
 
   rsync -avz \
     "${MODULES_DIR}" \
@@ -77,7 +68,6 @@ main() {
   echo "=== Loading environment ==="
   load_env_file
 
-  sync_to_control_plane
   sync_to_worker
 
   run_control_plane
