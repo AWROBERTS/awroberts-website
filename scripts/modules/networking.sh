@@ -34,7 +34,9 @@ install_cilium() {
 
   helm upgrade --install cilium cilium/cilium \
     --namespace kube-system \
-    --set kubeProxyReplacement=strict \
+    --set kubeProxyReplacement=true \
+    --set bpf.masquerade=true \
+    --set nodePort.enabled=true \
     --set k8sServiceHost="${CONTROL_PLANE_HOST}" \
     --set k8sServicePort=6443 \
     --set ipam.mode=kubernetes \
