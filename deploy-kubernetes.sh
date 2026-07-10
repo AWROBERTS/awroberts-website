@@ -25,6 +25,14 @@ source "${SHARED_DIR}/load-env-file.sh"
 source "${SHARED_DIR}/sudo-if-needed.sh"
 
 # ----------------------------------------------------------------------------
+# Phase 2: Provision worker VM (autoinstall)
+# ----------------------------------------------------------------------------
+provision_worker_vm() {
+  echo "=== Provisioning worker VM (autoinstall) ==="
+  bash "${WORKER_DIR}/provision-worker-vm.sh"
+}
+
+# ----------------------------------------------------------------------------
 # Sync scripts to worker
 # ----------------------------------------------------------------------------
 sync_to_worker() {
@@ -66,10 +74,10 @@ run_worker() {
 # ----------------------------------------------------------------------------
 main() {
   echo "=== Loading environment ==="
+
   load_env_file
-
+  provision_worker_vm
   sync_to_worker
-
   run_control_plane
   run_worker
 
