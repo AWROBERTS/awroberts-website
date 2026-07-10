@@ -60,7 +60,8 @@ echo "Generated autoinstall.yaml"
 echo "Extracting ISO..."
 rm -rf iso-src
 mkdir -p iso-src
-bsdtar -C iso-src -xf "$ISO_ORIG"
+
+xorriso -osirrox on -indev "$ISO_ORIG" -extract / iso-src
 
 echo "Injecting autoinstall.yaml..."
 cp autoinstall.yaml iso-src/
