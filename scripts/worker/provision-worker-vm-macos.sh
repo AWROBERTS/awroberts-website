@@ -87,7 +87,13 @@ let cpuCount   = Int(CommandLine.arguments[6]) ?? 4
 
 // --- Boot loader: EFI (required for Linux on Apple Virtualization) ---
 let efi = VZEFIBootLoader()
-let efiStore = try! VZEFIVariableStore(creatingVariableStoreAt: URL(fileURLWithPath: osDisk + ".efi"), options: [])
+let efiStoreURL = URL(fileURLWithPath: osDisk + ".efi")
+let efiStore: VZEFIVariableStore
+if FileManager.default.fileExists(atPath: efiStoreURL.path) {
+    efiStore = VZEFIVariableStore(url: efiStoreURL)
+} else {
+    efiStore = try! VZEFIVariableStore(creatingVariableStoreAt: efiStoreURL, options: [])
+}
 efi.variableStore = efiStore
 
 // --- CPU & memory ---
