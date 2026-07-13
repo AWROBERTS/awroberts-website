@@ -24,8 +24,8 @@ ISO_SEED="ubuntu-autoinstall-seed.iso"
 # Minimum expected ISO size: 1 GB
 ISO_MIN_BYTES=1073741824
 
-MAC_VM_SCRIPT="provision-worker-vm-macos.sh"
-MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/${MAC_VM_SCRIPT}"
+MAC_VM_SCRIPT="scripts/worker/provision-worker-vm-macos.sh"
+MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
