@@ -57,16 +57,14 @@ mkdir -p "$VM_DIR"
 # without needing to rebuild the ISO.
 KERNEL="$VM_DIR/vmlinuz"
 INITRD="$VM_DIR/initrd"
-MOUNT_POINT="/tmp/ubuntu-iso-mount"
 
 if [ ! -f "$KERNEL" ] || [ ! -f "$INITRD" ]; then
-  echo "Mounting Ubuntu ISO to extract kernel and initrd..."
-  mkdir -p "$MOUNT_POINT"
-  hdiutil attach -readonly -mountpoint "$MOUNT_POINT" "$UBUNTU_ISO" -quiet
-  cp "$MOUNT_POINT/casper/vmlinuz" "$KERNEL"
-  cp "$MOUNT_POINT/casper/initrd" "$INITRD"
-  hdiutil detach "$MOUNT_POINT" -quiet
-  rm -rf "$MOUNT_POINT"
+  echo "Extracting kernel and initrd from Ubuntu ISO..."
+  # bsdtar is built into macOS and handles Linux ISOs
+  bsdtar -xf "$UBUNTU_ISO" -C "$VM_DIR" casper/vmlinuz casper/initrd
+  mv "$VM_DIR/casper/vmlinuz" "$KERNEL"
+  mv "$VM_DIR/casper/initrd" "$INITRD"
+  rm -rf "$VM_DIR/casper"
   echo "Kernel and initrd extracted."
 fi
 
