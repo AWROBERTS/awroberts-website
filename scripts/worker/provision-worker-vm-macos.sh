@@ -67,15 +67,16 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 5 else {
-    fputs("Usage: run-vm <iso-path> <os-disk> <hls-disk> <ram-mb>\n", stderr)
+guard CommandLine.arguments.count == 6 else {
+    fputs("Usage: run-vm <iso-path> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
     exit(1)
 }
 
-let isoPath   = CommandLine.arguments[1]
-let osDisk    = CommandLine.arguments[2]
-let hlsDisk   = CommandLine.arguments[3]
-let ramMB     = Int(CommandLine.arguments[4]) ?? 4096
+let isoPath    = CommandLine.arguments[1]
+let osDisk     = CommandLine.arguments[2]
+let hlsDisk    = CommandLine.arguments[3]
+let ramMB      = Int(CommandLine.arguments[4]) ?? 4096
+let cpuCount   = Int(CommandLine.arguments[5]) ?? 4
 
 // --- Boot loader: EFI (required for Linux on Apple Virtualization) ---
 let efi = VZEFIBootLoader()
@@ -84,7 +85,7 @@ efi.variableStore = efiStore
 
 // --- CPU & memory ---
 let config = VZVirtualMachineConfiguration()
-config.cpuCount = 4
+config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
 config.bootLoader = efi
 
@@ -160,7 +161,8 @@ echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
   "$ISO_PATH" \
   "$OS_DISK" \
   "$HLS_DISK" \
-  "$RAM_MB"
+  "$RAM_MB" \
+  "$CPU_COUNT"
 
 echo "VM started. Autoinstall is running inside the VM."
 echo "Mint can begin polling for SSH on the worker IP."
