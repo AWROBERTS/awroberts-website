@@ -6,21 +6,19 @@ set -euo pipefail
 # ============================================================================
 # This script runs on Linux Mint and performs:
 #   1. Download Ubuntu ARM ISO (if missing/corrupt)
-#   2. Generate cloud-init seed ISO (user-data + meta-data, labeled CIDATA)
-#   3. Copy both ISOs to Mac mini
+#   2. Extract ISO, inject autoinstall config, patch GRUB, rebuild ISO
+#   3. Copy modified ISO to Mac mini
 #   4. Copy macOS-side VM creation script to Mac mini
 #   5. SSH into Mac mini to launch VM using Apple Virtualization
 #   6. Wait for worker VM to come online
 #   7. Trigger worker bootstrap
 #
-# The Ubuntu ISO is used unmodified. Autoinstall config is delivered via a
-# separate CIDATA seed ISO that cloud-init detects automatically.
 # Apple Virtualization.framework is EFI/UEFI only — ARM64 ISO required.
 # ============================================================================
 
 # === CONFIG ===
 ISO_ORIG="ubuntu-24.04.4-live-server-arm64.iso"
-ISO_SEED="ubuntu-autoinstall-seed.iso"
+ISO_CUSTOM="ubuntu-autoinstall.iso"
 # Minimum expected ISO size: 1 GB
 ISO_MIN_BYTES=1073741824
 
@@ -41,14 +39,14 @@ if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "${MAC_USER}@${MAC_HOST}" true 2>/
 fi
 
 # === 2. Ensure required tools are installed ===
-for pkg in xorriso curl openssl; do
+for pkg in xorriso curl openssl libarchive-tools; do
   if ! dpkg -s "$pkg" &>/dev/null 2>&1; then
     echo "Installing missing dependency: $pkg"
     sudo apt-get install -y "$pkg"
   fi
 done
 
-# === 2. Download Ubuntu ARM ISO (re-download if missing or corrupt) ===
+# === 3. Download Ubuntu ARM ISO (re-download if missing or corrupt) ===
 ISO_SIZE=0
 if [ -f "$ISO_ORIG" ]; then
   ISO_SIZE=$(stat -c%s "$ISO_ORIG")
@@ -69,13 +67,20 @@ fi
 
 echo "Ubuntu ISO ready: $ISO_ORIG ($(( ISO_SIZE / 1024 / 1024 )) MB)"
 
-# === 3. Generate hashed password ===
+# === 4. Generate hashed password ===
 HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 
-# === 4. Create cloud-init nocloud files ===
-# cloud-init's nocloud datasource detects a disk/ISO labeled "CIDATA"
-# containing user-data and meta-data — no ISO modification needed.
-cat > user-data <<EOF
+# === 5. Extract ISO ===
+echo "Extracting ISO..."
+rm -rf iso-src
+mkdir -p iso-src
+bsdtar -xf "$ISO_ORIG" -C iso-src/
+chmod -R u+w iso-src
+
+# === 6. Inject autoinstall user-data and meta-data ===
+# cloud-init reads user-data/meta-data from /cdrom/ (the ISO mount point)
+# when kernel cmdline contains: ds=nocloud;s=/cdrom/
+cat > iso-src/user-data <<EOF
 #cloud-config
 autoinstall:
   version: 1
@@ -95,44 +100,64 @@ autoinstall:
     - shutdown -h now
 EOF
 
-# meta-data must exist; instance-id prevents re-running on reboot
-cat > meta-data <<EOF
+cat > iso-src/meta-data <<EOF
 instance-id: awr-ffmpeg-$(date +%s)
 local-hostname: awr-ffmpeg
 EOF
 
-echo "Generated user-data and meta-data"
+echo "Injected user-data and meta-data into ISO"
 
-# === 5. Build CIDATA seed ISO ===
-# xorriso creates a small ISO labeled "cidata" — cloud-init finds it automatically.
-echo "Building seed ISO..."
+# === 7. Patch GRUB config to add autoinstall kernel args ===
+GRUB_CFG=$(find iso-src -name "grub.cfg" | head -1)
+if [ -n "$GRUB_CFG" ]; then
+  echo "Patching GRUB config: $GRUB_CFG"
+  sed -i 's|^\(\s*linux\s.*\)|\1 autoinstall ds=nocloud;s=/cdrom/|' "$GRUB_CFG"
+else
+  echo "ERROR: grub.cfg not found in extracted ISO."
+  exit 1
+fi
+
+# === 8. Find ARM EFI boot binary ===
+# Ubuntu ARM ISOs use EFI/BOOT/BOOTAA64.EFI (not efi.img as on x86).
+EFI_BIN=$(find iso-src -iname "BOOTAA64.EFI" | head -1)
+if [ -z "$EFI_BIN" ]; then
+  echo "ERROR: Cannot find BOOTAA64.EFI in extracted ISO."
+  echo "EFI directory contents:"
+  find iso-src -iname "*.EFI" 2>/dev/null || true
+  exit 1
+fi
+EFI_REL="${EFI_BIN#iso-src/}"
+echo "Found ARM EFI binary: $EFI_REL"
+
+# === 9. Rebuild EFI-only autoinstall ISO ===
+echo "Rebuilding ISO with autoinstall config..."
 xorriso -as mkisofs \
-  -o "$ISO_SEED" \
-  -V cidata \
-  -J \
+  -o "$ISO_CUSTOM" \
   -r \
-  user-data \
-  meta-data
+  -V "Ubuntu-AutoInstall" \
+  -J \
+  --efi-boot-part \
+  --efi-boot-image \
+  -e "$EFI_REL" \
+  -no-emul-boot \
+  iso-src/
 
-echo "Seed ISO created: $ISO_SEED"
+echo "Custom autoinstall ISO created: $ISO_CUSTOM"
 
-# === 6. Copy ISOs to Mac mini ===
-echo "Copying Ubuntu ISO to Mac mini..."
-scp "$ISO_ORIG" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-ubuntu.iso"
+# === 10. Copy modified ISO to Mac mini ===
+echo "Copying autoinstall ISO to Mac mini..."
+scp "$ISO_CUSTOM" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-autoinstall.iso"
 
-echo "Copying seed ISO to Mac mini..."
-scp "$ISO_SEED" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-seed.iso"
-
-# === 7. Copy macOS VM creation script to Mac mini ===
+# === 11. Copy macOS VM creation script to Mac mini ===
 echo "Copying macOS VM creation script..."
 scp "$MAC_VM_SCRIPT" "${MAC_USER}@${MAC_HOST}:${MAC_VM_SCRIPT_REMOTE}"
 ssh "${MAC_USER}@${MAC_HOST}" "chmod +x ${MAC_VM_SCRIPT_REMOTE}"
 
-# === 8. Trigger VM creation on macOS ===
+# === 12. Trigger VM creation on macOS ===
 echo "Triggering VM creation on Mac mini..."
 ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE}"
 
-# === 9. Wait for worker VM to come online ===
+# === 13. Wait for worker VM to come online ===
 echo "Waiting for worker VM to become reachable..."
 
 WORKER_IP="${WORKER_IP:-192.168.1.50}"
@@ -143,7 +168,7 @@ done
 
 echo "=== Worker VM is online ==="
 
-# === 10. Run worker bootstrap ===
+# === 14. Run worker bootstrap ===
 echo "Running worker bootstrap..."
 bash "$WORKER_BOOTSTRAP" "$WORKER_IP"
 

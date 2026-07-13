@@ -18,8 +18,7 @@ set -euo pipefail
 VM_NAME="awr-ffmpeg"
 VM_DIR="$HOME/VMs/${VM_NAME}"
 
-UBUNTU_ISO="$HOME/worker-ubuntu.iso"
-SEED_ISO="$HOME/worker-seed.iso"
+AUTOINSTALL_ISO="$HOME/worker-autoinstall.iso"
 
 OS_DISK_SIZE_GB=20
 HLS_DISK_SIZE_GB=20
@@ -40,35 +39,14 @@ if (( MACOS_MAJOR < 13 )); then
   exit 1
 fi
 
-if [ ! -f "$UBUNTU_ISO" ]; then
-  echo "ERROR: Ubuntu ISO not found at: $UBUNTU_ISO"
-  exit 1
-fi
-
-if [ ! -f "$SEED_ISO" ]; then
-  echo "ERROR: Seed ISO not found at: $SEED_ISO"
+if [ ! -f "$AUTOINSTALL_ISO" ]; then
+  echo "ERROR: Autoinstall ISO not found at: $AUTOINSTALL_ISO"
   exit 1
 fi
 
 mkdir -p "$VM_DIR"
 
-# === 2. Extract kernel and initrd from Ubuntu ISO ===
-# Using VZLinuxBootLoader so we can inject 'autoinstall' into the kernel cmdline
-# without needing to rebuild the ISO.
-KERNEL="$VM_DIR/vmlinuz"
-INITRD="$VM_DIR/initrd"
-
-if [ ! -f "$KERNEL" ] || [ ! -f "$INITRD" ]; then
-  echo "Extracting kernel and initrd from Ubuntu ISO..."
-  # bsdtar is built into macOS and handles Linux ISOs
-  bsdtar -xf "$UBUNTU_ISO" -C "$VM_DIR" casper/vmlinuz casper/initrd
-  mv "$VM_DIR/casper/vmlinuz" "$KERNEL"
-  mv "$VM_DIR/casper/initrd" "$INITRD"
-  rm -rf "$VM_DIR/casper"
-  echo "Kernel and initrd extracted."
-fi
-
-# === 3. Create disk images ===
+# === 2. Create disk images ===
 OS_DISK="$VM_DIR/os.img"
 HLS_DISK="$VM_DIR/hls.img"
 
@@ -89,42 +67,39 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 9 else {
-    fputs("Usage: run-vm <ubuntu-iso> <seed-iso> <os-disk> <hls-disk> <kernel> <initrd> <ram-mb> <cpu-count>\n", stderr)
+guard CommandLine.arguments.count == 6 else {
+    fputs("Usage: run-vm <autoinstall-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
     exit(1)
 }
 
-let ubuntuISO  = CommandLine.arguments[1]
-let seedISO    = CommandLine.arguments[2]
-let osDisk     = CommandLine.arguments[3]
-let hlsDisk    = CommandLine.arguments[4]
-let kernelPath = CommandLine.arguments[5]
-let initrdPath = CommandLine.arguments[6]
-let ramMB      = Int(CommandLine.arguments[7]) ?? 4096
-let cpuCount   = Int(CommandLine.arguments[8]) ?? 4
+let isoPath  = CommandLine.arguments[1]
+let osDisk   = CommandLine.arguments[2]
+let hlsDisk  = CommandLine.arguments[3]
+let ramMB    = Int(CommandLine.arguments[4]) ?? 4096
+let cpuCount = Int(CommandLine.arguments[5]) ?? 4
 
-// --- Boot loader: direct Linux boot so we can inject 'autoinstall' cmdline ---
-// VZLinuxBootLoader bypasses EFI/GRUB entirely, allowing full cmdline control.
-let bootLoader = VZLinuxBootLoader(kernelURL: URL(fileURLWithPath: kernelPath))
-bootLoader.initialRamdiskURL = URL(fileURLWithPath: initrdPath)
-// 'autoinstall' suppresses the interactive confirmation prompt.
-// 'ds=nocloud' tells cloud-init to detect the CIDATA-labeled seed ISO.
-// 'console=hvc0' routes serial output to the virtio console.
-bootLoader.commandLine = "quiet autoinstall ds=nocloud console=hvc0"
+// --- Boot loader: EFI ---
+// The autoinstall ISO has been rebuilt on Mint with 'autoinstall' already
+// in the GRUB kernel cmdline, so no need for VZLinuxBootLoader.
+let efi = VZEFIBootLoader()
+let efiStoreURL = URL(fileURLWithPath: osDisk + ".efi")
+let efiStore: VZEFIVariableStore
+if FileManager.default.fileExists(atPath: efiStoreURL.path) {
+    efiStore = VZEFIVariableStore(url: efiStoreURL)
+} else {
+    efiStore = try! VZEFIVariableStore(creatingVariableStoreAt: efiStoreURL, options: [])
+}
+efi.variableStore = efiStore
 
 // --- CPU & memory ---
 let config = VZVirtualMachineConfiguration()
 config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
-config.bootLoader = bootLoader
+config.bootLoader = efi
 
-// --- Storage: Ubuntu installer ISO (boot) ---
-let ubuntuAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ubuntuISO), readOnly: true)
-let ubuntuDevice = VZVirtioBlockDeviceConfiguration(attachment: ubuntuAttachment)
-
-// --- Storage: cloud-init seed ISO (CIDATA) ---
-let seedAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: seedISO), readOnly: true)
-let seedDevice = VZVirtioBlockDeviceConfiguration(attachment: seedAttachment)
+// --- Storage: autoinstall ISO (boot, read-only) ---
+let isoAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: isoPath), readOnly: true)
+let isoDevice = VZVirtioBlockDeviceConfiguration(attachment: isoAttachment)
 
 // --- Storage: OS disk ---
 let osAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: osDisk), readOnly: false)
@@ -134,18 +109,18 @@ let osDevice = VZVirtioBlockDeviceConfiguration(attachment: osAttachment)
 let hlsAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: hlsDisk), readOnly: false)
 let hlsDevice = VZVirtioBlockDeviceConfiguration(attachment: hlsAttachment)
 
-config.storageDevices = [ubuntuDevice, seedDevice, osDevice, hlsDevice]
+config.storageDevices = [isoDevice, osDevice, hlsDevice]
 
 // --- Network: NAT (DHCP) ---
 let network = VZVirtioNetworkDeviceConfiguration()
 network.attachment = VZNATNetworkDeviceAttachment()
 config.networkDevices = [network]
 
-// --- Serial console (stdout) ---
+// --- Serial console -> stderr (flows to vm.log via nohup redirect) ---
 let serial = VZVirtioConsoleDeviceSerialPortConfiguration()
 let serialPort = VZFileHandleSerialPortAttachment(
     fileHandleForReading: FileHandle.standardInput,
-    fileHandleForWriting: FileHandle.standardOutput
+    fileHandleForWriting: FileHandle.standardError
 )
 serial.attachment = serialPort
 config.serialPorts = [serial]
@@ -155,11 +130,8 @@ config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
 
 try! config.validate()
 
-// VZVirtualMachine must be created and started on the main queue.
-// RunLoop.main.run() is required for async callbacks to fire.
+// VZVirtualMachine must be used on the main queue; RunLoop keeps callbacks alive.
 let vm = VZVirtualMachine(configuration: config, queue: DispatchQueue.main)
-
-vm.delegate = nil  // no delegate needed
 
 DispatchQueue.main.async {
     vm.start { result in
@@ -173,7 +145,6 @@ DispatchQueue.main.async {
     }
 }
 
-// Observe state changes to exit when VM stops
 let observer = NotificationCenter.default.addObserver(
     forName: NSNotification.Name("com.apple.Virtualization.VZVirtualMachine.stateDidChange"),
     object: vm,
@@ -187,14 +158,14 @@ let observer = NotificationCenter.default.addObserver(
     }
 }
 
-_ = observer  // retain
+_ = observer
 
 RunLoop.main.run()
 SWIFT
 
 echo "Swift VM runner written to: $SWIFT_RUNNER"
 
-# === 4. Compile and run Swift VM runner ===
+# === 4. Compile, sign, and run Swift VM runner ===
 SWIFT_BIN="$VM_DIR/run-vm"
 
 echo "Compiling Swift VM runner..."
@@ -202,7 +173,6 @@ swiftc \
   -framework Virtualization \
   -o "$SWIFT_BIN" \
   "$SWIFT_RUNNER"
-
 
 ENTITLEMENTS="$VM_DIR/entitlements.plist"
 cat > "$ENTITLEMENTS" <<'PLIST'
@@ -221,12 +191,9 @@ codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
 
 echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
 nohup "$SWIFT_BIN" \
-  "$UBUNTU_ISO" \
-  "$SEED_ISO" \
+  "$AUTOINSTALL_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
-  "$KERNEL" \
-  "$INITRD" \
   "$RAM_MB" \
   "$CPU_COUNT" \
   > "$VM_DIR/vm.log" 2>&1 &
