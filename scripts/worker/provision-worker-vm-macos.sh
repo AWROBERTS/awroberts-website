@@ -15,7 +15,7 @@ set -euo pipefail
 # ============================================================================
 
 # === CONFIG ===
-VM_NAME="worker-arm"
+VM_NAME="awr-ffmpeg"
 VM_DIR="$HOME/VMs/${VM_NAME}"
 
 UBUNTU_ISO="$HOME/worker-ubuntu.iso"
@@ -190,13 +190,16 @@ echo "Signing VM runner with virtualization entitlement..."
 codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
 
 echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
-"$SWIFT_BIN" \
+nohup "$SWIFT_BIN" \
   "$UBUNTU_ISO" \
   "$SEED_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
   "$RAM_MB" \
-  "$CPU_COUNT"
+  "$CPU_COUNT" \
+  > "$VM_DIR/vm.log" 2>&1 &
+echo $! > "$VM_DIR/vm.pid"
+echo "VM started in background (PID $(cat "$VM_DIR/vm.pid")). Log: $VM_DIR/vm.log"
 
 echo "VM started. Autoinstall is running inside the VM."
 echo "Mint can begin polling for SSH on the worker IP."
