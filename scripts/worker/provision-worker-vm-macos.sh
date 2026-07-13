@@ -139,27 +139,41 @@ config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
 
 try! config.validate()
 
-let vm = VZVirtualMachine(configuration: config)
+// VZVirtualMachine must be created and started on the main queue.
+// RunLoop.main.run() is required for async callbacks to fire.
+let vm = VZVirtualMachine(configuration: config, queue: DispatchQueue.main)
 
-let sema = DispatchSemaphore(value: 0)
-vm.start { result in
-    switch result {
-    case .success:
-        print("VM started successfully.")
-    case .failure(let err):
-        fputs("Failed to start VM: \(err)\n", stderr)
-        exit(1)
+vm.delegate = nil  // no delegate needed
+
+DispatchQueue.main.async {
+    vm.start { result in
+        switch result {
+        case .success:
+            fputs("VM started successfully.\n", stderr)
+        case .failure(let err):
+            fputs("Failed to start VM: \(err)\n", stderr)
+            exit(1)
+        }
     }
 }
 
-// Keep process alive until VM stops
-NotificationCenter.default.addObserver(forName: NSNotification.Name("VZVirtualMachineStateDidChange"), object: vm, queue: nil) { _ in
-    if vm.state == .stopped || vm.state == .error {
-        sema.signal()
+// Observe state changes to exit when VM stops
+let observer = NotificationCenter.default.addObserver(
+    forName: NSNotification.Name("com.apple.Virtualization.VZVirtualMachine.stateDidChange"),
+    object: vm,
+    queue: nil
+) { _ in
+    DispatchQueue.main.async {
+        if vm.state == .stopped || vm.state == .error {
+            fputs("VM stopped (state: \(vm.state.rawValue)).\n", stderr)
+            exit(0)
+        }
     }
 }
 
-sema.wait()
+_ = observer  // retain
+
+RunLoop.main.run()
 SWIFT
 
 echo "Swift VM runner written to: $SWIFT_RUNNER"
