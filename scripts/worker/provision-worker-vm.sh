@@ -25,13 +25,21 @@ MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/${MAC_VM_SCRIPT}"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
-# === 1. Download original Ubuntu ARM ISO ===
+# === 1. Ensure required tools are installed ===
+for pkg in xorriso curl openssl; do
+  if ! command -v "$pkg" &>/dev/null; then
+    echo "Installing missing dependency: $pkg"
+    sudo apt-get install -y "$pkg"
+  fi
+done
+
+# === 2. Download original Ubuntu ARM ISO ===
 if [ ! -f "$ISO_ORIG" ]; then
   echo "Downloading Ubuntu ARM ISO..."
   curl -L -o "$ISO_ORIG" https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-arm64.iso
 fi
 
-# === 2. Generate hashed password ===
+# === 3. Generate hashed password ===
 HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 
 # === 3. Create nocloud autoinstall files ===
