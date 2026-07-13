@@ -173,6 +173,22 @@ swiftc \
   -o "$SWIFT_BIN" \
   "$SWIFT_RUNNER"
 
+
+ENTITLEMENTS="$VM_DIR/entitlements.plist"
+cat > "$ENTITLEMENTS" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.virtualization</key>
+    <true/>
+</dict>
+</plist>
+PLIST
+
+echo "Signing VM runner with virtualization entitlement..."
+codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
+
 echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
 "$SWIFT_BIN" \
   "$UBUNTU_ISO" \
