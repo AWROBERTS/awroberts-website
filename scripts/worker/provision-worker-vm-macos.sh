@@ -18,7 +18,8 @@ set -euo pipefail
 VM_NAME="worker-arm"
 VM_DIR="$HOME/VMs/${VM_NAME}"
 
-ISO_PATH="$HOME/worker-autoinstall.iso"
+UBUNTU_ISO="$HOME/worker-ubuntu.iso"
+SEED_ISO="$HOME/worker-seed.iso"
 
 OS_DISK_SIZE_GB=20
 HLS_DISK_SIZE_GB=20
@@ -39,8 +40,13 @@ if (( MACOS_MAJOR < 13 )); then
   exit 1
 fi
 
-if [ ! -f "$ISO_PATH" ]; then
-  echo "ERROR: Autoinstall ISO not found at: $ISO_PATH"
+if [ ! -f "$UBUNTU_ISO" ]; then
+  echo "ERROR: Ubuntu ISO not found at: $UBUNTU_ISO"
+  exit 1
+fi
+
+if [ ! -f "$SEED_ISO" ]; then
+  echo "ERROR: Seed ISO not found at: $SEED_ISO"
   exit 1
 fi
 
@@ -67,16 +73,17 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 6 else {
-    fputs("Usage: run-vm <iso-path> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
+guard CommandLine.arguments.count == 7 else {
+    fputs("Usage: run-vm <ubuntu-iso> <seed-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
     exit(1)
 }
 
-let isoPath    = CommandLine.arguments[1]
-let osDisk     = CommandLine.arguments[2]
-let hlsDisk    = CommandLine.arguments[3]
-let ramMB      = Int(CommandLine.arguments[4]) ?? 4096
-let cpuCount   = Int(CommandLine.arguments[5]) ?? 4
+let ubuntuISO  = CommandLine.arguments[1]
+let seedISO    = CommandLine.arguments[2]
+let osDisk     = CommandLine.arguments[3]
+let hlsDisk    = CommandLine.arguments[4]
+let ramMB      = Int(CommandLine.arguments[5]) ?? 4096
+let cpuCount   = Int(CommandLine.arguments[6]) ?? 4
 
 // --- Boot loader: EFI (required for Linux on Apple Virtualization) ---
 let efi = VZEFIBootLoader()
@@ -89,9 +96,13 @@ config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
 config.bootLoader = efi
 
-// --- Storage: ISO (read-only) ---
-let isoAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: isoPath), readOnly: true)
-let isoDevice = VZVirtioBlockDeviceConfiguration(attachment: isoAttachment)
+// --- Storage: Ubuntu installer ISO (boot) ---
+let ubuntuAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ubuntuISO), readOnly: true)
+let ubuntuDevice = VZVirtioBlockDeviceConfiguration(attachment: ubuntuAttachment)
+
+// --- Storage: cloud-init seed ISO (CIDATA) ---
+let seedAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: seedISO), readOnly: true)
+let seedDevice = VZVirtioBlockDeviceConfiguration(attachment: seedAttachment)
 
 // --- Storage: OS disk ---
 let osAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: osDisk), readOnly: false)
@@ -101,7 +112,7 @@ let osDevice = VZVirtioBlockDeviceConfiguration(attachment: osAttachment)
 let hlsAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: hlsDisk), readOnly: false)
 let hlsDevice = VZVirtioBlockDeviceConfiguration(attachment: hlsAttachment)
 
-config.storageDevices = [isoDevice, osDevice, hlsDevice]
+config.storageDevices = [ubuntuDevice, seedDevice, osDevice, hlsDevice]
 
 // --- Network: NAT (DHCP) ---
 let network = VZVirtioNetworkDeviceConfiguration()
@@ -158,7 +169,8 @@ swiftc \
 
 echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
 "$SWIFT_BIN" \
-  "$ISO_PATH" \
+  "$UBUNTU_ISO" \
+  "$SEED_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
   "$RAM_MB" \
