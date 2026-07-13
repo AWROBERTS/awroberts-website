@@ -2,29 +2,28 @@
 set -euo pipefail
 
 # ============================================================================
-# Worker VM Provisioner (Autoinstall + QEMU)
+# Worker VM Provisioner (Mint Side)
 # ============================================================================
-# This script:
-#   1. Generates autoinstall.yaml
-#   2. Builds a custom autoinstall ISO
-#   3. Creates VM disks (20G main + 20G HLS)
-#   4. Boots QEMU with autoinstall enabled
-#   5. Waits for SSH availability
+# This script runs on Linux Mint and performs:
+#   1. Generate autoinstall user-data + meta-data (nocloud format)
+#   2. Build custom autoinstall ISO (EFI-only, ARM-compatible)
+#   3. Copy ISO to Mac mini
+#   4. Copy macOS-side VM creation script to Mac mini
+#   5. SSH into Mac mini to launch VM using Apple Virtualization
+#   6. Wait for worker VM to come online
+#   7. Trigger worker bootstrap
 #
-# The worker bootstrap (containerd, kubeadm, join, etc.)
-# is handled separately by scripts/worker/bootstrap.sh.
+# Apple Virtualization.framework is EFI/UEFI only — no BIOS/ISOLINUX needed.
 # ============================================================================
 
 # === CONFIG ===
-VM_NAME="worker-arm"
-MAIN_DISK="worker-main.qcow2"
-HLS_DISK="worker-hls.qcow2"
 ISO_ORIG="ubuntu-24.04-live-server-arm64.iso"
 ISO_CUSTOM="ubuntu-autoinstall.iso"
-SSH_PORT=2222
-VM_USER="awr"
-VM_PASS="pastysmasher"
-VM_HOST="localhost"
+
+MAC_VM_SCRIPT="provision-worker-vm-macos.sh"
+MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/${MAC_VM_SCRIPT}"
+
+WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
 # === 1. Download original Ubuntu ARM ISO ===
 if [ ! -f "$ISO_ORIG" ]; then
@@ -35,8 +34,11 @@ fi
 # === 2. Generate hashed password ===
 HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 
-# === 3. Create autoinstall.yaml ===
-cat > autoinstall.yaml <<EOF
+# === 3. Create nocloud autoinstall files ===
+# Ubuntu autoinstall uses cloud-init nocloud source:
+#   user-data = autoinstall config
+#   meta-data  = required but can be empty
+cat > user-data <<EOF
 #cloud-config
 autoinstall:
   version: 1
@@ -52,69 +54,82 @@ autoinstall:
   packages:
     - curl
     - vim
+  late-commands:
+    - shutdown -h now
 EOF
 
-echo "Generated autoinstall.yaml"
+touch meta-data
 
-# === 4. Extract ISO and inject autoinstall.yaml ===
+echo "Generated user-data and meta-data"
+
+# === 4. Extract ISO and inject autoinstall files ===
 echo "Extracting ISO..."
 rm -rf iso-src
 mkdir -p iso-src
 
 xorriso -osirrox on -indev "$ISO_ORIG" -extract / iso-src
+chmod -R u+w iso-src
 
-echo "Injecting autoinstall.yaml..."
-cp autoinstall.yaml iso-src/
+echo "Injecting autoinstall files..."
+cp user-data iso-src/user-data
+cp meta-data iso-src/meta-data
 
-# === 5. Build custom autoinstall ISO ===
-echo "Building custom autoinstall ISO..."
+# === 5. Patch GRUB config to trigger autoinstall on first boot ===
+# Apple Virtualization boots via EFI/GRUB — inject kernel args so
+# cloud-init reads from the ISO itself (ds=nocloud;s=/cdrom/).
+GRUB_CFG="iso-src/boot/grub/grub.cfg"
+if [ -f "$GRUB_CFG" ]; then
+  echo "Patching GRUB config for autoinstall..."
+  # Append autoinstall + nocloud datasource to the first linux line
+  sed -i 's|^\(\s*linux\s.*\)|\1 autoinstall ds=nocloud\;s=/cdrom/|' "$GRUB_CFG"
+else
+  echo "WARNING: GRUB config not found at $GRUB_CFG — autoinstall may not trigger automatically."
+fi
+
+# === 6. Build EFI-only autoinstall ISO ===
+# Apple Virtualization.framework is UEFI-only (ARM). No BIOS/ISOLINUX needed.
+echo "Building EFI-only autoinstall ISO..."
 xorriso -as mkisofs \
   -o "$ISO_CUSTOM" \
-  -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
-  -c boot.cat \
-  -b isolinux.bin \
-  -no-emul-boot \
-  -boot-load-size 4 \
-  -boot-info-table \
-  -eltorito-alt-boot \
+  -r \
+  -V "Ubuntu 24.04 AutoInstall" \
+  -J \
+  --efi-boot-part \
+  --efi-boot-image \
   -e boot/grub/efi.img \
   -no-emul-boot \
-  -isohybrid-gpt-basdat \
-  iso-src
+  iso-src/
 
 echo "Custom autoinstall ISO created: $ISO_CUSTOM"
 
-# === 6. Create VM disks ===
-echo "Creating VM disks..."
-qemu-img create -f qcow2 "$MAIN_DISK" 20G
-qemu-img create -f qcow2 "$HLS_DISK" 20G
+# === 7. Copy ISO to Mac mini ===
+echo "Copying ISO to Mac mini..."
+scp "$ISO_CUSTOM" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-autoinstall.iso"
 
-# === 7. Launch VM with autoinstall ISO ===
-echo "Launching VM with autoinstall ISO..."
-qemu-system-aarch64 \
-  -machine virt \
-  -cpu cortex-a72 \
-  -m 4096 \
-  -smp 4 \
-  -drive if=none,file="$MAIN_DISK",id=main \
-  -device virtio-blk-device,drive=main \
-  -drive if=none,file="$HLS_DISK",id=hls \
-  -device virtio-blk-device,drive=hls \
-  -cdrom "$ISO_CUSTOM" \
-  -boot d \
-  -kernel-args "autoinstall ds=nocloud-net;s=file:///autoinstall.yaml" \
-  -netdev user,id=net0,hostfwd=tcp::${SSH_PORT}-:22 \
-  -device virtio-net-device,netdev=net0 \
-  -nographic &
-VM_PID=$!
+# === 8. Copy macOS VM creation script to Mac mini ===
+echo "Copying macOS VM creation script..."
+scp "$MAC_VM_SCRIPT" "${MAC_USER}@${MAC_HOST}:${MAC_VM_SCRIPT_REMOTE}"
 
-echo "Autoinstall running... waiting for SSH availability"
+# === 9. Ensure macOS script is executable ===
+ssh "${MAC_USER}@${MAC_HOST}" "chmod +x ${MAC_VM_SCRIPT_REMOTE}"
 
-# === 8. Wait for SSH ===
-until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -p "${SSH_PORT}" "${VM_USER}@${VM_HOST}" 'echo ok' 2>/dev/null; do
+# === 10. Trigger VM creation on macOS ===
+echo "Triggering VM creation on Mac mini..."
+ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE}"
+
+# === 11. Wait for worker VM to come online ===
+echo "Waiting for worker VM to become reachable..."
+
+WORKER_IP="${WORKER_IP:-192.168.1.50}"
+
+until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
   sleep 5
 done
 
-echo "=== VM is online via SSH ==="
-echo "Worker VM provision complete."
-echo "Next step: worker bootstrap will run via deploy-kubernetes.sh"
+echo "=== Worker VM is online ==="
+
+# === 12. Run worker bootstrap ===
+echo "Running worker bootstrap..."
+bash "$WORKER_BOOTSTRAP" "$WORKER_IP"
+
+echo "=== Worker VM provision complete ==="
