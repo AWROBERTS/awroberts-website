@@ -80,7 +80,7 @@ cat > user-data <<EOF
 autoinstall:
   version: 1
   identity:
-    hostname: worker-arm
+    hostname: awr-ffmpeg
     username: $VM_USER
     password: "$HASHED_PASS"
   ssh:
@@ -97,8 +97,8 @@ EOF
 
 # meta-data must exist; instance-id prevents re-running on reboot
 cat > meta-data <<EOF
-instance-id: worker-arm-$(date +%s)
-local-hostname: worker-arm
+instance-id: awr-ffmpeg-$(date +%s)
+local-hostname: awr-ffmpeg
 EOF
 
 echo "Generated user-data and meta-data"
