@@ -29,7 +29,18 @@ MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
-# === 1. Ensure required tools are installed ===
+# === 1. Ensure SSH key auth to Mac mini ===
+if [ ! -f ~/.ssh/id_ed25519 ]; then
+  echo "Generating SSH key..."
+  ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+fi
+
+if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "${MAC_USER}@${MAC_HOST}" true 2>/dev/null; then
+  echo "Installing SSH key on Mac mini (password required once)..."
+  ssh-copy-id -i ~/.ssh/id_ed25519.pub "${MAC_USER}@${MAC_HOST}"
+fi
+
+# === 2. Ensure required tools are installed ===
 for pkg in xorriso curl openssl; do
   if ! dpkg -s "$pkg" &>/dev/null 2>&1; then
     echo "Installing missing dependency: $pkg"
