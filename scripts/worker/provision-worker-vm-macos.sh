@@ -52,7 +52,25 @@ fi
 
 mkdir -p "$VM_DIR"
 
-# === 2. Create disk images ===
+# === 2. Extract kernel and initrd from Ubuntu ISO ===
+# Using VZLinuxBootLoader so we can inject 'autoinstall' into the kernel cmdline
+# without needing to rebuild the ISO.
+KERNEL="$VM_DIR/vmlinuz"
+INITRD="$VM_DIR/initrd"
+MOUNT_POINT="/tmp/ubuntu-iso-mount"
+
+if [ ! -f "$KERNEL" ] || [ ! -f "$INITRD" ]; then
+  echo "Mounting Ubuntu ISO to extract kernel and initrd..."
+  mkdir -p "$MOUNT_POINT"
+  hdiutil attach -readonly -mountpoint "$MOUNT_POINT" "$UBUNTU_ISO" -quiet
+  cp "$MOUNT_POINT/casper/vmlinuz" "$KERNEL"
+  cp "$MOUNT_POINT/casper/initrd" "$INITRD"
+  hdiutil detach "$MOUNT_POINT" -quiet
+  rm -rf "$MOUNT_POINT"
+  echo "Kernel and initrd extracted."
+fi
+
+# === 3. Create disk images ===
 OS_DISK="$VM_DIR/os.img"
 HLS_DISK="$VM_DIR/hls.img"
 
@@ -73,8 +91,8 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 7 else {
-    fputs("Usage: run-vm <ubuntu-iso> <seed-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
+guard CommandLine.arguments.count == 9 else {
+    fputs("Usage: run-vm <ubuntu-iso> <seed-iso> <os-disk> <hls-disk> <kernel> <initrd> <ram-mb> <cpu-count>\n", stderr)
     exit(1)
 }
 
@@ -82,25 +100,25 @@ let ubuntuISO  = CommandLine.arguments[1]
 let seedISO    = CommandLine.arguments[2]
 let osDisk     = CommandLine.arguments[3]
 let hlsDisk    = CommandLine.arguments[4]
-let ramMB      = Int(CommandLine.arguments[5]) ?? 4096
-let cpuCount   = Int(CommandLine.arguments[6]) ?? 4
+let kernelPath = CommandLine.arguments[5]
+let initrdPath = CommandLine.arguments[6]
+let ramMB      = Int(CommandLine.arguments[7]) ?? 4096
+let cpuCount   = Int(CommandLine.arguments[8]) ?? 4
 
-// --- Boot loader: EFI (required for Linux on Apple Virtualization) ---
-let efi = VZEFIBootLoader()
-let efiStoreURL = URL(fileURLWithPath: osDisk + ".efi")
-let efiStore: VZEFIVariableStore
-if FileManager.default.fileExists(atPath: efiStoreURL.path) {
-    efiStore = VZEFIVariableStore(url: efiStoreURL)
-} else {
-    efiStore = try! VZEFIVariableStore(creatingVariableStoreAt: efiStoreURL, options: [])
-}
-efi.variableStore = efiStore
+// --- Boot loader: direct Linux boot so we can inject 'autoinstall' cmdline ---
+// VZLinuxBootLoader bypasses EFI/GRUB entirely, allowing full cmdline control.
+let bootLoader = VZLinuxBootLoader(kernelURL: URL(fileURLWithPath: kernelPath))
+bootLoader.initialRamdiskURL = URL(fileURLWithPath: initrdPath)
+// 'autoinstall' suppresses the interactive confirmation prompt.
+// 'ds=nocloud' tells cloud-init to detect the CIDATA-labeled seed ISO.
+// 'console=hvc0' routes serial output to the virtio console.
+bootLoader.commandLine = "quiet autoinstall ds=nocloud console=hvc0"
 
 // --- CPU & memory ---
 let config = VZVirtualMachineConfiguration()
 config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
-config.bootLoader = efi
+config.bootLoader = bootLoader
 
 // --- Storage: Ubuntu installer ISO (boot) ---
 let ubuntuAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ubuntuISO), readOnly: true)
@@ -209,6 +227,8 @@ nohup "$SWIFT_BIN" \
   "$SEED_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
+  "$KERNEL" \
+  "$INITRD" \
   "$RAM_MB" \
   "$CPU_COUNT" \
   > "$VM_DIR/vm.log" 2>&1 &
