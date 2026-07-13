@@ -107,15 +107,24 @@ EOF
 
 echo "Injected user-data and meta-data into ISO"
 
-# === 7. Patch GRUB config to add autoinstall kernel args ===
+# === 7. Patch GRUB config ===
 GRUB_CFG=$(find iso-src -name "grub.cfg" | head -1)
-if [ -n "$GRUB_CFG" ]; then
-  echo "Patching GRUB config: $GRUB_CFG"
-  sed -i 's|^\(\s*linux\s.*\)|\1 autoinstall ds=nocloud;s=/cdrom/|' "$GRUB_CFG"
-else
+if [ -z "$GRUB_CFG" ]; then
   echo "ERROR: grub.cfg not found in extracted ISO."
   exit 1
 fi
+echo "Patching GRUB config: $GRUB_CFG"
+
+# Prepend serial terminal setup and zero timeout so GRUB boots immediately
+# and routes its own output to hvc0 (the virtio serial console).
+GRUB_HEADER='set timeout=0\nserial --speed=115200\nterminal_input serial\nterminal_output serial\n'
+sed -i "1s|^|${GRUB_HEADER}|" "$GRUB_CFG"
+
+# Add kernel args BEFORE the '---' separator so casper sees them correctly.
+# console=hvc0 routes kernel + installer output to the virtio serial device.
+sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall ds=nocloud;s=/cdrom/ console=hvc0 ---|' "$GRUB_CFG"
+# Fallback: if no --- on the line, append at end
+sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall ds=nocloud;s=/cdrom/ console=hvc0|' "$GRUB_CFG"
 
 # === 8. Find ARM EFI boot binary ===
 # Ubuntu ARM ISOs use EFI/BOOT/BOOTAA64.EFI (not efi.img as on x86).
