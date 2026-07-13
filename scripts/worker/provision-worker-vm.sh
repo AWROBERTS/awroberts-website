@@ -44,7 +44,14 @@ fi
 if [ "$ISO_SIZE" -lt "$ISO_MIN_BYTES" ]; then
   echo "ISO missing or too small (${ISO_SIZE} bytes) — downloading Ubuntu ARM ISO..."
   rm -f "$ISO_ORIG"
-  curl -L -o "$ISO_ORIG" https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-arm64.iso
+  curl -L --fail -o "$ISO_ORIG" \
+    https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.2-live-server-arm64.iso
+  ISO_SIZE=$(stat -c%s "$ISO_ORIG")
+  if [ "$ISO_SIZE" -lt "$ISO_MIN_BYTES" ]; then
+    echo "ERROR: ISO download failed or incomplete (${ISO_SIZE} bytes)."
+    rm -f "$ISO_ORIG"
+    exit 1
+  fi
 fi
 
 # === 3. Generate hashed password ===
