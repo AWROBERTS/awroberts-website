@@ -137,6 +137,8 @@ EOF
 # === 8. Inject modified files into ISO (preserving EFI boot structure) ===
 # xorriso -indev/-outdev copies the source ISO and applies only the listed
 # file changes, leaving the El Torito boot catalog and EFI binaries intact.
+# Output file must not exist (xorriso refuses to overwrite non-empty media).
+rm -f "$ISO_CUSTOM"
 echo "Creating autoinstall ISO (injecting files into original)..."
 xorriso \
   -indev "$ISO_ORIG" \
