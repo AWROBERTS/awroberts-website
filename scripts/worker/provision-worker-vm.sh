@@ -143,6 +143,7 @@ echo "Creating autoinstall ISO (injecting files into original)..."
 xorriso \
   -indev "$ISO_ORIG" \
   -outdev "$ISO_CUSTOM" \
+  -boot_image any replay \
   -map "$TMPWORK/user-data"          /user-data \
   -map "$TMPWORK/meta-data"          /meta-data \
   -map "$TMPWORK/boot/grub/grub.cfg" /boot/grub/grub.cfg \
