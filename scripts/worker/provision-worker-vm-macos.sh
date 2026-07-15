@@ -19,6 +19,7 @@ VM_NAME="awr-ffmpeg"
 VM_DIR="$HOME/VMs/${VM_NAME}"
 
 AUTOINSTALL_ISO="$HOME/worker-autoinstall.iso"
+CIDATA_ISO="$HOME/worker-cidata.iso"
 
 OS_DISK_SIZE_GB=20
 HLS_DISK_SIZE_GB=20
@@ -41,6 +42,10 @@ fi
 
 if [ ! -f "$AUTOINSTALL_ISO" ]; then
   echo "ERROR: Autoinstall ISO not found at: $AUTOINSTALL_ISO"
+  exit 1
+fi
+if [ ! -f "$CIDATA_ISO" ]; then
+  echo "ERROR: CIDATA seed ISO not found at: $CIDATA_ISO"
   exit 1
 fi
 
@@ -81,20 +86,19 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 6 else {
-    fputs("Usage: run-vm <autoinstall-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
+guard CommandLine.arguments.count == 7 else {
+    fputs("Usage: run-vm <autoinstall-iso> <cidata-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
     exit(1)
 }
 
-let isoPath  = CommandLine.arguments[1]
-let osDisk   = CommandLine.arguments[2]
-let hlsDisk  = CommandLine.arguments[3]
-let ramMB    = Int(CommandLine.arguments[4]) ?? 4096
-let cpuCount = Int(CommandLine.arguments[5]) ?? 4
+let isoPath    = CommandLine.arguments[1]
+let ciDataPath = CommandLine.arguments[2]
+let osDisk     = CommandLine.arguments[3]
+let hlsDisk    = CommandLine.arguments[4]
+let ramMB      = Int(CommandLine.arguments[5]) ?? 4096
+let cpuCount   = Int(CommandLine.arguments[6]) ?? 4
 
 // --- Boot loader: EFI ---
-// The autoinstall ISO has been rebuilt on Mint with 'autoinstall' already
-// in the GRUB kernel cmdline, so no need for VZLinuxBootLoader.
 let efi = VZEFIBootLoader()
 let efiStoreURL = URL(fileURLWithPath: osDisk + ".efi")
 let efiStore: VZEFIVariableStore
@@ -111,9 +115,15 @@ config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
 config.bootLoader = efi
 
-// --- Storage: autoinstall ISO (boot, read-only) ---
+// --- Storage: Ubuntu boot ISO (read-only, EFI boots from here) ---
 let isoAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: isoPath), readOnly: true)
 let isoDevice = VZVirtioBlockDeviceConfiguration(attachment: isoAttachment)
+
+// --- Storage: CIDATA seed ISO (read-only, cloud-init reads user-data from here) ---
+// cloud-init automatically detects any disk labeled "CIDATA" and loads
+// user-data/meta-data from it — no kernel cmdline datasource args needed.
+let ciDataAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ciDataPath), readOnly: true)
+let ciDataDevice = VZVirtioBlockDeviceConfiguration(attachment: ciDataAttachment)
 
 // --- Storage: OS disk ---
 let osAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: osDisk), readOnly: false)
@@ -123,7 +133,7 @@ let osDevice = VZVirtioBlockDeviceConfiguration(attachment: osAttachment)
 let hlsAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: hlsDisk), readOnly: false)
 let hlsDevice = VZVirtioBlockDeviceConfiguration(attachment: hlsAttachment)
 
-config.storageDevices = [isoDevice, osDevice, hlsDevice]
+config.storageDevices = [isoDevice, ciDataDevice, osDevice, hlsDevice]
 
 // --- Network: NAT (DHCP) ---
 let network = VZVirtioNetworkDeviceConfiguration()
@@ -206,6 +216,7 @@ codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
 echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
 nohup "$SWIFT_BIN" \
   "$AUTOINSTALL_ISO" \
+  "$CIDATA_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
   "$RAM_MB" \
