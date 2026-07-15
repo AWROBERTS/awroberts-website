@@ -27,6 +27,15 @@ MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
+# === 0. Skip if worker VM is already healthy ===
+WORKER_IP="${WORKER_IP}"
+if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
+    "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; then
+  echo "Worker VM is already reachable at ${WORKER_IP} — skipping provisioning."
+  exit 0
+fi
+echo "Worker VM not reachable at ${WORKER_IP} — provisioning now."
+
 # === 1. Ensure SSH key auth to Mac mini ===
 if [ ! -f ~/.ssh/id_ed25519 ]; then
   echo "Generating SSH key..."
@@ -94,22 +103,26 @@ else
   sed -i "1s|^|set timeout=0\n|" "$GRUB_CFG"
 fi
 
-# Inject kernel args BEFORE the '---' separator so casper sees them.
-# autoinstall: unattended install (no confirmation prompt).
-# ds=nocloud;s=/cdrom/: cloud-init reads user-data/meta-data from ISO root.
-# console=hvc0: kernel + installer output goes to the virtio serial device.
-sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall ds=nocloud;s=/cdrom/ console=hvc0 ---|' "$GRUB_CFG"
-# Fallback: if no --- on the line, append args at end of linux line
-sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall ds=nocloud;s=/cdrom/ console=hvc0|' "$GRUB_CFG"
+# Add console=hvc0 to the kernel cmdline so the kernel + installer output
+# reaches hvc0 (the virtio serial device → vm.log).
+# autoinstall config is provided via a separate CIDATA seed ISO (step 7),
+# so no ds=nocloud or autoinstall args are needed here.
+sed -i 's|^\(\s*linux\s.*\)---|  \1console=hvc0 ---|' "$GRUB_CFG"
+# Fallback: if no --- separator on the line, append at end
+sed -i '/console=hvc0/! s|^\(\s*linux\s.*\)$|\1 console=hvc0|' "$GRUB_CFG"
 
 echo "=== Patched grub.cfg ==="
 cat "$GRUB_CFG"
 echo "=== End grub.cfg ==="
 
-# === 7. Create autoinstall user-data and meta-data ===
-# cloud-init reads these from /cdrom/ (where the ISO is mounted by casper)
-# because the kernel cmdline contains ds=nocloud;s=/cdrom/
-cat > "$TMPWORK/user-data" <<EOF
+# === 7. Create CIDATA seed ISO ===
+# cloud-init automatically scans all attached disks for a filesystem labeled
+# "CIDATA" and reads user-data / meta-data from it — no kernel cmdline args
+# required. Ubuntu 24.04+ starts autoinstall automatically when cloud-init
+# user-data contains an `autoinstall:` section.
+mkdir -p "$TMPWORK/cidata"
+
+cat > "$TMPWORK/cidata/user-data" <<EOF
 #cloud-config
 autoinstall:
   version: 1
@@ -129,31 +142,37 @@ autoinstall:
     - shutdown -h now
 EOF
 
-cat > "$TMPWORK/meta-data" <<EOF
+cat > "$TMPWORK/cidata/meta-data" <<EOF
 instance-id: awr-ffmpeg-$(date +%s)
 local-hostname: awr-ffmpeg
 EOF
 
-# === 8. Inject modified files into ISO (preserving EFI boot structure) ===
-# xorriso -indev/-outdev copies the source ISO and applies only the listed
-# file changes, leaving the El Torito boot catalog and EFI binaries intact.
-# Output file must not exist (xorriso refuses to overwrite non-empty media).
+CIDATA_ISO="$TMPWORK/cidata.iso"
+echo "Creating CIDATA seed ISO..."
+xorriso -as mkisofs \
+  -V "CIDATA" \
+  -J -r \
+  -o "$CIDATA_ISO" \
+  "$TMPWORK/cidata/"
+
+# === 8. Inject patched grub.cfg into Ubuntu ISO (preserving EFI boot) ===
+# Only the grub.cfg is modified — user-data/meta-data come from CIDATA ISO.
 rm -f "$ISO_CUSTOM"
-echo "Creating autoinstall ISO (injecting files into original)..."
+echo "Creating boot ISO (patching grub.cfg into original)..."
 xorriso \
   -indev "$ISO_ORIG" \
   -outdev "$ISO_CUSTOM" \
   -boot_image any replay \
-  -map "$TMPWORK/user-data"          /user-data \
-  -map "$TMPWORK/meta-data"          /meta-data \
   -map "$TMPWORK/boot/grub/grub.cfg" /boot/grub/grub.cfg \
   -commit_eject none
 
-echo "Custom autoinstall ISO created: $ISO_CUSTOM"
+echo "Boot ISO created: $ISO_CUSTOM"
 
-# === 10. Copy modified ISO to Mac mini ===
-echo "Copying autoinstall ISO to Mac mini..."
+# === 10. Copy ISOs to Mac mini ===
+echo "Copying boot ISO to Mac mini..."
 scp "$ISO_CUSTOM" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-autoinstall.iso"
+echo "Copying CIDATA seed ISO to Mac mini..."
+scp "$CIDATA_ISO" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-cidata.iso"
 
 # === 11. Copy macOS VM creation script to Mac mini ===
 echo "Copying macOS VM creation script..."
@@ -166,8 +185,6 @@ ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE}"
 
 # === 13. Wait for worker VM to come online ===
 echo "Waiting for worker VM to become reachable..."
-
-WORKER_IP="${WORKER_IP:-192.168.1.50}"
 
 until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
   sleep 5
