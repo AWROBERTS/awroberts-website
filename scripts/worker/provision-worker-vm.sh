@@ -70,17 +70,46 @@ echo "Ubuntu ISO ready: $ISO_ORIG ($(( ISO_SIZE / 1024 / 1024 )) MB)"
 # === 4. Generate hashed password ===
 HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 
-# === 5. Extract ISO ===
-echo "Extracting ISO..."
-rm -rf iso-src
-mkdir -p iso-src
-bsdtar -xf "$ISO_ORIG" -C iso-src/
-chmod -R u+w iso-src
+# === 5. Prepare autoinstall files in a temp directory ===
+# We inject files directly into the original ISO rather than extracting and
+# rebuilding from scratch — this preserves the El Torito EFI boot catalog
+# and hybrid GPT structure that Apple Virtualization.framework requires.
+TMPWORK=$(mktemp -d)
+trap 'rm -rf "$TMPWORK"' EXIT
 
-# === 6. Inject autoinstall user-data and meta-data ===
-# cloud-init reads user-data/meta-data from /cdrom/ (the ISO mount point)
-# when kernel cmdline contains: ds=nocloud;s=/cdrom/
-cat > iso-src/user-data <<EOF
+# === 6. Extract GRUB config from original ISO (partial extract — fast) ===
+bsdtar -xf "$ISO_ORIG" -C "$TMPWORK/" boot/grub/grub.cfg 2>/dev/null || \
+  bsdtar -xf "$ISO_ORIG" -C "$TMPWORK/" boot/grub/grub.cfg
+GRUB_CFG="$TMPWORK/boot/grub/grub.cfg"
+chmod u+w "$GRUB_CFG"
+echo "Patching GRUB config..."
+
+# Set timeout=0 so GRUB boots immediately without waiting.
+# Do NOT add `terminal_output serial` — on EFI ARM (Apple VZ) the virtio
+# console is not a 16550 UART; that command hangs GRUB. Let the EFI console
+# handle GRUB output. Linux gets console=hvc0 at the kernel level.
+if grep -q 'set timeout=' "$GRUB_CFG"; then
+  sed -i 's/set timeout=[0-9]*/set timeout=0/' "$GRUB_CFG"
+else
+  sed -i "1s|^|set timeout=0\n|" "$GRUB_CFG"
+fi
+
+# Inject kernel args BEFORE the '---' separator so casper sees them.
+# autoinstall: unattended install (no confirmation prompt).
+# ds=nocloud;s=/cdrom/: cloud-init reads user-data/meta-data from ISO root.
+# console=hvc0: kernel + installer output goes to the virtio serial device.
+sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall ds=nocloud;s=/cdrom/ console=hvc0 ---|' "$GRUB_CFG"
+# Fallback: if no --- on the line, append args at end of linux line
+sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall ds=nocloud;s=/cdrom/ console=hvc0|' "$GRUB_CFG"
+
+echo "=== Patched grub.cfg ==="
+cat "$GRUB_CFG"
+echo "=== End grub.cfg ==="
+
+# === 7. Create autoinstall user-data and meta-data ===
+# cloud-init reads these from /cdrom/ (where the ISO is mounted by casper)
+# because the kernel cmdline contains ds=nocloud;s=/cdrom/
+cat > "$TMPWORK/user-data" <<EOF
 #cloud-config
 autoinstall:
   version: 1
@@ -100,67 +129,22 @@ autoinstall:
     - shutdown -h now
 EOF
 
-cat > iso-src/meta-data <<EOF
+cat > "$TMPWORK/meta-data" <<EOF
 instance-id: awr-ffmpeg-$(date +%s)
 local-hostname: awr-ffmpeg
 EOF
 
-echo "Injected user-data and meta-data into ISO"
-
-# === 7. Patch GRUB config ===
-GRUB_CFG=$(find iso-src -name "grub.cfg" | head -1)
-if [ -z "$GRUB_CFG" ]; then
-  echo "ERROR: grub.cfg not found in extracted ISO."
-  exit 1
-fi
-echo "Patching GRUB config: $GRUB_CFG"
-
-# Set timeout=0 so GRUB boots immediately.
-# Do NOT redirect GRUB to serial — on EFI ARM (Apple VZ) the virtio console
-# is not a 16550 UART, so `terminal_output serial` hangs GRUB. Let EFI
-# handle GRUB output; Linux gets console=hvc0 at the kernel level instead.
-if grep -q 'set timeout=' "$GRUB_CFG"; then
-  sed -i 's/set timeout=[0-9]*/set timeout=0/' "$GRUB_CFG"
-else
-  sed -i "1s|^|set timeout=0\n|" "$GRUB_CFG"
-fi
-
-# Add kernel args BEFORE the '---' separator so casper sees them correctly.
-# autoinstall: unattended install (no confirmation prompt).
-# ds=nocloud;s=/cdrom/: cloud-init reads user-data/meta-data from ISO root.
-# console=hvc0: routes kernel + installer output to the virtio serial device.
-sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall ds=nocloud;s=/cdrom/ console=hvc0 ---|' "$GRUB_CFG"
-# Fallback: if no --- on the line, append at end
-sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall ds=nocloud;s=/cdrom/ console=hvc0|' "$GRUB_CFG"
-
-echo "=== Patched grub.cfg ==="
-cat "$GRUB_CFG"
-echo "=== End grub.cfg ==="
-
-# === 8. Find ARM EFI boot binary ===
-# Ubuntu ARM ISOs use EFI/BOOT/BOOTAA64.EFI (not efi.img as on x86).
-EFI_BIN=$(find iso-src -iname "BOOTAA64.EFI" | head -1)
-if [ -z "$EFI_BIN" ]; then
-  echo "ERROR: Cannot find BOOTAA64.EFI in extracted ISO."
-  echo "EFI directory contents:"
-  find iso-src -iname "*.EFI" 2>/dev/null || true
-  exit 1
-fi
-EFI_REL="${EFI_BIN#iso-src/}"
-echo "Found ARM EFI binary: $EFI_REL"
-
-# === 9. Rebuild EFI-only autoinstall ISO ===
-echo "Rebuilding ISO with autoinstall config..."
-xorriso -as mkisofs \
-  -o "$ISO_CUSTOM" \
-  -r \
-  -V "Ubuntu-AutoInstall" \
-  -J \
-  --efi-boot-part \
-  --efi-boot-image \
-  -e "$EFI_REL" \
-  -no-emul-boot \
-  iso-src/
+# === 8. Inject modified files into ISO (preserving EFI boot structure) ===
+# xorriso -indev/-outdev copies the source ISO and applies only the listed
+# file changes, leaving the El Torito boot catalog and EFI binaries intact.
+echo "Creating autoinstall ISO (injecting files into original)..."
+xorriso \
+  -indev "$ISO_ORIG" \
+  -outdev "$ISO_CUSTOM" \
+  -map "$TMPWORK/user-data"          /user-data \
+  -map "$TMPWORK/meta-data"          /meta-data \
+  -map "$TMPWORK/boot/grub/grub.cfg" /boot/grub/grub.cfg \
+  -commit_eject none
 
 echo "Custom autoinstall ISO created: $ISO_CUSTOM"
 

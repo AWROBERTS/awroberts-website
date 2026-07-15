@@ -46,21 +46,35 @@ fi
 
 mkdir -p "$VM_DIR"
 
-# === 2. Create disk images ===
+# === 2. Clean up stale VM state from any previous failed run ===
+# The EFI variable store records boot entries; a stale store from a failed
+# install causes the EFI firmware to try wrong boot devices and idle silently.
+# The OS disk must also be zeroed so the installer can partition it fresh.
+if [ -f "$VM_DIR/vm.pid" ]; then
+  OLD_PID=$(cat "$VM_DIR/vm.pid")
+  if kill -0 "$OLD_PID" 2>/dev/null; then
+    echo "Stopping existing VM (PID $OLD_PID)..."
+    kill "$OLD_PID" 2>/dev/null || true
+    sleep 2
+  fi
+  rm -f "$VM_DIR/vm.pid"
+fi
+rm -f "$VM_DIR/os.img" "$VM_DIR/os.img.efi" "$VM_DIR/vm.log"
+echo "Cleared stale VM state."
+
+# === 3. Create disk images ===
 OS_DISK="$VM_DIR/os.img"
 HLS_DISK="$VM_DIR/hls.img"
 
-if [ ! -f "$OS_DISK" ]; then
-  echo "Creating OS disk (${OS_DISK_SIZE_GB}GB)..."
-  dd if=/dev/zero bs=1m count=$(( OS_DISK_SIZE_GB * 1024 )) of="$OS_DISK" 2>/dev/null
-fi
+echo "Creating OS disk (${OS_DISK_SIZE_GB}GB)..."
+dd if=/dev/zero bs=1m count=$(( OS_DISK_SIZE_GB * 1024 )) of="$OS_DISK" 2>/dev/null
 
 if [ ! -f "$HLS_DISK" ]; then
   echo "Creating HLS disk (${HLS_DISK_SIZE_GB}GB)..."
   dd if=/dev/zero bs=1m count=$(( HLS_DISK_SIZE_GB * 1024 )) of="$HLS_DISK" 2>/dev/null
 fi
 
-# === 3. Write Swift VM runner ===
+# === 4. Write Swift VM runner ===
 SWIFT_RUNNER="$VM_DIR/run-vm.swift"
 
 cat > "$SWIFT_RUNNER" <<'SWIFT'
@@ -165,7 +179,7 @@ SWIFT
 
 echo "Swift VM runner written to: $SWIFT_RUNNER"
 
-# === 4. Compile, sign, and run Swift VM runner ===
+# === 5. Compile, sign, and run Swift VM runner ===
 SWIFT_BIN="$VM_DIR/run-vm"
 
 echo "Compiling Swift VM runner..."
