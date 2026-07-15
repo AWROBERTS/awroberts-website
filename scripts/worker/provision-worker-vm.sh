@@ -27,6 +27,15 @@ MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
+# === 0. Skip if worker VM is already healthy ===
+WORKER_IP="${WORKER_IP}"
+if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
+    "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; then
+  echo "Worker VM is already reachable at ${WORKER_IP} — skipping provisioning."
+  exit 0
+fi
+echo "Worker VM not reachable at ${WORKER_IP} — provisioning now."
+
 # === 1. Ensure SSH key auth to Mac mini ===
 if [ ! -f ~/.ssh/id_ed25519 ]; then
   echo "Generating SSH key..."
@@ -166,8 +175,6 @@ ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE}"
 
 # === 13. Wait for worker VM to come online ===
 echo "Waiting for worker VM to become reachable..."
-
-WORKER_IP="${WORKER_IP:-192.168.1.50}"
 
 until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
   sleep 5
