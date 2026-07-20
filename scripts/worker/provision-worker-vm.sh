@@ -126,6 +126,21 @@ cat > "$TMPWORK/cidata/user-data" <<EOF
 #cloud-config
 autoinstall:
   version: 1
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        match:
+          macaddress: "$WORKER_MAC"
+        set-name: eth0
+        dhcp4: false
+        addresses:
+          - $WORKER_IP/24
+        routes:
+          - to: default
+            via: $WORKER_GATEWAY
+        nameservers:
+          addresses: [$WORKER_GATEWAY, 1.1.1.1]
   identity:
     hostname: awr-ffmpeg
     username: $VM_USER
@@ -181,7 +196,7 @@ ssh "${MAC_USER}@${MAC_HOST}" "chmod +x ${MAC_VM_SCRIPT_REMOTE}"
 
 # === 12. Trigger VM creation on macOS ===
 echo "Triggering VM creation on Mac mini..."
-ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE}"
+ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE} ${WORKER_MAC}"
 
 # === 13. Wait for worker VM to come online ===
 echo "Waiting for worker VM to become reachable..."

@@ -27,6 +27,10 @@ HLS_DISK_SIZE_GB=20
 RAM_MB=4096
 CPU_COUNT=4
 
+# Fixed MAC (passed from the Mint provisioner; must match the autoinstall
+# netplan macaddress match so the VM lands on its static IP).
+WORKER_MAC="${1:-02:52:56:00:64:06}"
+
 # === 1. Sanity checks ===
 if [[ "$(uname -m)" != "arm64" ]]; then
   echo "ERROR: Apple Virtualization.framework requires Apple Silicon (arm64)."
@@ -86,17 +90,20 @@ cat > "$SWIFT_RUNNER" <<'SWIFT'
 import Virtualization
 import Foundation
 
-guard CommandLine.arguments.count == 7 else {
-    fputs("Usage: run-vm <autoinstall-iso> <cidata-iso> <os-disk> <hls-disk> <ram-mb> <cpu-count>\n", stderr)
+guard CommandLine.arguments.count == 8 else {
+    fputs("Usage: run-vm <autoinstall-iso|none> <cidata-iso|none> <os-disk> <hls-disk> <ram-mb> <cpu-count> <mac>\n", stderr)
     exit(1)
 }
 
+// Pass "none" for the ISO/cidata paths to boot the installed OS from disk
+// (phase B) instead of the installer (phase A).
 let isoPath    = CommandLine.arguments[1]
 let ciDataPath = CommandLine.arguments[2]
 let osDisk     = CommandLine.arguments[3]
 let hlsDisk    = CommandLine.arguments[4]
 let ramMB      = Int(CommandLine.arguments[5]) ?? 4096
 let cpuCount   = Int(CommandLine.arguments[6]) ?? 4
+let macStr     = CommandLine.arguments[7]
 
 // --- Boot loader: EFI ---
 let efi = VZEFIBootLoader()
@@ -115,29 +122,43 @@ config.cpuCount = cpuCount
 config.memorySize = UInt64(ramMB) * 1024 * 1024
 config.bootLoader = efi
 
-// --- Storage: Ubuntu boot ISO (read-only, EFI boots from here) ---
-let isoAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: isoPath), readOnly: true)
-let isoDevice = VZVirtioBlockDeviceConfiguration(attachment: isoAttachment)
+// --- Storage ---
+// Phase A (install): ISO + CIDATA + OS + HLS. Phase B (run installed OS):
+// OS + HLS only, so EFI boots from the installed disk rather than the ISO.
+var storageDevices: [VZStorageDeviceConfiguration] = []
 
-// --- Storage: CIDATA seed ISO (read-only, cloud-init reads user-data from here) ---
+// Ubuntu boot ISO (read-only, EFI boots from here during install)
+if isoPath != "none" {
+    let isoAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: isoPath), readOnly: true)
+    storageDevices.append(VZVirtioBlockDeviceConfiguration(attachment: isoAttachment))
+}
+
+// CIDATA seed ISO (read-only, cloud-init reads user-data from here).
 // cloud-init automatically detects any disk labeled "CIDATA" and loads
 // user-data/meta-data from it — no kernel cmdline datasource args needed.
-let ciDataAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ciDataPath), readOnly: true)
-let ciDataDevice = VZVirtioBlockDeviceConfiguration(attachment: ciDataAttachment)
+if ciDataPath != "none" {
+    let ciDataAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: ciDataPath), readOnly: true)
+    storageDevices.append(VZVirtioBlockDeviceConfiguration(attachment: ciDataAttachment))
+}
 
-// --- Storage: OS disk ---
+// OS disk (always attached)
 let osAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: osDisk), readOnly: false)
-let osDevice = VZVirtioBlockDeviceConfiguration(attachment: osAttachment)
+storageDevices.append(VZVirtioBlockDeviceConfiguration(attachment: osAttachment))
 
-// --- Storage: HLS disk ---
+// HLS disk (always attached)
 let hlsAttachment = try! VZDiskImageStorageDeviceAttachment(url: URL(fileURLWithPath: hlsDisk), readOnly: false)
-let hlsDevice = VZVirtioBlockDeviceConfiguration(attachment: hlsAttachment)
+storageDevices.append(VZVirtioBlockDeviceConfiguration(attachment: hlsAttachment))
 
-config.storageDevices = [isoDevice, ciDataDevice, osDevice, hlsDevice]
+config.storageDevices = storageDevices
 
-// --- Network: NAT (DHCP) ---
+// --- Network: NAT with a fixed MAC (so the VM keeps a stable DHCP/static identity) ---
 let network = VZVirtioNetworkDeviceConfiguration()
 network.attachment = VZNATNetworkDeviceAttachment()
+if let mac = VZMACAddress(string: macStr) {
+    network.macAddress = mac
+} else {
+    fputs("WARNING: invalid MAC '\(macStr)', using a random address.\n", stderr)
+}
 config.networkDevices = [network]
 
 // --- Serial console -> stderr (flows to vm.log via nohup redirect) ---
@@ -213,17 +234,35 @@ PLIST
 echo "Signing VM runner with virtualization entitlement..."
 codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
 
-echo "Starting VM '${VM_NAME}' via Apple Virtualization.framework..."
-nohup "$SWIFT_BIN" \
+# === Phase A: Autoinstall (foreground; boots from ISO, exits on shutdown) ===
+# The autoinstall user-data ends with `shutdown -h now`, so the runner returns
+# once installation completes and the VM powers off. Running in the foreground
+# gives us a clear "install done" signal before we boot the installed system.
+echo "=== Phase A: Running autoinstall (this blocks until install completes) ==="
+"$SWIFT_BIN" \
   "$AUTOINSTALL_ISO" \
   "$CIDATA_ISO" \
   "$OS_DISK" \
   "$HLS_DISK" \
   "$RAM_MB" \
   "$CPU_COUNT" \
+  "$WORKER_MAC" \
+  > "$VM_DIR/vm-install.log" 2>&1
+echo "Autoinstall finished; VM powered off after install."
+
+# === Phase B: Boot the installed OS (background; no install media attached) ===
+# Passing "none" for the ISO and CIDATA paths detaches them, so EFI boots from
+# the installed OS disk. This is the phase that brings SSH up on the network.
+echo "=== Phase B: Booting installed OS from disk ==="
+nohup "$SWIFT_BIN" \
+  none \
+  none \
+  "$OS_DISK" \
+  "$HLS_DISK" \
+  "$RAM_MB" \
+  "$CPU_COUNT" \
+  "$WORKER_MAC" \
   > "$VM_DIR/vm.log" 2>&1 &
 echo $! > "$VM_DIR/vm.pid"
-echo "VM started in background (PID $(cat "$VM_DIR/vm.pid")). Log: $VM_DIR/vm.log"
-
-echo "VM started. Autoinstall is running inside the VM."
-echo "Mint can begin polling for SSH on the worker IP."
+echo "VM booted from disk in background (PID $(cat "$VM_DIR/vm.pid")). Log: $VM_DIR/vm.log"
+echo "Worker VM should come up on the network shortly; Mint can poll for SSH."
