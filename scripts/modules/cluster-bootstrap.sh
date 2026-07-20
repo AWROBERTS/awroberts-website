@@ -57,7 +57,8 @@ should_bootstrap_cluster() {
 # ----------------------------------------------------------------------------
 # Run kubeadm init
 # ----------------------------------------------------------------------------
-bootstrap_control_plane() {
+
+kubeadm_init_control_plane() {
   echo "Bootstrapping control-plane with kubeadm init..."
 
   sudo_if_needed kubeadm init \
@@ -81,7 +82,7 @@ allow_control_plane_scheduling() {
 # ----------------------------------------------------------------------------
 bootstrap_cluster_if_needed() {
   if should_bootstrap_cluster; then
-    bootstrap_control_plane
+    kubeadm_init_control_plane
     allow_control_plane_scheduling
   else
     echo "Cluster already bootstrapped."
