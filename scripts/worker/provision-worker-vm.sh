@@ -103,13 +103,15 @@ else
   sed -i "1s|^|set timeout=0\n|" "$GRUB_CFG"
 fi
 
-# Add console=hvc0 to the kernel cmdline so the kernel + installer output
-# reaches hvc0 (the virtio serial device → vm.log).
-# autoinstall config is provided via a separate CIDATA seed ISO (step 7),
-# so no ds=nocloud or autoinstall args are needed here.
-sed -i 's|^\(\s*linux\s.*\)---|  \1console=hvc0 ---|' "$GRUB_CFG"
+# Add `autoinstall` + console=hvc0 to the kernel cmdline.
+# `autoinstall` makes subiquity run fully unattended. Without it — even when the
+# autoinstall config is delivered via the CIDATA seed ISO — subiquity shows an
+# interactive "Continue with autoinstall? (yes|no)" confirmation before touching
+# the disk, which stalls the headless install forever.
+# console=hvc0 routes kernel + installer output to the virtio serial device (→ vm.log).
+sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall console=hvc0 ---|' "$GRUB_CFG"
 # Fallback: if no --- separator on the line, append at end
-sed -i '/console=hvc0/! s|^\(\s*linux\s.*\)$|\1 console=hvc0|' "$GRUB_CFG"
+sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall console=hvc0|' "$GRUB_CFG"
 
 echo "=== Patched grub.cfg ==="
 cat "$GRUB_CFG"
