@@ -184,10 +184,25 @@ config.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
 
 try! config.validate()
 
+// Detect guest shutdown via the VZVirtualMachineDelegate.
+
+final class VMDelegate: NSObject, VZVirtualMachineDelegate {
+    func guestDidStop(_ virtualMachine: VZVirtualMachine) {
+        fputs("Guest stopped (powered off).\n", stderr)
+        exit(0)
+    }
+    func virtualMachine(_ virtualMachine: VZVirtualMachine, didStopWithError error: Error) {
+        fputs("VM stopped with error: \(error)\n", stderr)
+        exit(0)
+    }
+}
+
 // VZVirtualMachine must be used on the main queue; RunLoop keeps callbacks alive.
 let vm = VZVirtualMachine(configuration: config, queue: DispatchQueue.main)
+let delegate = VMDelegate()
 
 DispatchQueue.main.async {
+    vm.delegate = delegate
     vm.start { result in
         switch result {
         case .success:
@@ -198,21 +213,6 @@ DispatchQueue.main.async {
         }
     }
 }
-
-let observer = NotificationCenter.default.addObserver(
-    forName: NSNotification.Name("com.apple.Virtualization.VZVirtualMachine.stateDidChange"),
-    object: vm,
-    queue: nil
-) { _ in
-    DispatchQueue.main.async {
-        if vm.state == .stopped || vm.state == .error {
-            fputs("VM stopped (state: \(vm.state.rawValue)).\n", stderr)
-            exit(0)
-        }
-    }
-}
-
-_ = observer
 
 RunLoop.main.run()
 SWIFT
