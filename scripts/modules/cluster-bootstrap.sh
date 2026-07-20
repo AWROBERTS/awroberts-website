@@ -62,14 +62,12 @@ kubeadm_init_control_plane() {
   echo "Bootstrapping control-plane with kubeadm init..."
 
   local pod_cidr="${POD_NETWORK_CIDR:-10.244.0.0/16}"
-  local kubeadm_args=(--pod-network-cidr="${pod_cidr}")
-  # Pin the version only when explicitly set; otherwise kubeadm uses the version
-  # of the installed kubeadm binary, avoiding version-skew errors.
-  if [[ -n "${K8S_VERSION:-}" ]]; then
-    kubeadm_args+=(--kubernetes-version="${K8S_VERSION}")
-  fi
 
-  sudo_if_needed kubeadm init "${kubeadm_args[@]}"
+  local kube_version="${K8S_VERSION:-$(kubeadm version -o short)}"
+
+  sudo_if_needed kubeadm init \
+    --pod-network-cidr="${pod_cidr}" \
+    --kubernetes-version="${kube_version}"
 
   mkdir -p "$HOME/.kube"
   sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
