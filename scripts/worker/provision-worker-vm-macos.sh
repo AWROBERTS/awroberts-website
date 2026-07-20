@@ -59,15 +59,24 @@ mkdir -p "$VM_DIR"
 # The EFI variable store records boot entries; a stale store from a failed
 # install causes the EFI firmware to try wrong boot devices and idle silently.
 # The OS disk must also be zeroed so the installer can partition it fresh.
-if [ -f "$VM_DIR/vm.pid" ]; then
-  OLD_PID=$(cat "$VM_DIR/vm.pid")
-  if kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "Stopping existing VM (PID $OLD_PID)..."
-    kill "$OLD_PID" 2>/dev/null || true
-    sleep 2
-  fi
-  rm -f "$VM_DIR/vm.pid"
-fi
+# Kill ANY previous VM runner for this VM — not just the last tracked PID.
+# Stale/zombie runners from earlier or failed runs keep the OS/HLS disk images
+# locked (a VZ disk attachment is exclusive), which makes a fresh VM start fail
+# with "The storage device attachment is invalid." Tracking only vm.pid let
+# these accumulate across runs.
+echo "Killing any existing VM runner processes for this VM..."
+pkill -f "${VM_DIR}/run-vm" 2>/dev/null || true
+# Wait for the runners (and their XPC VirtualMachine helpers) to exit and
+# release the disk locks.
+for _ in $(seq 1 10); do
+  pgrep -f "${VM_DIR}/run-vm" >/dev/null 2>&1 || break
+  sleep 1
+done
+# Force-kill anything still lingering after the grace period.
+pkill -9 -f "${VM_DIR}/run-vm" 2>/dev/null || true
+sleep 1
+
+rm -f "$VM_DIR/vm.pid"
 rm -f "$VM_DIR/os.img" "$VM_DIR/os.img.efi" "$VM_DIR/vm.log"
 echo "Cleared stale VM state."
 
@@ -249,6 +258,15 @@ echo "=== Phase A: Running autoinstall (this blocks until install completes) ===
   "$WORKER_MAC" \
   > "$VM_DIR/vm-install.log" 2>&1
 echo "Autoinstall finished; VM powered off after install."
+
+# The VM runs inside a separate XPC helper that can briefly outlive the runner
+# and keep the disk images locked. Wait for it to release them before Phase B,
+# otherwise the boot start fails with "storage device attachment is invalid".
+for _ in $(seq 1 10); do
+  pgrep -f "${VM_DIR}/run-vm" >/dev/null 2>&1 || break
+  sleep 1
+done
+sleep 2
 
 # === Phase B: Boot the installed OS (background; no install media attached) ===
 # Passing "none" for the ISO and CIDATA paths detaches them, so EFI boots from
