@@ -15,6 +15,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_ROOT="${SCRIPT_DIR}/scripts"
+PROJECT_ROOT="${SCRIPT_DIR}"
 
 SHARED_DIR="${SCRIPTS_ROOT}/shared"
 MODULES_DIR="${SCRIPTS_ROOT}/modules"
@@ -47,6 +48,13 @@ sync_to_worker() {
     "${SHARED_DIR}" \
     "${WORKER_DIR}" \
     "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/scripts/"
+
+  # Sync environment files to worker
+  rsync -avz \
+    "${PROJECT_ROOT}/awroberts-cluster.env" \
+    "${PROJECT_ROOT}/awroberts-control-plane.env" \
+    "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/"
+
 }
 
 # ----------------------------------------------------------------------------
