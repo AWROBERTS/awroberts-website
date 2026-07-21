@@ -57,6 +57,21 @@ sync_to_worker() {
 
 }
 
+sync_kubeconfig_to_worker() {
+  echo "=== Syncing kubeconfig to worker (${WORKER_HOST}) ==="
+
+  # Ensure .kube directory exists
+  ssh "${WORKER_USER}@${WORKER_HOST}" "mkdir -p /home/${WORKER_USER}/.kube"
+
+  # Copy control-plane kubeconfig
+  scp "${PROJECT_ROOT}/admin.conf" \
+      "${WORKER_USER}@${WORKER_HOST}:/home/${WORKER_USER}/.kube/config"
+
+  # Fix permissions
+  ssh "${WORKER_USER}@${WORKER_HOST}" "chmod 600 /home/${WORKER_USER}/.kube/config"
+}
+
+
 # ----------------------------------------------------------------------------
 # Run control-plane bootstrap
 # ----------------------------------------------------------------------------
@@ -86,6 +101,7 @@ main() {
   load_env_file
   provision_worker_vm
   sync_to_worker
+  sync_kubeconfig_to_worker
   run_control_plane
   run_worker
 
