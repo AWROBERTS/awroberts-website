@@ -117,20 +117,32 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      eth0:
-        dhcp4: true
+      enp0s1:
+        dhcp4: false
+        addresses:
+          - $WORKER_IP/24
+        routes:
+          - to: default
+            via: $WORKER_GATEWAY
+        nameservers:
+          addresses: [$WORKER_GATEWAY, 1.1.1.1]
+
   identity:
     hostname: awr-ffmpeg
     username: $VM_USER
     password: "$HASHED_PASS"
+
   ssh:
     install-server: true
+
   storage:
     layout:
       name: direct
+
   packages:
     - curl
     - vim
+
   late-commands:
     - shutdown -h now
 EOF
