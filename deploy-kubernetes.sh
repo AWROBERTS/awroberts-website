@@ -113,7 +113,7 @@ main() {
   MAC_IP=$(getent hosts "$MAC_HOST" | awk '{print $1}')
 
   echo "Ensuring route to worker VM network exists..."
-  WORKER_NET="${WORKER_HOST%.*}.0/24"
+  WORKER_NET="${WORKER_IP%.*}.0/24"
   sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
 
   echo "=== Checking worker reachability (${WORKER_HOST}) ==="
