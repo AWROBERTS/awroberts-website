@@ -43,60 +43,42 @@ fi
 
 mkdir -p "$VM_DIR"
 
-# ============================================================================
-# 2. Clean up stale VM runner processes ONLY
-#    (DO NOT delete os.img — that caused the reinstall loop)
-# ============================================================================
-echo "Killing any existing VM runner processes..."
+# --- Kill stale VM processes ---
 pkill -f "${VM_DIR}/run-vm" 2>/dev/null || true
-
 for _ in $(seq 1 10); do
   pgrep -f "${VM_DIR}/run-vm" >/dev/null 2>&1 || break
   sleep 1
 done
-
 pkill -9 -f "${VM_DIR}/run-vm" 2>/dev/null || true
 sleep 1
 
-rm -f "$VM_DIR/vm.pid"
-rm -f "$VM_DIR/vm.log"
+rm -f "$VM_DIR/vm.pid" "$VM_DIR/vm.log"
 
-echo "Cleared stale VM runner state."
-
-# ============================================================================
-# 3. Create disk images (ONLY if missing)
-# ============================================================================
+# --- Create disks if missing ---
 OS_DISK="$VM_DIR/os.img"
 HLS_DISK="$VM_DIR/hls.img"
 
 if [ ! -f "$OS_DISK" ]; then
-  echo "Creating OS disk (${OS_DISK_SIZE_GB}GB)..."
+  echo "Creating OS disk..."
   dd if=/dev/zero bs=1m count=$(( OS_DISK_SIZE_GB * 1024 )) of="$OS_DISK" 2>/dev/null
 else
   echo "OS disk exists — NOT recreating."
 fi
 
 if [ ! -f "$HLS_DISK" ]; then
-  echo "Creating HLS disk (${HLS_DISK_SIZE_GB}GB)..."
+  echo "Creating HLS disk..."
   dd if=/dev/zero bs=1m count=$(( HLS_DISK_SIZE_GB * 1024 )) of="$HLS_DISK" 2>/dev/null
 else
   echo "HLS disk exists — NOT recreating."
 fi
 
-# ============================================================================
-# 4. Write Swift VM runner (unchanged)
-# ============================================================================
+# --- Copy Swift runner from repo ---
 SWIFT_RUNNER="$VM_DIR/run-vm.swift"
+cp "$HOME/scripts/worker/run-vm.swift" "$SWIFT_RUNNER"
 
-cat > "$SWIFT_RUNNER" <<'SWIFT'
-<your Swift code unchanged>
-SWIFT
+echo "Swift VM runner copied to: $SWIFT_RUNNER"
 
-echo "Swift VM runner written to: $SWIFT_RUNNER"
-
-# ============================================================================
-# 5. Compile + sign (unchanged)
-# ============================================================================
+# --- Compile + sign ---
 SWIFT_BIN="$VM_DIR/run-vm"
 
 swiftc -framework Virtualization -o "$SWIFT_BIN" "$SWIFT_RUNNER"
@@ -115,9 +97,7 @@ PLIST
 
 codesign --sign - --entitlements "$ENTITLEMENTS" --force "$SWIFT_BIN"
 
-# ============================================================================
-# Phase A: Autoinstall (ONLY if OS disk is empty)
-# ============================================================================
+# --- Phase A: autoinstall only if EFI store missing ---
 if [ ! -f "$VM_DIR/os.img.efi" ]; then
   echo "=== Phase A: Running autoinstall ==="
   "$SWIFT_BIN" \
@@ -129,22 +109,18 @@ if [ ! -f "$VM_DIR/os.img.efi" ]; then
     "$CPU_COUNT" \
     "$WORKER_MAC" \
     > "$VM_DIR/vm-install.log" 2>&1
-
-  echo "Autoinstall finished; VM powered off."
 else
   echo "OS already installed — skipping autoinstall."
 fi
 
-# Wait for XPC helper to release disk locks
+# --- Wait for helper to release disk locks ---
 for _ in $(seq 1 10); do
   pgrep -f "${VM_DIR}/run-vm" >/dev/null 2>&1 || break
   sleep 1
 done
 sleep 2
 
-# ============================================================================
-# Phase B: Boot installed OS (always)
-# ============================================================================
+# --- Phase B: boot installed OS ---
 echo "=== Phase B: Booting installed OS ==="
 nohup "$SWIFT_BIN" \
   none \
