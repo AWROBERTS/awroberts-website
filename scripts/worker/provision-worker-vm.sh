@@ -27,13 +27,15 @@ MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
 
 WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
-# === 0. Skip if worker VM is already healthy ===
 WORKER_IP="${WORKER_IP}"
+
+# === 0. Skip if worker VM is already healthy ===
 if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
     "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; then
   echo "Worker VM is already reachable at ${WORKER_IP} — skipping provisioning."
   exit 0
 fi
+
 echo "Worker VM not reachable at ${WORKER_IP} — provisioning now."
 
 # === 1. Ensure SSH key auth to Mac mini ===
@@ -49,13 +51,13 @@ fi
 
 # === 2. Ensure required tools are installed ===
 for pkg in xorriso curl openssl libarchive-tools; do
-  if ! dpkg -s "$pkg" &>/dev/null 2>&1; then
+  if ! dpkg -s "$pkg" &>/dev/null; then
     echo "Installing missing dependency: $pkg"
     sudo apt-get install -y "$pkg"
   fi
 done
 
-# === 3. Download Ubuntu ARM ISO (re-download if missing or corrupt) ===
+# === 3. Download Ubuntu ARM ISO ===
 ISO_SIZE=0
 if [ -f "$ISO_ORIG" ]; then
   ISO_SIZE=$(stat -c%s "$ISO_ORIG")
@@ -86,31 +88,15 @@ HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 TMPWORK=$(mktemp -d)
 trap 'rm -rf "$TMPWORK"' EXIT
 
-# === 6. Extract GRUB config from original ISO (partial extract — fast) ===
-bsdtar -xf "$ISO_ORIG" -C "$TMPWORK/" boot/grub/grub.cfg 2>/dev/null || \
-  bsdtar -xf "$ISO_ORIG" -C "$TMPWORK/" boot/grub/grub.cfg
+bsdtar -xf "$ISO_ORIG" -C "$TMPWORK/" boot/grub/grub.cfg
 GRUB_CFG="$TMPWORK/boot/grub/grub.cfg"
 chmod u+w "$GRUB_CFG"
+
 echo "Patching GRUB config..."
 
-# Set timeout=0 so GRUB boots immediately without waiting.
-# Do NOT add `terminal_output serial` — on EFI ARM (Apple VZ) the virtio
-# console is not a 16550 UART; that command hangs GRUB. Let the EFI console
-# handle GRUB output. Linux gets console=hvc0 at the kernel level.
-if grep -q 'set timeout=' "$GRUB_CFG"; then
-  sed -i 's/set timeout=[0-9]*/set timeout=0/' "$GRUB_CFG"
-else
-  sed -i "1s|^|set timeout=0\n|" "$GRUB_CFG"
-fi
-
-# Add `autoinstall` + console=hvc0 to the kernel cmdline.
-# `autoinstall` makes subiquity run fully unattended. Without it — even when the
-# autoinstall config is delivered via the CIDATA seed ISO — subiquity shows an
-# interactive "Continue with autoinstall? (yes|no)" confirmation before touching
-# the disk, which stalls the headless install forever.
-# console=hvc0 routes kernel + installer output to the virtio serial device (→ vm.log).
+# Force autoinstall + console=hvc0
+sed -i 's/set timeout=[0-9]*/set timeout=0/' "$GRUB_CFG"
 sed -i 's|^\(\s*linux\s.*\)---|  \1autoinstall console=hvc0 ---|' "$GRUB_CFG"
-# Fallback: if no --- separator on the line, append at end
 sed -i '/autoinstall/! s|^\(\s*linux\s.*\)$|\1 autoinstall console=hvc0|' "$GRUB_CFG"
 
 echo "=== Patched grub.cfg ==="
@@ -132,17 +118,7 @@ autoinstall:
     version: 2
     ethernets:
       eth0:
-        match:
-          macaddress: "$WORKER_MAC"
-        set-name: eth0
-        dhcp4: false
-        addresses:
-          - $WORKER_IP/24
-        routes:
-          - to: default
-            via: $WORKER_GATEWAY
-        nameservers:
-          addresses: [$WORKER_GATEWAY, 1.1.1.1]
+        dhcp4: true
   identity:
     hostname: awr-ffmpeg
     username: $VM_USER
@@ -165,6 +141,7 @@ local-hostname: awr-ffmpeg
 EOF
 
 CIDATA_ISO="$TMPWORK/cidata.iso"
+
 echo "Creating CIDATA seed ISO..."
 xorriso -as mkisofs \
   -V "CIDATA" \
@@ -185,22 +162,23 @@ xorriso \
 
 echo "Boot ISO created: $ISO_CUSTOM"
 
-# === 10. Copy ISOs to Mac mini ===
+# === 8. Copy ISOs to Mac mini ===
 echo "Copying boot ISO to Mac mini..."
 scp "$ISO_CUSTOM" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-autoinstall.iso"
+
 echo "Copying CIDATA seed ISO to Mac mini..."
 scp "$CIDATA_ISO" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/worker-cidata.iso"
 
-# === 11. Copy macOS VM creation script to Mac mini ===
+# === 9. Copy macOS VM creation script ===
 echo "Copying macOS VM creation script..."
 scp "$MAC_VM_SCRIPT" "${MAC_USER}@${MAC_HOST}:${MAC_VM_SCRIPT_REMOTE}"
 ssh "${MAC_USER}@${MAC_HOST}" "chmod +x ${MAC_VM_SCRIPT_REMOTE}"
 
-# === 12. Trigger VM creation on macOS ===
+# === 10. Trigger VM creation ===
 echo "Triggering VM creation on Mac mini..."
 ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE} ${WORKER_MAC}"
 
-# === 13. Wait for worker VM to come online ===
+# === 11. Wait for worker VM ===
 echo "Waiting for worker VM to become reachable..."
 
 until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
@@ -209,7 +187,7 @@ done
 
 echo "=== Worker VM is online ==="
 
-# === 14. Run worker bootstrap ===
+# === 12. Run worker bootstrap ===
 echo "Running worker bootstrap..."
 bash "$WORKER_BOOTSTRAP" "$WORKER_IP"
 
