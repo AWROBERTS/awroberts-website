@@ -93,13 +93,30 @@ run_worker() {
 }
 
 # ----------------------------------------------------------------------------
+# Worker is reachable
+# ----------------------------------------------------------------------------
+
+worker_is_reachable() {
+  ssh -o ConnectTimeout=5 \
+      -o StrictHostKeyChecking=no \
+      "${WORKER_USER}@${WORKER_HOST}" \
+      "exit" >/dev/null 2>&1
+}
+
+# ----------------------------------------------------------------------------
 # Main orchestration
 # ----------------------------------------------------------------------------
 main() {
   echo "=== Loading environment ==="
-
   load_env_file
-  provision_worker_vm
+
+  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
+  if worker_is_reachable; then
+    echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
+  else
+    provision_worker_vm
+  fi
+
   sync_to_worker
   sync_kubeconfig_to_worker
   run_control_plane
