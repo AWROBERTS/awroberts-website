@@ -186,6 +186,10 @@ echo "Copying macOS VM creation script..."
 scp "$MAC_VM_SCRIPT" "${MAC_USER}@${MAC_HOST}:${MAC_VM_SCRIPT_REMOTE}"
 ssh "${MAC_USER}@${MAC_HOST}" "chmod +x ${MAC_VM_SCRIPT_REMOTE}"
 
+echo "Copying Swift VM runner..."
+ssh "${MAC_USER}@${MAC_HOST}" "mkdir -p /Users/${MAC_USER}/scripts/worker"
+scp "./scripts/worker/run-vm.swift" "${MAC_USER}@${MAC_HOST}:/Users/${MAC_USER}/scripts/worker/run-vm.swift"
+
 # === 10. Trigger VM creation ===
 echo "Triggering VM creation on Mac mini..."
 ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE} ${WORKER_MAC}"
