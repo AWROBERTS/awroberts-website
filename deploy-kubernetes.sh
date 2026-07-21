@@ -25,12 +25,6 @@ WORKER_DIR="${SCRIPTS_ROOT}/worker"
 source "${SHARED_DIR}/load-env-file.sh"
 source "${SHARED_DIR}/sudo-if-needed.sh"
 
-MAC_IP=$(getent hosts "$MAC_HOST" | awk '{print $1}')
-
-echo "Ensuring route to worker VM network exists..."
-WORKER_NET="${WORKER_HOST%.*}.0/24"
-sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
-
 # ----------------------------------------------------------------------------
 # Phase 2: Provision worker VM (autoinstall)
 # ----------------------------------------------------------------------------
@@ -115,6 +109,12 @@ worker_is_reachable() {
 main() {
   echo "=== Loading environment ==="
   load_env_file
+
+  MAC_IP=$(getent hosts "$MAC_HOST" | awk '{print $1}')
+
+  echo "Ensuring route to worker VM network exists..."
+  WORKER_NET="${WORKER_HOST%.*}.0/24"
+  sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
 
   echo "=== Checking worker reachability (${WORKER_HOST}) ==="
   if worker_is_reachable; then
