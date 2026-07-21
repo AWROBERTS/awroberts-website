@@ -46,12 +46,12 @@ install_kube_tools() {
   sudo_if_needed mkdir -p /etc/apt/keyrings
 
   # Import Kubernetes repo key (non-interactive, SSH-safe)
-  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key \
+  curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key \
     | sudo gpg --batch --yes --dearmor \
     | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.gpg >/dev/null
 
   # Add Kubernetes apt repository
-  echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" \
+  echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /" \
     | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
   # Update once more only because we added a new repo
