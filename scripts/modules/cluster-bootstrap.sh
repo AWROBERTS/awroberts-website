@@ -24,6 +24,7 @@ SHARED_DIR="${MODULES_ROOT}/shared"
 
 source "${SHARED_DIR}/sudo-if-needed.sh"
 source "${SHARED_DIR}/load-env-file.sh"
+source "${MODULES_ROOT}/kube-tools.sh"
 
 # ----------------------------------------------------------------------------
 # Detect if control-plane is already present
@@ -62,7 +63,6 @@ kubeadm_init_control_plane() {
   echo "Bootstrapping control-plane with kubeadm init..."
 
   local pod_cidr="${POD_NETWORK_CIDR:-10.244.0.0/16}"
-
   local kube_version="${K8S_VERSION:-$(kubeadm version -o short)}"
 
   sudo_if_needed kubeadm init \
@@ -72,6 +72,12 @@ kubeadm_init_control_plane() {
   mkdir -p "$HOME/.kube"
   sudo_if_needed cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
   sudo_if_needed chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+
+  sudo_if_needed systemctl enable kubelet
+  sudo_if_needed systemctl start kubelet
+
+  validate_kubelet_runtime
+  configure_kubeconfig
 }
 
 # ----------------------------------------------------------------------------
