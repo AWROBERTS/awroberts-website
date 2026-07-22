@@ -10,7 +10,6 @@ set -euo pipefail
 #   3. Runs control-plane bootstrap
 #   4. Runs worker bootstrap
 #
-# This replaces ALL old deploy logic that referenced functions/.
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -57,20 +56,24 @@ sync_to_worker() {
 
 }
 
+# ----------------------------------------------------------------------------
+# Sync kubeconfig to worker
+# ----------------------------------------------------------------------------
 sync_kubeconfig_to_worker() {
   echo "=== Syncing kubeconfig to worker (${WORKER_HOST}) ==="
 
-  # Ensure .kube directory exists
+  if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
+    echo "ERROR: admin.conf not found in ${PROJECT_ROOT}. Control-plane not initialized."
+    exit 1
+  fi
+
   ssh "${WORKER_USER}@${WORKER_HOST}" "mkdir -p /home/${WORKER_USER}/.kube"
 
-  # Copy control-plane kubeconfig
   scp "${PROJECT_ROOT}/admin.conf" \
       "${WORKER_USER}@${WORKER_HOST}:/home/${WORKER_USER}/.kube/config"
 
-  # Fix permissions
   ssh "${WORKER_USER}@${WORKER_HOST}" "chmod 600 /home/${WORKER_USER}/.kube/config"
 }
-
 
 # ----------------------------------------------------------------------------
 # Run control-plane bootstrap
@@ -95,7 +98,6 @@ run_worker() {
 # ----------------------------------------------------------------------------
 # Worker is reachable
 # ----------------------------------------------------------------------------
-
 worker_is_reachable() {
   ssh -o ConnectTimeout=5 \
       -o StrictHostKeyChecking=no \
@@ -123,9 +125,25 @@ main() {
     provision_worker_vm
   fi
 
-  sync_to_worker
-  sync_kubeconfig_to_worker
+  echo "=== Running control-plane bootstrap ==="
   run_control_plane
+
+  echo "=== Syncing kubeconfig from control-plane ==="
+  scp "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:/etc/kubernetes/admin.conf" \
+      "${PROJECT_ROOT}/admin.conf"
+
+  if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
+    echo "ERROR: Failed to retrieve admin.conf from control-plane."
+    exit 1
+  fi
+
+  echo "=== Syncing scripts to worker ==="
+  sync_to_worker
+
+  echo "=== Syncing kubeconfig to worker ==="
+  sync_kubeconfig_to_worker
+
+  echo "=== Running worker bootstrap ==="
   run_worker
 
   echo "=== Deployment complete ==="
