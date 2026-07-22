@@ -63,7 +63,10 @@ install_kube_tools() {
     kubeadm \
     kubectl
 
-  sudo_if_needed systemctl enable kubelet
+  # IMPORTANT: do NOT enable/start kubelet yet; kubeadm init comes first
+  echo "Delaying kubelet enable/start until after kubeadm init"
+  sudo_if_needed systemctl disable kubelet || true
+  sudo_if_needed systemctl stop kubelet || true
 }
 
 # ----------------------------------------------------------------------------
@@ -80,7 +83,7 @@ Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
 EOF
 
   sudo_if_needed systemctl daemon-reload
-  sudo_if_needed systemctl restart kubelet
+  # Do NOT restart kubelet here; it will be started after kubeadm init
 }
 
 # ----------------------------------------------------------------------------
@@ -111,13 +114,13 @@ configure_kubeconfig() {
 }
 
 # ----------------------------------------------------------------------------
-# Wrapper: install + configure + validate
+# Wrapper: install + configure (no runtime validation yet)
 # ----------------------------------------------------------------------------
 setup_kube_tools() {
   install_kube_tools
   configure_kubelet
-  validate_kubelet_runtime
-  configure_kubeconfig
+  # NOTE: validate_kubelet_runtime and configure_kubeconfig
+  # should be called AFTER kubeadm init in cluster-bootstrap.sh
 }
 
 # ----------------------------------------------------------------------------
