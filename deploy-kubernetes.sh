@@ -99,10 +99,7 @@ run_worker() {
 # Worker is reachable
 # ----------------------------------------------------------------------------
 worker_is_reachable() {
-  ssh -o ConnectTimeout=5 \
-      -o StrictHostKeyChecking=no \
-      "${WORKER_USER}@${WORKER_HOST}" \
-      "exit" >/dev/null 2>&1
+  ping -c 1 -W 1 "${WORKER_HOST}" >/dev/null 2>&1
 }
 
 # ----------------------------------------------------------------------------
@@ -118,13 +115,6 @@ main() {
   WORKER_NET="${WORKER_IP%.*}.0/24"
   sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
 
-  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
-  if worker_is_reachable; then
-    echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
-  else
-    provision_worker_vm
-  fi
-
   echo "=== Running control-plane bootstrap ==="
   run_control_plane
 
@@ -135,6 +125,13 @@ main() {
   if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
     echo "ERROR: Failed to retrieve admin.conf from control-plane."
     exit 1
+  fi
+
+  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
+  if worker_is_reachable; then
+    echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
+  else
+    provision_worker_vm
   fi
 
   echo "=== Syncing scripts to worker ==="
