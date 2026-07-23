@@ -24,7 +24,7 @@ SHARED_DIR="${MODULES_ROOT}/shared"
 
 source "${SHARED_DIR}/sudo-if-needed.sh"
 source "${SHARED_DIR}/load-env-file.sh"
-source "${MODULES_ROOT}/kube-tools.sh"
+source "${SHARED_DIR}/kube-tools.sh"
 
 # ----------------------------------------------------------------------------
 # Detect if control-plane is already present
