@@ -40,7 +40,8 @@ sync_to_worker() {
 
   # Ensure remote directory exists and is owned by the correct user
   ssh "${WORKER_USER}@${WORKER_HOST}" \
-    "sudo mkdir -p /var/www/html/awroberts/scripts && sudo chown ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts/scripts"
+  "echo '${WORKER_PASSWORD}' | sudo -S mkdir -p /var/www/html/awroberts/scripts && \
+   echo '${WORKER_PASSWORD}' | sudo -S chown ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts/scripts"
 
   rsync -avz \
     "${MODULES_DIR}" \
@@ -72,7 +73,8 @@ sync_kubeconfig_to_worker() {
   scp "${PROJECT_ROOT}/admin.conf" \
       "${WORKER_USER}@${WORKER_HOST}:/home/${WORKER_USER}/.kube/config"
 
-  ssh "${WORKER_USER}@${WORKER_HOST}" "chmod 600 /home/${WORKER_USER}/.kube/config"
+  ssh "${WORKER_USER}@${WORKER_HOST}" \
+  "echo '${WORKER_PASSWORD}' | sudo -S chmod 600 /home/${WORKER_USER}/.kube/config"
 }
 
 # ----------------------------------------------------------------------------
