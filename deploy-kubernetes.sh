@@ -40,8 +40,8 @@ sync_to_worker() {
 
   # Ensure remote directory exists and is owned by the correct user
   ssh "${WORKER_USER}@${WORKER_HOST}" \
-  "echo '${WORKER_PASSWORD}' | sudo -S mkdir -p /var/www/html/awroberts/scripts && \
-   echo '${WORKER_PASSWORD}' | sudo -S chown ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts/scripts"
+    "echo '${WORKER_PASSWORD}' | sudo -S mkdir -p /var/www/html/awroberts/scripts && \
+     echo '${WORKER_PASSWORD}' | sudo -S chown -R ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts"
 
   rsync -avz \
     "${MODULES_DIR}" \
