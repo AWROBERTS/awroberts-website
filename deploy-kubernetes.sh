@@ -119,8 +119,7 @@ main() {
   run_control_plane
 
   echo "=== Syncing kubeconfig from control-plane ==="
-  scp "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}:/etc/kubernetes/admin.conf" \
-      "${PROJECT_ROOT}/admin.conf"
+  ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" "sudo cat /etc/kubernetes/admin.conf" > "${PROJECT_ROOT}/admin.conf"
 
   if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
     echo "ERROR: Failed to retrieve admin.conf from control-plane."
