@@ -75,15 +75,14 @@ install_kube_tools() {
 configure_kubelet() {
   echo "=== Configuring kubelet (systemd cgroups) ==="
 
-  sudo_if_needed mkdir -p /etc/systemd/system/kubelet.service.d
-
-  sudo_if_needed tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf >/dev/null <<EOF
-[Service]
-Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
-EOF
-
-  sudo_if_needed systemctl daemon-reload
-  # Do NOT restart kubelet here; it will be started after kubeadm init
+  # NOTE: Do NOT write /etc/systemd/system/kubelet.service.d/10-kubeadm.conf here.
+  # That path shadows the package-provided drop-in (which sets KUBELET_KUBECONFIG_ARGS,
+  # KUBELET_CONFIG_ARGS, and the ExecStart= override that actually wires them in).
+  # Overwriting it leaves kubelet running with zero flags on its next restart, which
+  # also has no effect on an already-running kubelet until it happens to restart.
+  # cgroup driver is already set via config.yaml's cgroupDriver: systemd and is also
+  # auto-detected from the CRI runtime, so no override is needed here.
+  :
 }
 
 # ----------------------------------------------------------------------------
