@@ -112,11 +112,11 @@ build_all_images() {
   TAG="$(git_sha_tag)"
 
   echo "📦 Preparing to build images with tag: ${TAG}"
-  echo "  APP_IMAGE_NAME: ${APP_IMAGE_NAME}"
-  echo "  BACKGROUND_IMAGE_NAME: ${BACKGROUND_IMAGE_NAME}"
+  echo "  APP_IMAGE_NAME_BASE: ${APP_IMAGE_NAME_BASE}"
+  echo "  BG_IMAGE_NAME_BASE: ${BG_IMAGE_NAME_BASE}"
 
   echo "🚀 Building APP image on awr (x86)..."
-  image_vars_for "${APP_IMAGE_NAME}" "${TAG}"
+  image_vars_for "${APP_IMAGE_NAME_BASE}" "${TAG}"
   APP_FULL_IMAGE="${FULL_IMAGE}"
   APP_LATEST_IMAGE="${LATEST_IMAGE}"
   APP_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
@@ -129,7 +129,7 @@ build_all_images() {
     "${GIT_REMOTE_URL:-}"
 
   echo "🎞️ Building BACKGROUND VIDEO image on awr-ffmpeg (ARM)..."
-  image_vars_for "${BACKGROUND_IMAGE_NAME}" "${TAG}"
+  image_vars_for "${BG_IMAGE_NAME_BASE}" "${TAG}"
   BG_FULL_IMAGE="${FULL_IMAGE}"
   BG_LATEST_IMAGE="${LATEST_IMAGE}"
   BG_IMAGE_NAME_BASE="${IMAGE_NAME_BASE}"
@@ -589,14 +589,25 @@ deploy_with_helm() {
     --set image.repository="${APP_IMAGE_NAME_BASE}" \
     --set image.tag="${IMAGE_TAG}" \
     --set image.pullPolicy="Never" \
-    --set backgroundVideo.image.repository="${BG_IMAGE_NAME_BASE}" \
-    --set backgroundVideo.image.tag="${IMAGE_TAG}" \
-    --set backgroundVideo.image.pullPolicy="Never" \
-    --set traefik.tls.secretName="${SECRET_NAME}" \
-    --set traefik.hostnames[0]="${HOST_A}" \
-    --set traefik.hostnames[1]="${HOST_B}" \
-    --set volume.hostPath="${HOST_MEDIA_PATH}" \
-    --set volume.mountPath="/usr/share/nginx/html/awroberts-media"
+    --set backgroundVideo.nginx.image.repository="${BG_IMAGE_NAME_BASE}" \
+    --set backgroundVideo.nginx.image.tag="${IMAGE_TAG}" \
+    --set backgroundVideo.nginx.image.pullPolicy="Never" \
+    --set traefik.tls.secretName="${TLS_SECRET_NAME}"
+}
+
+# -----------------------------
+# DEPLOY IMAGES (wrapper)
+# -----------------------------
+deploy_images() {
+  build_all_images
+  import_all_images
+
+  ensure_metrics_server
+  ensure_traefik_helm
+  deploy_with_helm
+
+  cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
+  cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
 }
 
 # -----------------------------
