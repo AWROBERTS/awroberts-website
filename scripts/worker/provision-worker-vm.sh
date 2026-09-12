@@ -81,6 +81,12 @@ echo "Ubuntu ISO ready: $ISO_ORIG ($(( ISO_SIZE / 1024 / 1024 )) MB)"
 # === 4. Generate hashed password ===
 HASHED_PASS=$(openssl passwd -6 "$VM_PASS")
 
+# === 4b. Read local SSH public key so autoinstall bakes in key trust ===
+# Without this, every fresh install (or reinstall after a crash) only has
+# password auth, and the non-interactive `tar | ssh ...` build steps in
+# image-deploy.sh hang forever since there's no tty for a password prompt.
+SSH_PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
+
 # === 5. Prepare autoinstall files in a temp directory ===
 # We inject files directly into the original ISO rather than extracting and
 # rebuilding from scratch — this preserves the El Torito EFI boot catalog
@@ -134,6 +140,8 @@ autoinstall:
 
   ssh:
     install-server: true
+    authorized-keys:
+      - "$SSH_PUBKEY"
 
   storage:
     layout:
@@ -142,8 +150,10 @@ autoinstall:
   packages:
     - curl
     - vim
+    - docker.io
 
   late-commands:
+    - curtin in-target --target=/target -- usermod -aG docker $VM_USER
     - shutdown -h now
 EOF
 
@@ -197,7 +207,7 @@ ssh "${MAC_USER}@${MAC_HOST}" "${MAC_VM_SCRIPT_REMOTE} ${WORKER_MAC}"
 # === 11. Wait for worker VM ===
 echo "Waiting for worker VM to become reachable..."
 
-until ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
+until ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no "${VM_USER}@${WORKER_IP}" 'echo ok' 2>/dev/null; do
   sleep 5
 done
 
