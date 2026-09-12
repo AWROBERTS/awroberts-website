@@ -43,20 +43,24 @@ bootstrap_control_plane() {
   echo "=== [1] Loading environment ==="
   load_env_file
 
-  echo "=== [2] Node preflight ==="
-  prepare_node
+  if [[ -f /etc/kubernetes/admin.conf ]]; then
+    echo "Cluster already bootstrapped. Skipping node/cluster setup steps."
+  else
+    echo "=== [2] Node preflight ==="
+    prepare_node
 
-  echo "=== [3] Containerd setup ==="
-  setup_containerd
+    echo "=== [3] Containerd setup ==="
+    setup_containerd
 
-  echo "=== [4] Kubernetes tools setup ==="
-  setup_kube_tools
+    echo "=== [4] Kubernetes tools setup ==="
+    setup_kube_tools
 
-  echo "=== [5] Cluster bootstrap ==="
-  bootstrap_cluster_if_needed
+    echo "=== [5] Cluster bootstrap ==="
+    bootstrap_cluster_if_needed
 
-  echo "=== [6] Networking setup ==="
-  setup_networking
+    echo "=== [6] Networking setup ==="
+    setup_networking
+  fi
 
   echo "=== [7] Image deployment ==="
   deploy_images
@@ -68,11 +72,6 @@ bootstrap_control_plane() {
 # Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
-  if [[ -f /etc/kubernetes/admin.conf ]]; then
-    echo "Cluster already bootstrapped. Skipping control-plane bootstrap."
-    return 0
-  fi
-
   bootstrap_control_plane
 }
 
