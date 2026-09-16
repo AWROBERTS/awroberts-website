@@ -148,9 +148,11 @@ build_all_images() {
 # -----------------------------
 import_image_x86() {
   local IMAGE="$1"
+  local LATEST="$2"
 
   echo "📦 [x86] Importing ${IMAGE} into containerd"
   docker save "${IMAGE}" | sudo_if_needed ctr -n k8s.io images import -
+  sudo_if_needed ctr -n k8s.io images tag --force "${IMAGE}" "${LATEST}"
 }
 
 # -----------------------------
@@ -158,20 +160,18 @@ import_image_x86() {
 # -----------------------------
 import_image_arm() {
   local IMAGE="$1"
+  local LATEST="$2"
 
   echo "📦 [ARM] Importing ${IMAGE} into containerd"
-  ssh "${ARM_NODE}" 'docker save '"${IMAGE}"' | sudo ctr -n k8s.io images import -'
+  ssh "${ARM_NODE}" 'docker save '"${IMAGE}"' | sudo ctr -n k8s.io images import - && sudo ctr -n k8s.io images tag --force '"${IMAGE}"' '"${LATEST}"''
 }
 
 # -----------------------------
 # IMPORT ALL IMAGES
 # -----------------------------
 import_all_images() {
-  import_image_x86 "${APP_FULL_IMAGE}"
-  import_image_x86 "${APP_LATEST_IMAGE}"
-
-  import_image_arm "${BG_FULL_IMAGE}"
-  import_image_arm "${BG_LATEST_IMAGE}"
+  import_image_x86 "${APP_FULL_IMAGE}" "${APP_LATEST_IMAGE}"
+  import_image_arm "${BG_FULL_IMAGE}" "${BG_LATEST_IMAGE}"
 }
 
 # -----------------------------
