@@ -16,6 +16,13 @@ sudo_if_needed() {
     # which is drained the instant sudo reads the password line, so the
     # wrapped command sees immediate EOF instead of the real piped data.
     echo "$PASS" | sudo -S -v
+
+    if ! sudo -n true 2>/dev/null; then
+      echo "ERROR: sudo_if_needed could not authenticate non-interactively (bad password, expired cache, or sudoers 'requiretty')." >&2
+      echo "       Refusing to fall back to an interactive prompt — that path leaks the password into piped/logged output." >&2
+      exit 1
+    fi
+
     sudo "$@"
   else
     "$@"
