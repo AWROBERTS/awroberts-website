@@ -1,5 +1,11 @@
 sudo_if_needed() {
   if [[ $EUID -ne 0 ]]; then
+    # NOPASSWD sudo (or a still-valid cache): never touch the password at all.
+    if sudo -n true 2>/dev/null; then
+      sudo "$@"
+      return
+    fi
+
     # Prefer worker password if present, otherwise fall back to control-plane password
     PASS="${WORKER_PASSWORD:-${CONTROL_PLANE_PASSWORD:-}}"
 
