@@ -152,6 +152,8 @@ autoinstall:
 
   late-commands:
     - curtin in-target --target=/target -- usermod -aG docker $VM_USER
+    - "echo '$VM_USER ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/$VM_USER"
+    - chmod 440 /target/etc/sudoers.d/$VM_USER
     - shutdown -h now
 EOF
 
