@@ -24,10 +24,8 @@ source "${SHARED_DIR}/load-env-file.sh"
 # Retrieve join command from control-plane
 # ----------------------------------------------------------------------------
 get_join_command() {
-  echo "Retrieving join command from control-plane..."
-
-  kubectl -n kube-system get secret kubeadm-token-*/token \
-    -o go-template='{{.data.token | base64decode}}' >/dev/null 2>&1 || true
+  # stderr: stdout is captured as the join command and executed.
+  echo "Retrieving join command from control-plane..." >&2
 
   kubeadm token create --print-join-command
 }
@@ -46,12 +44,14 @@ execute_join() {
 # Validate join success
 # ----------------------------------------------------------------------------
 validate_join() {
-  echo "Validating worker join..."
+  echo "Validating worker join (waiting for node to become Ready)..."
 
-  if kubectl get nodes "$(hostname)" 2>/dev/null | grep -q " Ready "; then
+  # A freshly joined node stays NotReady until the CNI agent is running on it.
+  if kubectl wait --for=condition=Ready "node/$(hostname)" --timeout=300s; then
     echo "Worker node successfully joined."
   else
-    echo "ERROR: Worker node did not join successfully."
+    echo "ERROR: Worker node did not become Ready within 5 minutes."
+    kubectl get node "$(hostname)" -o wide 2>/dev/null || true
     exit 1
   fi
 }
