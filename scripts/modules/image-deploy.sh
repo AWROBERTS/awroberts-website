@@ -144,6 +144,25 @@ build_all_images() {
 }
 
 # -----------------------------
+# CONTAINERD REF
+# -----------------------------
+# `ctr images import` stores images under their fully qualified name
+# (docker.io/awroberts/app:tag), and `ctr images tag` doesn't normalise,
+# so short Docker-style names must be expanded before tagging.
+ctr_ref() {
+  local REF="$1"
+  local FIRST="${REF%%/*}"
+
+  if [[ "${REF}" != */* ]]; then
+    echo "docker.io/library/${REF}"
+  elif [[ "${FIRST}" == *.* || "${FIRST}" == *:* || "${FIRST}" == "localhost" ]]; then
+    echo "${REF}"
+  else
+    echo "docker.io/${REF}"
+  fi
+}
+
+# -----------------------------
 # IMPORT (LOCAL X86)
 # -----------------------------
 import_image_x86() {
@@ -152,7 +171,7 @@ import_image_x86() {
 
   echo "📦 [x86] Importing ${IMAGE} into containerd"
   docker save "${IMAGE}" | sudo_if_needed ctr -n k8s.io images import -
-  sudo_if_needed ctr -n k8s.io images tag --force "${IMAGE}" "${LATEST}"
+  sudo_if_needed ctr -n k8s.io images tag --force "$(ctr_ref "${IMAGE}")" "$(ctr_ref "${LATEST}")"
 }
 
 # -----------------------------
@@ -163,7 +182,7 @@ import_image_arm() {
   local LATEST="$2"
 
   echo "📦 [ARM] Importing ${IMAGE} into containerd"
-  ssh "${ARM_NODE}" 'docker save '"${IMAGE}"' | sudo ctr -n k8s.io images import - && sudo ctr -n k8s.io images tag --force '"${IMAGE}"' '"${LATEST}"''
+  ssh "${ARM_NODE}" 'docker save '"${IMAGE}"' | sudo ctr -n k8s.io images import - && sudo ctr -n k8s.io images tag --force '"$(ctr_ref "${IMAGE}")"' '"$(ctr_ref "${LATEST}")"''
 }
 
 # -----------------------------
