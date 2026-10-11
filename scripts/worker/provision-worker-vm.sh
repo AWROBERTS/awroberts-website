@@ -11,7 +11,7 @@ set -euo pipefail
 #   4. Copy macOS-side VM creation script to Mac mini
 #   5. SSH into Mac mini to launch VM using Apple Virtualization
 #   6. Wait for worker VM to come online
-#   7. Trigger worker bootstrap
+#   7. Refresh worker host keys in known_hosts
 #
 # Apple Virtualization.framework is EFI/UEFI only — ARM64 ISO required.
 # ============================================================================
@@ -24,8 +24,6 @@ ISO_MIN_BYTES=1073741824
 
 MAC_VM_SCRIPT="scripts/worker/provision-worker-vm-macos.sh"
 MAC_VM_SCRIPT_REMOTE="/Users/${MAC_USER}/provision-worker-vm-macos.sh"
-
-WORKER_BOOTSTRAP="./scripts/worker/bootstrap.sh"
 
 WORKER_IP="${WORKER_IP}"
 
@@ -213,8 +211,15 @@ done
 
 echo "=== Worker VM is online ==="
 
-# === 12. Run worker bootstrap ===
-echo "Running worker bootstrap..."
-bash "$WORKER_BOOTSTRAP" "$WORKER_IP"
+# === 12. Refresh worker host keys ===
+# A fresh install generates new host keys; drop the stale entries and trust
+# the new ones so later ssh calls (image build, sync, bootstrap) don't fail
+# strict host key checking. Worker bootstrap itself runs from
+# deploy-kubernetes.sh over ssh.
+echo "Refreshing known_hosts for ${WORKER_HOST} / ${WORKER_IP}..."
+for h in "${WORKER_HOST}" "${WORKER_IP}"; do
+  ssh-keygen -R "$h" >/dev/null 2>&1 || true
+done
+ssh-keyscan -H "${WORKER_HOST}" "${WORKER_IP}" >> ~/.ssh/known_hosts 2>/dev/null
 
 echo "=== Worker VM provision complete ==="
