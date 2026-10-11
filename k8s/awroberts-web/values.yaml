@@ -83,7 +83,8 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  source: "/srv/input-hls/stream.m3u8"
+  # hls-input volume: <media.hostPath>/hls on the node, mounted here.
+  source: "/usr/share/nginx/html/hls/stream.m3u8"
 
   ffmpeg:
     image:
