@@ -25,7 +25,7 @@ spec:
 
     spec:
       nodeSelector:
-        arch: arm
+        kubernetes.io/arch: arm64
 
       containers:
         - name: {{ include "awroberts.fullname" . }}-background
