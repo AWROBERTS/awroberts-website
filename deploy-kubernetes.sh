@@ -83,7 +83,7 @@ sync_kubeconfig_to_worker() {
 run_control_plane() {
   echo "=== Running control-plane bootstrap ==="
 
-  ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
+  ssh -tt "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
     "bash /var/www/html/awroberts/scripts/control-plane/bootstrap.sh"
 }
 
@@ -93,7 +93,7 @@ run_control_plane() {
 run_worker() {
   echo "=== Running worker bootstrap ==="
 
-  ssh "${WORKER_USER}@${WORKER_HOST}" \
+  ssh -tt "${WORKER_USER}@${WORKER_HOST}" \
     "bash /var/www/html/awroberts/scripts/worker/bootstrap.sh"
 }
 
@@ -117,7 +117,15 @@ main() {
   WORKER_NET="${WORKER_IP%.*}.0/24"
   sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
 
-  echo "=== Running control-plane bootstrap ==="
+  # Worker must be up before the control-plane bootstrap: its image step
+  # builds the ARM background-video image on the worker.
+  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
+  if worker_is_reachable; then
+    echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
+  else
+    provision_worker_vm
+  fi
+
   run_control_plane
 
   echo "=== Syncing kubeconfig from control-plane ==="
@@ -126,13 +134,6 @@ main() {
   if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
     echo "ERROR: Failed to retrieve admin.conf from control-plane."
     exit 1
-  fi
-
-  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
-  if worker_is_reachable; then
-    echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
-  else
-    provision_worker_vm
   fi
 
   echo "=== Syncing scripts to worker ==="
