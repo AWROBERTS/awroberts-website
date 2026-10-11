@@ -26,7 +26,8 @@ source "${SHARED_DIR}/load-env-file.sh"
 # Check if cluster API is reachable
 # ----------------------------------------------------------------------------
 is_cluster_accessible() {
-  kubectl version --short >/dev/null 2>&1
+  # `kubectl version --short` was removed in kubectl 1.28 and always fails.
+  kubectl get --raw=/readyz --request-timeout=5s >/dev/null 2>&1
 }
 
 # ----------------------------------------------------------------------------
