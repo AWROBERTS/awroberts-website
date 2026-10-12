@@ -51,6 +51,18 @@ nginx:
   root: /usr/share/nginx/html
   index: index.html
 
+  # Cache for /stream/ proxied from the background nginx on the worker VM,
+  # so each segment crosses the VM link once rather than once per viewer.
+  streamCache:
+    path: /var/cache/nginx/stream
+    maxSize: 400m          # emptyDir sizeLimit is set slightly above this
+    sizeLimit: 512Mi
+    # Live window is liveWindow x segmentDuration (20s); keep segments a bit
+    # longer than that. ffmpeg restarts reuse segment names, so don't go long.
+    segmentTtl: 30s
+    # Playlists change every segment; 1s still collapses concurrent viewers.
+    playlistTtl: 1s
+
   mimeTypes:
     ttf: "font/ttf"
     otf: "font/otf"
@@ -117,7 +129,17 @@ backgroundVideo:
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
   resources:
-    ffmpeg:
+    # Real-time 4K libx264: x264 frame buffers alone exceed 512Mi, and it
+    # needs several cores to keep up with -re.
+    ffmpegDesktop:
+      requests:
+        cpu: 1500m
+        memory: 1536Mi
+      limits:
+        cpu: 3500m
+        memory: 3Gi
+
+    ffmpegMobile:
       requests:
         cpu: 100m
         memory: 256Mi
