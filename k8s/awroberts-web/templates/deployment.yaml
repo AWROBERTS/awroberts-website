@@ -64,7 +64,14 @@ spec:
             - name: media-volume
               mountPath: {{ .Values.media.mountPath }}
 
+            - name: stream-cache
+              mountPath: {{ .Values.nginx.streamCache.path }}
+
       volumes:
+        - name: stream-cache
+          emptyDir:
+            sizeLimit: {{ .Values.nginx.streamCache.sizeLimit }}
+
         - name: nginx-conf
           configMap:
             name: {{ include "awroberts.fullname" . }}-nginx
