@@ -153,6 +153,7 @@ function setupVideoEvents() {
   });
 
   let stalledTimer = null;
+  let waitingTimeout = null; // High-precision track supervisor
 
   const recoverStall = () => {
     if (stalledTimer) return;
@@ -186,11 +187,38 @@ function setupVideoEvents() {
   bgVideoEl.addEventListener("waiting", () => {
     console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
     isRecoveringFromStall = true;
+
+    // HARD RECOVERY BACKUP: If the hardware decoder hangs on a native waiting event
+    // for 3 seconds straight, bypass soft hooks and force a live-edge buffer jump.
+    if (!waitingTimeout) {
+      waitingTimeout = setTimeout(() => {
+        if (!bgVideoEl || bgVideoEl.paused || bgVideoEl.ended) return;
+        console.warn("Watchdog: Stuck on native waiting event for 3s — forcing live jump");
+
+        if (hlsInstance) {
+          hlsInstance.stopLoad();
+          hlsInstance.startLoad(-1);
+          const livePos = hlsInstance.liveSyncPosition;
+          if (livePos != null && isFinite(livePos)) {
+            bgVideoEl.currentTime = Math.max(0, livePos - 2);
+          }
+        }
+
+        bgVideoEl.play()
+          .then(() => {
+            isRecoveringFromStall = false;
+            if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
+          })
+          .catch(err => console.warn("Waiting timeout recovery play failed:", err));
+      }, 3000);
+    }
   });
 
   bgVideoEl.addEventListener("playing", () => {
     isRecoveringFromStall = false;
     if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
+    // Cleanly dump active waiting timers as stream pixels resume drawing
+    if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
   });
 
   bgVideoEl.addEventListener("pause", () => {
