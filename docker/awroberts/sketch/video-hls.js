@@ -257,29 +257,50 @@ function setupHLS() {
   if (HlsGlobal && HlsGlobal.isSupported()) {
     console.log("Using HLS.js");
 
-    hlsInstance = new HlsGlobal({
+    // Define lightweight, fast-evicting configurations for mobile
+    // and deep-cushioned buffers for desktop machines.
+    const hlsConfig = isMobile ? {
       enableWorker: true,
       lowLatencyMode: true,
 
-      // MAXIMUM BUFFERHeadROOM FOR LIVE CHUNKS
+      // LIGHTWEIGHT MOBILE TRACKING
+      maxBufferLength: 6,              // Only cache ~1 segment ahead to save mobile memory
+      maxMaxBufferLength: 10,
+      maxBufferSize: 15 * 1000 * 1000, // Caps memory footprint at a low 15MB
+      backBufferLength: 2,             // Instantly dump past frames to clear mobile hardware decoders
+
+      // FIX: Rely ONLY on DurationCount for live tracking thresholds
+      liveSyncDurationCount: 2,
+      liveMaxLatencyDurationCount: 4,
+      liveSyncPositionSlop: 1.5,
+
+      maxStarvationDelay: 1.5,
+      nudgeMaxRetry: 4,
+      nudgeDelay: 0.1,
+      startPosition: -1
+    } : {
+      enableWorker: true,
+      lowLatencyMode: true,
+
+      // MAXIMUM HEADROOM FOR DESKTOP
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
       maxBufferSize: 60 * 1000 * 1000,
       backBufferLength: 15,
 
-      // AUTOMATED LIVE EDGE SLOP HEADROOM
-      liveSyncDurationCount: 5,
-      liveMaxLatencyDurationCount: 9,  // Increased slightly to allow a wider latency window
-      liveSyncDuration: 35,
-      liveMaxLatencyDuration: 65,
-      liveSyncPositionSlop: 3.5,       // NEW: Tells HLS.js not to nudge if within 3.5s of the live gap
+      // FIX: Rely ONLY on DurationCount for live tracking thresholds
+      liveSyncDurationCount: 5,        // Targets 5 segments back from absolute live edge
+      liveMaxLatencyDurationCount: 9,  // Maximum allowed drift before syncing
+      liveSyncPositionSlop: 3.5,
 
-      // ROBUST ACCELERATED GAP-NAVIGATION RULES
-      maxStarvationDelay: 4,           // Increased to 4s to give HLS.js native gap-controller breathing room
-      nudgeMaxRetry: 10,               // Increased retry threshold for micro-stuttering
-      nudgeDelay: 0.2,                 // Slightly wider nudge step for large frames
+      maxStarvationDelay: 4,
+      nudgeMaxRetry: 10,
+      nudgeDelay: 0.2,
       startPosition: -1
-    });
+    };
+
+    hlsInstance = new HlsGlobal(hlsConfig);
+
 
 
     hlsInstance.loadSource(VIDEO_URL);
