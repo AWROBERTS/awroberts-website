@@ -616,6 +616,57 @@ deploy_with_helm() {
 }
 
 # -----------------------------
+# ENSURE TLS SECRET
+# -----------------------------
+# The Gateway's HTTPS listeners reference this secret; without it Traefik
+# falls back to its self-signed default cert. Re-applied every deploy so a
+# renewed cert on the host is picked up.
+ensure_tls_secret() {
+  echo "🔐 Ensuring TLS secret ${TLS_SECRET_NAME} in ${NAMESPACE}..."
+
+  local f
+  for f in "${HOST_CERT_PATH}" "${HOST_KEY_PATH}"; do
+    if ! sudo_if_needed test -r "$f"; then
+      echo "ERROR: TLS file not found or unreadable: $f" >&2
+      exit 1
+    fi
+  done
+
+  sudo_if_needed openssl x509 -in "${HOST_CERT_PATH}" -noout -subject -enddate
+
+  # Refuse to replace a working secret with an expired cert or a mismatched key.
+  if ! sudo_if_needed openssl x509 -in "${HOST_CERT_PATH}" -noout -checkend 0 >/dev/null; then
+    echo "ERROR: ${HOST_CERT_PATH} has expired." >&2
+    exit 1
+  fi
+
+  local cert_pub key_pub
+  cert_pub="$(sudo_if_needed openssl x509 -in "${HOST_CERT_PATH}" -noout -pubkey)"
+  key_pub="$(sudo_if_needed openssl pkey -in "${HOST_KEY_PATH}" -pubout)"
+  if [[ "${cert_pub}" != "${key_pub}" ]]; then
+    echo "ERROR: ${HOST_KEY_PATH} does not match ${HOST_CERT_PATH}." >&2
+    exit 1
+  fi
+
+  kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n "${NAMESPACE}" create secret tls "${TLS_SECRET_NAME}" \
+    --cert=<(sudo_if_needed cat "${HOST_CERT_PATH}") \
+    --key=<(sudo_if_needed cat "${HOST_KEY_PATH}") \
+    --dry-run=client -o yaml | kubectl apply -f -
+
+  # Confirm the cluster now holds the same leaf cert as the host file.
+  local file_fp secret_fp
+  file_fp="$(sudo_if_needed openssl x509 -in "${HOST_CERT_PATH}" -noout -fingerprint -sha256)"
+  secret_fp="$(kubectl -n "${NAMESPACE}" get secret "${TLS_SECRET_NAME}" -o jsonpath='{.data.tls\.crt}' \
+    | base64 -d | openssl x509 -noout -fingerprint -sha256)"
+  if [[ "${file_fp}" != "${secret_fp}" ]]; then
+    echo "ERROR: ${TLS_SECRET_NAME} does not contain ${HOST_CERT_PATH}." >&2
+    exit 1
+  fi
+  echo "   ${TLS_SECRET_NAME} up to date (${file_fp#*=})"
+}
+
+# -----------------------------
 # DEPLOY IMAGES (wrapper)
 # -----------------------------
 deploy_images() {
@@ -624,6 +675,7 @@ deploy_images() {
 
   ensure_metrics_server
   ensure_traefik_helm
+  ensure_tls_secret
   deploy_with_helm
 
   cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
