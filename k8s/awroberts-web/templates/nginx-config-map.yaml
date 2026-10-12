@@ -60,6 +60,15 @@ data:
                 add_header Cache-Control "no-cache";
             }
 
+            # Deploy diagnostics, from the deployment-json ConfigMap volume.
+            # Exact match, so it wins over the .json regex below.
+            location = /deployment.json {
+                limit_req zone=site_per_ip burst=40 nodelay;
+                default_type application/json;
+                alias {{ .Values.deploymentJson.mountPath }}/deployment.json;
+                add_header Cache-Control "no-cache";
+            }
+
             # JSON files
             location ~* \.json$ {
                 limit_req zone=site_per_ip burst=40 nodelay;

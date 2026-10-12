@@ -67,7 +67,19 @@ spec:
             - name: stream-cache
               mountPath: {{ .Values.nginx.streamCache.path }}
 
+            # Whole-directory mount (no subPath) so ConfigMap updates appear live.
+            - name: deployment-json
+              mountPath: {{ .Values.deploymentJson.mountPath }}
+              readOnly: true
+
       volumes:
+        # Written by the deploy script after each rollout; optional so the pod
+        # still starts on a fresh cluster before the first publish.
+        - name: deployment-json
+          configMap:
+            name: {{ include "awroberts.fullname" . }}-deployment-json
+            optional: true
+
         - name: stream-cache
           emptyDir:
             sizeLimit: {{ .Values.nginx.streamCache.sizeLimit }}

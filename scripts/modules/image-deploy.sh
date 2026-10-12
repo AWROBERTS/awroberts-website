@@ -574,25 +574,19 @@ generate_deployment_json() {
 EOF
 
   echo "deployment.json generated."
-  echo
-  echo "📤 Copying JSON into running pod"
 
-  local copy_pod_name
-  for i in 1 2 3; do
-    copy_pod_name="$(get_first_running_pod_for_deployment "${DEPLOYMENT_NAME}" || true)"
-    if [[ -n "${copy_pod_name:-}" ]]; then break; fi
-    echo "⏳ Waiting for a running pod (attempt ${i}/3)..."
-    sleep 5
-  done
+  # Stored in a ConfigMap the web pod mounts (see templates/deployment.yaml),
+  # so it survives pod restarts and updates in place without a rollout.
+  local configmap_name="${DEPLOYMENT_NAME}-deployment-json"
+  echo "📤 Storing JSON in ConfigMap ${configmap_name}"
 
-  if [[ -z "${copy_pod_name:-}" ]]; then
-    echo "❌ No running pod found to copy deployment.json into" >&2
-    return 1
-  fi
+  jq empty "${output_file}" || { echo "❌ Generated deployment.json is not valid JSON" >&2; return 1; }
 
-  kubectl cp "${output_file}" "${NAMESPACE}/${copy_pod_name}":/usr/share/nginx/html/deployment.json
+  kubectl -n "${NAMESPACE}" create configmap "${configmap_name}" \
+    --from-file=deployment.json="${output_file}" \
+    --dry-run=client -o yaml | kubectl apply -f -
 
-  echo "deployment.json copied to pod."
+  echo "deployment.json published (served within ~1 minute)."
 }
 
 # -----------------------------
@@ -667,6 +661,33 @@ ensure_tls_secret() {
 }
 
 # -----------------------------
+# PUBLISH DEPLOYMENT JSON
+# -----------------------------
+# The site's diagnostics panel fetches /deployment.json, served from a
+# ConfigMap so it survives pod restarts. Generated after the rollout so it
+# describes the pods that are actually running.
+publish_deployment_json() {
+  echo "🧾 Publishing deployment.json..."
+
+  DEPLOYMENT_NAME="$(
+    kubectl -n "${NAMESPACE}" get deploy -l "app.kubernetes.io/instance=${HELM_RELEASE}" -o name \
+      | sed 's|.*/||' | grep -v -- '-background' | head -1
+  )"
+  if [[ -z "${DEPLOYMENT_NAME}" ]]; then
+    echo "⚠️  No web Deployment found for release ${HELM_RELEASE}; skipping deployment.json" >&2
+    return 0
+  fi
+
+  # Describe the new pod, not one that's about to be terminated.
+  kubectl -n "${NAMESPACE}" rollout status "deploy/${DEPLOYMENT_NAME}" --timeout=180s
+
+  local json_file
+  json_file="$(mktemp)"
+  generate_deployment_json "${json_file}" || echo "⚠️  deployment.json not published" >&2
+  rm -f "${json_file}"
+}
+
+# -----------------------------
 # DEPLOY IMAGES (wrapper)
 # -----------------------------
 deploy_images() {
@@ -677,6 +698,7 @@ deploy_images() {
   ensure_traefik_helm
   ensure_tls_secret
   deploy_with_helm
+  publish_deployment_json
 
   cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
   cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"

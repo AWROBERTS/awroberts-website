@@ -42,6 +42,11 @@ assets:
   publicPath: /assets
   mountPath: /usr/share/nginx/html/assets
 
+# /deployment.json for the site's diagnostics panel. The ConfigMap
+# (<fullname>-deployment-json) is created by the deploy script, not Helm.
+deploymentJson:
+  mountPath: /etc/awroberts/deployment-json
+
 nginx:
   workerProcesses: 1
   workerConnections: 1024
