@@ -3,10 +3,14 @@
 import {
   preloadVideoAssets,
   initVideoSystem,
-  drawBackgroundFallback,
-  getVideoFadeAlpha,
   bindVideoP5
-} from './video.js';
+} from './video-hls.js';
+
+import {
+  drawBackgroundFallback,
+  getVideoFadeAlpha
+} from './video-render.js';
+
 
 import {
   preloadUIAssets,

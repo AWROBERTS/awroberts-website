@@ -1,6 +1,12 @@
 // scan-lines.js — early 90s CRT scan line overlay
 
-import { sampleVideoColumn, updateVideoFrame, getVideoLayerCanvas, getVideoFadeAlpha } from './video.js';
+import {
+  sampleVideoColumn,
+  updateVideoFrame,
+  getVideoLayerCanvas,
+  getVideoFadeAlpha
+} from './video-render.js';
+
 import { isMobileDevice } from './utils.js';
 
 // -----------------------------
