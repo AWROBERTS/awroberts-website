@@ -227,11 +227,11 @@ function setupHLS() {
 
     hlsInstance = new HlsGlobal({
       enableWorker: true,
-      lowLatencyMode: true,
-      maxBufferLength: 20,
-      maxBufferSize: 50 * 1000 * 1000,
-      maxMaxBufferLength: 40,
-      backBufferLength: 10,
+      lowLatencyMode: true,            // Sync rapidly with live stream edge
+      maxBufferLength: 15,             // Slightly lowered to force faster clip discard cycles
+      maxBufferSize: 30 * 1000 * 1000, // Reduced safety limit to clear unplayed frame junk faster
+      maxMaxBufferLength: 30,
+      backBufferLength: 5,             // Lower values limit structural backtracking lag
       startPosition: -1,
       liveSyncDurationCount: 3,
       liveMaxLatencyDurationCount: 6
@@ -240,17 +240,38 @@ function setupHLS() {
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
 
+    // Track sequential stall attempts to detect nudge failures
+    let continuousStallCount = 0;
+
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
       console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
 
       if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
-        console.warn("HLS.js buffer stalled — nudging load");
+        continuousStallCount++;
         isRecoveringFromStall = true;
-        hlsInstance.startLoad(-1);
+
+        if (continuousStallCount > 3) {
+          // CAPTURE LOOP FREEZES: If nudging fails 3+ times back-to-back, force a hard skip to live edge
+          console.warn("HLS.js nudges failing — forcing hard stream edge recovery");
+          continuousStallCount = 0;
+
+          hlsInstance.stopLoad();
+          hlsInstance.startLoad(-1);
+
+          const livePos = hlsInstance.liveSyncPosition;
+          if (livePos != null && isFinite(livePos)) {
+            bgVideoEl.currentTime = livePos;
+          }
+        } else {
+          // Normal soft recovery attempt
+          console.log("HLS.js buffer stalled — nudging load (Attempt " + continuousStallCount + ")");
+          hlsInstance.startLoad(-1);
+        }
         return;
       }
 
       if (data.fatal) {
+        continuousStallCount = 0;
         if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
           console.warn("HLS.js fatal media error — recovering");
           hlsInstance.recoverMediaError();
@@ -264,8 +285,15 @@ function setupHLS() {
         }
       }
     });
+
+    // Reset loop count whenever fragments play smoothly
+    hlsInstance.on(HlsGlobal.Events.FRAG_CHANGED, () => {
+      continuousStallCount = 0;
+    });
+
   } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
     console.log("Using Native Safari HLS engine");
     bgVideoEl.src = VIDEO_URL;
   }
 }
+
