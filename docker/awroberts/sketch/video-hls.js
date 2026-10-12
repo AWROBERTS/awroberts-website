@@ -243,48 +243,45 @@ function setupHLS() {
     // Track sequential stall attempts to detect nudge failures
     let continuousStallCount = 0;
 
-    hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
-      console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
-
-      if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
+          if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
         continuousStallCount++;
         isRecoveringFromStall = true;
 
         if (continuousStallCount > 3) {
-          // CAPTURE LOOP FREEZES: If nudging fails 3+ times back-to-back, force a hard skip to live edge
           console.warn("HLS.js nudges failing — forcing hard stream edge recovery");
           continuousStallCount = 0;
 
+          // 1. Terminate pending network requests
           hlsInstance.stopLoad();
+
+          // 2. Clear out the corrupted, locked frame sequences from the browser's hardware buffer
+          if (typeof hlsInstance.skipToExtension === 'function') {
+            hlsInstance.skipToExtension();
+          }
+
+          // 3. Force HLS.js to rediscover the modern live playlist edge
           hlsInstance.startLoad(-1);
 
+          // 4. Force the media element to snap out of the broken timestamp track
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = livePos;
+            // Seek slightly back from absolute live edge (safer target buffer zone)
+            bgVideoEl.currentTime = Math.max(0, livePos - 2);
+          } else {
+            // Safe fallback: jump forward past the stuck frame manually if liveSyncPosition is hidden
+            bgVideoEl.currentTime = bgVideoEl.currentTime + 5;
           }
+
+          // 5. Force a play invocation to kick the hardware decoder awake
+          bgVideoEl.play()
+            .then(() => { isRecoveringFromStall = false; })
+            .catch(err => console.warn("Hard recovery play jump failed:", err));
         } else {
-          // Normal soft recovery attempt
           console.log("HLS.js buffer stalled — nudging load (Attempt " + continuousStallCount + ")");
           hlsInstance.startLoad(-1);
         }
         return;
       }
-
-      if (data.fatal) {
-        continuousStallCount = 0;
-        if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
-          console.warn("HLS.js fatal media error — recovering");
-          hlsInstance.recoverMediaError();
-        } else if (data.type === HlsGlobal.ErrorTypes.NETWORK_ERROR) {
-          console.warn("HLS.js fatal network error — restarting load");
-          hlsInstance.startLoad(-1);
-        } else {
-          console.error("Unrecoverable HLS error encountered. Rebuilding engine...");
-          hlsInstance.destroy();
-          setupHLS();
-        }
-      }
-    });
 
     // Reset loop count whenever fragments play smoothly
     hlsInstance.on(HlsGlobal.Events.FRAG_CHANGED, () => {
