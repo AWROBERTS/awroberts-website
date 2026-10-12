@@ -34,6 +34,8 @@ let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
+// Flag to let the watchdog know HLS is actively trying to resolve a stall
+let isRecoveringFromStall = false;
 let watchdogFrozenSince = null;
 
 const HlsGlobal = window.Hls;
@@ -80,6 +82,7 @@ export function initVideoSystem() {
 
   // Offscreen canvas for raw video frame
   videoSourceCanvas = document.createElement("canvas");
+  // Set willReadFrequently to optimize p5.js loop getImageData queries
   videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
   videoSourceReady = true;
 
@@ -126,7 +129,13 @@ export function initVideoSystem() {
       setupHLS();
       return;
     }
-    if (bgVideoEl.paused) { watchdogFrozenSince = null; watchdogLastTime = bgVideoEl.currentTime; return; }
+
+    // Do not count stalling as frozen if stream engine is actively recovering
+    if (bgVideoEl.paused || isRecoveringFromStall) {
+      watchdogFrozenSince = null;
+      watchdogLastTime = bgVideoEl.currentTime;
+      return;
+    }
 
     const ct = bgVideoEl.currentTime;
     if (ct === watchdogLastTime) {
@@ -135,6 +144,8 @@ export function initVideoSystem() {
       } else if (Date.now() - watchdogFrozenSince > 5000) {
         console.warn("Video watchdog: frozen, restarting HLS");
         watchdogFrozenSince = null;
+        isRecoveringFromStall = true;
+
         if (hlsInstance) {
           hlsInstance.stopLoad();
           hlsInstance.startLoad(-1);
@@ -145,7 +156,9 @@ export function initVideoSystem() {
             bgVideoEl.currentTime = seekable.end(seekable.length - 1);
           }
         }
-        bgVideoEl.play().catch(err => console.warn("Watchdog play() failed:", err));
+        bgVideoEl.play()
+          .then(() => { isRecoveringFromStall = false; })
+          .catch(err => console.warn("Watchdog play() failed:", err));
       }
     } else {
       watchdogFrozenSince = null;
@@ -174,16 +187,25 @@ function setupVideoEvents() {
 
   const recoverStall = () => {
     if (stalledTimer) return;
+    isRecoveringFromStall = true;
     stalledTimer = setTimeout(() => {
       stalledTimer = null;
-      if (!bgVideoEl || bgVideoEl.ended) return;
+      if (!bgVideoEl || bgVideoEl.ended) {
+        isRecoveringFromStall = false;
+        return;
+      }
       console.warn("Video stall recovery triggered");
       if (hlsInstance) {
         const livePos = hlsInstance.liveSyncPosition;
         if (livePos != null && isFinite(livePos)) bgVideoEl.currentTime = livePos;
         hlsInstance.startLoad(-1);
       }
-      bgVideoEl.play().catch(err => console.warn("Stall recovery play() failed:", err));
+      bgVideoEl.play()
+        .then(() => { isRecoveringFromStall = false; })
+        .catch(err => {
+          console.warn("Stall recovery play() failed:", err);
+          isRecoveringFromStall = false;
+        });
     }, 3000);
   };
 
@@ -194,9 +216,11 @@ function setupVideoEvents() {
 
   bgVideoEl.addEventListener("waiting", () => {
     console.warn("Video event: waiting — paused=" + bgVideoEl.paused + " ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
+    isRecoveringFromStall = true;
   });
 
   bgVideoEl.addEventListener("playing", () => {
+    isRecoveringFromStall = false;
     if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
   });
 
@@ -234,21 +258,26 @@ function setupHLS() {
 
     hlsInstance = new HlsGlobal({
       enableWorker: true,
-      lowLatencyMode: false,
-      maxBufferLength: 10,
-      maxBufferSize: 30 * 1000 * 1000,
-      maxMaxBufferLength: 20,
-      backBufferLength: 0,
+      lowLatencyMode: true,            // Switched to true to sync faster to live edge
+      maxBufferLength: 20,             // Raised from 10 to provide fallback frames during lag spikes
+      maxBufferSize: 50 * 1000 * 1000, // Raised to 50MB to support higher bitrate bursts
+      maxMaxBufferLength: 40,          // Raised from 20 to widen network buffer safety limits
+      backBufferLength: 10,            // Keeps last 10s of frames in memory to stop layout stuttering
       startPosition: -1,
-      liveSyncDurationCount: 2,
-      liveMaxLatencyDurationCount: 4
+      liveSyncDurationCount: 3,        // Safer live synchronization latency threshold
+      liveMaxLatencyDurationCount: 6
     });
+
+    // Pass the active URL string to your hls instance
+    hlsInstance.loadSource(VIDEO_URL);
+    hlsInstance.attachMedia(bgVideoEl);
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
       console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
 
       if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
         console.warn("HLS.js buffer stalled — nudging load");
+        isRecoveringFromStall = true;
         hlsInstance.startLoad(-1);
         return;
       }
@@ -261,170 +290,15 @@ function setupHLS() {
           console.warn("HLS.js fatal network error — restarting load");
           hlsInstance.startLoad(-1);
         } else {
-          console.warn("HLS.js fatal other error — reinitialising");
+          console.error("Unrecoverable HLS error encountered. Destroying and rebuilding...");
           hlsInstance.destroy();
-          hlsInstance = null;
-          videoReady = false;
           setupHLS();
         }
       }
     });
-
-    hlsInstance.on(HlsGlobal.Events.MEDIA_ATTACHED, () => {
-      console.log("HLS.js media attached");
-      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
-    });
-
-    hlsInstance.on(HlsGlobal.Events.MANIFEST_PARSED, () => {
-      console.log("HLS.js manifest parsed");
-      bgVideoEl.play().catch(err => console.warn("play() failed:", err));
-    });
-
-    console.log("Loading HLS source:", VIDEO_URL);
-    hlsInstance.loadSource(VIDEO_URL);
-    hlsInstance.attachMedia(bgVideoEl);
-
   } else if (bgVideoEl.canPlayType("application/vnd.apple.mpegurl")) {
-    console.log("Using native HLS");
+    // Fallback for native Safari implementations
+    console.log("Using Native Safari HLS engine");
     bgVideoEl.src = VIDEO_URL;
-    bgVideoEl.play().catch(err => console.warn("play() failed:", err));
-  } else {
-    console.warn("No HLS support detected");
   }
-}
-
-// -----------------------------
-// FRAME COPY
-// -----------------------------
-export function getVideoLayerCanvas() {
-  return (videoLayerReady && videoLayerCtx) ? videoLayerCtx.canvas : null;
-}
-
-export function getVideoFadeAlpha() {
-  if (!hasVideoFrame || videoFadeStart === null) return 0;
-  const t = (awrWeb.millis() - videoFadeStart) / videoFadeDuration;
-  return Math.min(Math.max(t, 0), 1);
-}
-
-export function updateVideoFrame() {
-  if (!bgVideoEl || !videoReady || !videoSourceReady || !videoLayerReady) return false;
-  if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
-
-  const currentTime = bgVideoEl.currentTime;
-  const hasAdvanced = currentTime !== lastVideoTime;
-
-  if (hasVideoFrame && !hasAdvanced) return true;
-
-  const sourceW = bgVideoEl.videoWidth;
-  const sourceH = bgVideoEl.videoHeight;
-
-  if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
-    videoSourceCanvas.width = sourceW;
-    videoSourceCanvas.height = sourceH;
-    videoSourceWidth = sourceW;
-    videoSourceHeight = sourceH;
-  }
-
-  if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
-    videoLayer.resizeCanvas(awrWeb.width, awrWeb.height);
-    videoLayer.pixelDensity(1);
-    videoLayerCtx = videoLayer.drawingContext;
-  }
-
-  try {
-    videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
-
-    // Cover crop: scale to fill canvas, cropping edges rather than squashing
-    const destW = videoLayer.width;
-    const destH = videoLayer.height;
-    const srcAspect  = sourceW / sourceH;
-    const destAspect = destW   / destH;
-
-    let sx, sy, sw, sh;
-    if (srcAspect > destAspect) {
-      // Source wider than dest — crop sides, fill height
-      sh = sourceH;
-      sw = sourceH * destAspect;
-      sx = (sourceW - sw) / 2;
-      sy = 0;
-    } else {
-      // Source taller than dest — crop top/bottom, fill width
-      sw = sourceW;
-      sh = sourceW / destAspect;
-      sx = 0;
-      sy = (sourceH - sh) / 2;
-    }
-
-    videoLayerCtx.save();
-    videoLayerCtx.clearRect(0, 0, destW, destH);
-    videoLayerCtx.drawImage(videoSourceCanvas, sx, sy, sw, sh, 0, 0, destW, destH);
-    videoLayerCtx.restore();
-
-    lastVideoTime = currentTime;
-    hasVideoFrame = true;
-
-    if (videoFadeStart === null) {
-      videoFadeStart = awrWeb.millis();
-      console.log("Video fade started");
-    }
-
-    return true;
-  } catch (err) {
-    console.warn("Video frame copy skipped:", err);
-    return hasVideoFrame;
-  }
-}
-
-// -----------------------------
-// COLOUR SAMPLER
-// -----------------------------
-
-export function sampleVideoColumn(x) {
-  if (!videoLayerReady || !hasVideoFrame) return null;
-  try {
-    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
-    return videoLayerCtx.getImageData(px, 0, 1, videoLayer.height).data;
-  } catch {
-    return null;
-  }
-}
-
-export function sampleVideoColor(x, y) {
-  if (!videoLayerReady || !hasVideoFrame) return [200, 200, 200];
-  try {
-    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
-    const py = Math.floor(awrWeb.constrain(y, 0, videoLayer.height - 1));
-    const d = videoLayerCtx.getImageData(px, py, 1, 1).data;
-    return [d[0], d[1], d[2]];
-  } catch {
-    return [200, 200, 200];
-  }
-}
-
-// -----------------------------
-// DRAW
-// -----------------------------
-export function drawBackgroundFallback() {
-  if (!bgPosterImg) return;
-  awrWeb.image(bgPosterImg, 0, 0, awrWeb.width, awrWeb.height);
-}
-
-export function drawVideo() {
-  drawBackgroundFallback();
-
-  if (!videoReady || !videoLayerReady) return;
-
-  const frameAvailable = updateVideoFrame();
-  if (!frameAvailable || !hasVideoFrame) return;
-
-  let alpha = 255;
-  if (videoFadeStart !== null) {
-    const t = (awrWeb.millis() - videoFadeStart) / videoFadeDuration;
-    alpha = awrWeb.constrain(t * 255, 0, 255);
-  }
-
-  awrWeb.push();
-  awrWeb.drawingContext.globalAlpha = alpha / 255;
-  awrWeb.image(videoLayer, 0, 0, awrWeb.width, awrWeb.height);
-  awrWeb.pop();
 }
