@@ -259,21 +259,26 @@ function setupHLS() {
 
     hlsInstance = new HlsGlobal({
       enableWorker: true,
-      lowLatencyMode: true,            // Sync rapidly with live stream edge
-      maxBufferLength: 15,             // Slightly lowered to force faster clip discard cycles
-      maxBufferSize: 30 * 1000 * 1000, // Reduced safety limit to clear unplayed frame junk faster
-      maxMaxBufferLength: 30,
-      backBufferLength: 5,             // Lower values limit structural backtracking lag
+      lowLatencyMode: true,            // Switched to true to sync faster to live edge
+
+      // BUFFER PARAMETERS OPTIMIZED FOR LARGE ~8.34s FRAGMENTS
+      maxBufferLength: 30,             // Raised from 15: Allows up to ~4 chunks to stay queued
+      maxMaxBufferLength: 60,          // Raised from 30: Safety cap during bursts
+      maxBufferSize: 60 * 1000 * 1000, // Raised from 30MB to handle high-bitrate video pipelines
+      backBufferLength: 10,            // Prevents instant frame cleanups behind the playhead
+
+      // ACCELERATED GAP NAVIGATION RULES
+      maxStarvationDelay: 2,           // Stops long internal stalls
+      nudgeMaxRetry: 5,                // Lets HLS.js fix small audio/video gaps natively
+      nudgeDelay: 0.1,                 // Faster recovery jumps
+
       startPosition: -1,
-      liveSyncDurationCount: 3,
+      liveSyncDurationCount: 3,        // Safer live synchronization latency threshold
       liveMaxLatencyDurationCount: 6
     });
 
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
-
-    // Track sequential stall attempts to detect nudge failures
-    let continuousStallCount = 0;
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
       console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
