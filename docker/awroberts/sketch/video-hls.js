@@ -243,7 +243,10 @@ function setupHLS() {
     // Track sequential stall attempts to detect nudge failures
     let continuousStallCount = 0;
 
-          if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
+    hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
+      console.warn(`HLS.js error [fatal=${data.fatal}] type=${data.type} details=${data.details}`, data);
+
+      if (!data.fatal && data.details === HlsGlobal.ErrorDetails.BUFFER_STALLED_ERROR) {
         continuousStallCount++;
         isRecoveringFromStall = true;
 
@@ -283,6 +286,23 @@ function setupHLS() {
         return;
       }
 
+      // Handle structural fatal errors
+      if (data.fatal) {
+        continuousStallCount = 0;
+        if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
+          console.warn("HLS.js fatal media error — recovering");
+          hlsInstance.recoverMediaError();
+        } else if (data.type === HlsGlobal.ErrorTypes.NETWORK_ERROR) {
+          console.warn("HLS.js fatal network error — restarting load");
+          hlsInstance.startLoad(-1);
+        } else {
+          console.error("Unrecoverable HLS error encountered. Rebuilding engine...");
+          hlsInstance.destroy();
+          setupHLS();
+        }
+      }
+    });
+
     // Reset loop count whenever fragments play smoothly
     hlsInstance.on(HlsGlobal.Events.FRAG_CHANGED, () => {
       continuousStallCount = 0;
@@ -293,4 +313,3 @@ function setupHLS() {
     bgVideoEl.src = VIDEO_URL;
   }
 }
-
