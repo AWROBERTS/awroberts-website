@@ -22,6 +22,9 @@ export let bgPosterImg = null;
 export let isRecoveringFromStall = false;
 let watchdogFrozenSince = null;
 
+// File-level counter accessible by both setupVideoEvents and setupHLS
+let continuousStallCount = 0;
+
 const HlsGlobal = window.Hls;
 
 // -----------------------------
@@ -200,13 +203,14 @@ function setupVideoEvents() {
           hlsInstance.startLoad(-1);
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = Math.max(0, livePos - 2);
+            bgVideoEl.currentTime = Math.max(0, livePos - 10);
           }
         }
 
         bgVideoEl.play()
           .then(() => {
             isRecoveringFromStall = false;
+            continuousStallCount = 0;
             if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
           })
           .catch(err => console.warn("Waiting timeout recovery play failed:", err));
@@ -216,8 +220,8 @@ function setupVideoEvents() {
 
   bgVideoEl.addEventListener("playing", () => {
     isRecoveringFromStall = false;
+    continuousStallCount = 0; // CRITICAL FIX: Reset sequential stall metrics the moment frames advance natively
     if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
-    // Cleanly dump active waiting timers as stream pixels resume drawing
     if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
   });
 
