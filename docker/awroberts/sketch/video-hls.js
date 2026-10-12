@@ -31,8 +31,8 @@ const isMobile =
   /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
 
 const VIDEO_URL = isMobile
-  ? "https://awroberts.co.uk" + Date.now()
-  : "https://awroberts.co.uk" + Date.now();
+  ? "https://awroberts.co.uk/stream/mobile/index.m3u8?v=" + Date.now()
+  : "https://awroberts.co.uk/stream/index.m3u8?v=" + Date.now();
 
 const POSTER_URL = "/background-poster.png";
 
