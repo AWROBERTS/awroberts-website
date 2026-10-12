@@ -203,7 +203,8 @@ function setupVideoEvents() {
           hlsInstance.startLoad(-1);
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = Math.max(0, livePos - 10);
+            // DYNAMIC UPDATE: Platform-optimized stream alignment thresholds
+            bgVideoEl.currentTime = Math.max(0, livePos - (isMobile ? 3 : 10));
           }
         }
 
@@ -220,7 +221,7 @@ function setupVideoEvents() {
 
   bgVideoEl.addEventListener("playing", () => {
     isRecoveringFromStall = false;
-    continuousStallCount = 0; // CRITICAL FIX: Reset sequential stall metrics the moment frames advance natively
+    continuousStallCount = 0;
     if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
     if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
   });
@@ -269,7 +270,7 @@ function setupHLS() {
       maxBufferSize: 15 * 1000 * 1000, // Caps memory footprint at a low 15MB
       backBufferLength: 2,             // Instantly dump past frames to clear mobile hardware decoders
 
-      // FIX: Rely ONLY on DurationCount for live tracking thresholds
+      // Rely ONLY on DurationCount for live tracking thresholds
       liveSyncDurationCount: 2,
       liveMaxLatencyDurationCount: 4,
       liveSyncPositionSlop: 1.5,
@@ -288,7 +289,7 @@ function setupHLS() {
       maxBufferSize: 60 * 1000 * 1000,
       backBufferLength: 15,
 
-      // FIX: Rely ONLY on DurationCount for live tracking thresholds
+      // Rely ONLY on DurationCount for live tracking thresholds
       liveSyncDurationCount: 5,        // Targets 5 segments back from absolute live edge
       liveMaxLatencyDurationCount: 9,  // Maximum allowed drift before syncing
       liveSyncPositionSlop: 3.5,
@@ -300,8 +301,6 @@ function setupHLS() {
     };
 
     hlsInstance = new HlsGlobal(hlsConfig);
-
-
 
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
@@ -328,15 +327,20 @@ function setupHLS() {
           // 3. Re-sync HLS.js with the live broadcast playlist edge
           hlsInstance.startLoad(-1);
 
-          // 4. SMART TARGET SEEK: Target 1 full fragment duration back from live edge
-          // Because your chunks are ~8.34s long, backing off 10s drops the player
-          // safely into a fully downloaded, clean, uncorrupted segment.
+          // 4. SMART TARGET SEEK: Platform-optimized stream alignment
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = Math.max(0, livePos - 10);
+            if (isMobile) {
+              // MOBILE OPTIMIZATION: Snap tightly to a fresh live chunk boundary.
+              // Do not force the mobile processor to backtrack through old data segments.
+              bgVideoEl.currentTime = Math.max(0, livePos - 3);
+            } else {
+              // DESKTOP: Sit comfortably back in a deep, pre-cached buffer track.
+              bgVideoEl.currentTime = Math.max(0, livePos - 10);
+            }
           } else {
-            // Fallback: Jump ahead past the stuck frame boundary manually
-            bgVideoEl.currentTime = bgVideoEl.currentTime + 10;
+            // Fallback: Manually push the playhead past the stuck frame boundary
+            bgVideoEl.currentTime = bgVideoEl.currentTime + (isMobile ? 3 : 10);
           }
 
           // 5. Force invoke the element layout track to clear the freeze
