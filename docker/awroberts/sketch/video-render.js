@@ -1,4 +1,21 @@
 // video-render.js
+
+// -----------------------------
+// BROWSER ELEMENT INTERCEPTOR
+// -----------------------------
+// Patches the global browser prototype to catch p5.js during internal setup
+// and forcefully inject the rendering hint before it draws a single pixel.
+(function() {
+  const originalGetContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+    if (type === '2d') {
+      attributes = attributes || {};
+      attributes.willReadFrequently = true;
+    }
+    return originalGetContext.call(this, type, attributes);
+  };
+})();
+
 import { bgVideoEl, videoReady, bgPosterImg, awrWeb } from './video-hls.js';
 
 // -----------------------------
@@ -25,7 +42,7 @@ let hasVideoFrame = false;
 // -----------------------------
 export function initRenderLayers(p5Instance) {
   videoSourceCanvas = document.createElement("canvas");
-  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
   videoSourceReady = true;
 
   videoLayer = p5Instance.createGraphics(p5Instance.windowWidth, p5Instance.windowHeight);
@@ -33,8 +50,6 @@ export function initRenderLayers(p5Instance) {
   videoLayer.clear();
   videoLayerReady = true;
 
-  // Protect internal p5 properties by configuring the hint on the raw canvas reference directly
-  videoLayer.canvas.getContext('2d', { willReadFrequently: true });
   videoLayerCtx = videoLayer.drawingContext;
 }
 
@@ -70,13 +85,10 @@ export function updateVideoFrame() {
     videoSourceHeight = sourceH;
   }
 
-  if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
+    if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
     videoLayer.resizeCanvas(awrWeb.width, awrWeb.height);
     videoLayer.pixelDensity(1);
-
-    // Maintain rendering speed enhancements through structural frame resizes
-    videoLayer.canvas.getContext('2d', { willReadFrequently: true });
-    videoLayerCtx = videoLayer.drawingContext;
+    videoLayerCtx = videoLayer.drawingContext; // Patched automatically by the interceptor
   }
 
   try {
