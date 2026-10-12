@@ -72,11 +72,11 @@ spec:
 
           resources:
             requests:
-              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.requests.cpu }}
-              memory: {{ .Values.backgroundVideo.resources.ffmpeg.requests.memory }}
+              cpu: {{ .Values.backgroundVideo.resources.ffmpegMobile.requests.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpegMobile.requests.memory }}
             limits:
-              cpu: {{ .Values.backgroundVideo.resources.ffmpeg.limits.cpu }}
-              memory: {{ .Values.backgroundVideo.resources.ffmpeg.limits.memory }}
+              cpu: {{ .Values.backgroundVideo.resources.ffmpegMobile.limits.cpu }}
+              memory: {{ .Values.backgroundVideo.resources.ffmpegMobile.limits.memory }}
 
       volumes:
         - name: hls-input
