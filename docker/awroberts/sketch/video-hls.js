@@ -282,31 +282,38 @@ function setupHLS() {
           console.warn("HLS.js nudges failing — forcing hard stream edge recovery");
           continuousStallCount = 0;
 
-          // 1. Terminate pending network requests
+          // 1. Terminate stalled network request cycles
           hlsInstance.stopLoad();
 
-          // 2. Clear out the corrupted, locked frame sequences from the browser's hardware buffer
+          // 2. Clear out the broken frame tracks from the browser's hardware pipeline
           if (typeof hlsInstance.skipToExtension === 'function') {
             hlsInstance.skipToExtension();
           }
 
-          // 3. Force HLS.js to rediscover the modern live playlist edge
+          // 3. Re-sync HLS.js with the live broadcast playlist edge
           hlsInstance.startLoad(-1);
 
-          // 4. Force the media element to snap out of the broken timestamp track
+          // 4. SMART TARGET SEEK: Target 1 full fragment duration back from live edge
+          // Because your chunks are ~8.34s long, backing off 10s drops the player
+          // safely into a fully downloaded, clean, uncorrupted segment.
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            // Seek slightly back from absolute live edge (safer target buffer zone)
-            bgVideoEl.currentTime = Math.max(0, livePos - 2);
+            bgVideoEl.currentTime = Math.max(0, livePos - 10);
           } else {
-            // Safe fallback: jump forward past the stuck frame manually if liveSyncPosition is hidden
-            bgVideoEl.currentTime = bgVideoEl.currentTime + 5;
+            // Fallback: Jump ahead past the stuck frame boundary manually
+            bgVideoEl.currentTime = bgVideoEl.currentTime + 10;
           }
 
-          // 5. Force a play invocation to kick the hardware decoder awake
+          // 5. Force invoke the element layout track to clear the freeze
           bgVideoEl.play()
-            .then(() => { isRecoveringFromStall = false; })
-            .catch(err => console.warn("Hard recovery play jump failed:", err));
+            .then(() => {
+              // Clear recovery locks strictly on a successful play resolution
+              isRecoveringFromStall = false;
+            })
+            .catch(err => {
+              console.warn("Hard recovery play jump failed:", err);
+              isRecoveringFromStall = false;
+            });
         } else {
           console.log("HLS.js buffer stalled — nudging load (Attempt " + continuousStallCount + ")");
           hlsInstance.startLoad(-1);
