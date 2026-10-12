@@ -259,22 +259,28 @@ function setupHLS() {
 
     hlsInstance = new HlsGlobal({
       enableWorker: true,
-      lowLatencyMode: true,            // Switched to true to sync faster to live edge
+      lowLatencyMode: true,
 
-      // BUFFER PARAMETERS OPTIMIZED FOR LARGE ~8.34s FRAGMENTS
-      maxBufferLength: 30,             // Raised from 15: Allows up to ~4 chunks to stay queued
-      maxMaxBufferLength: 60,          // Raised from 30: Safety cap during bursts
-      maxBufferSize: 60 * 1000 * 1000, // Raised from 30MB to handle high-bitrate video pipelines
-      backBufferLength: 10,            // Prevents instant frame cleanups behind the playhead
+      // DEEP BUFFER ARCHITECTURE FOR LARGE LIVE CHUNKS
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      maxBufferSize: 60 * 1000 * 1000,
+      backBufferLength: 15,
 
-      // ACCELERATED GAP NAVIGATION RULES
-      maxStarvationDelay: 2,           // Stops long internal stalls
-      nudgeMaxRetry: 5,                // Lets HLS.js fix small audio/video gaps natively
-      nudgeDelay: 0.1,                 // Faster recovery jumps
+      // SAFEST LIVE WINDOW HEADROOM CONSTRAINTS
+      // These target starting the video safely back from the absolute tip
+      // of the live transmission feed, giving your network thread
+      // a highly durable 3-to-5 fragment buffer safety cushion.
+      liveSyncDurationCount: 5,        // Raised from 3: Targets 5 segments back from absolute live edge
+      liveMaxLatencyDurationCount: 8,  // Raised from 6: Maximum allowed drift before syncing
+      liveSyncDuration: 35,            // Explicitly requests a comfortable ~35s safety runway
+      liveMaxLatencyDuration: 60,
 
-      startPosition: -1,
-      liveSyncDurationCount: 3,        // Safer live synchronization latency threshold
-      liveMaxLatencyDurationCount: 6
+      // AGGRESSIVE ACCELERATED GAP NAVIGATION RULES
+      maxStarvationDelay: 3,
+      nudgeMaxRetry: 8,
+      nudgeDelay: 0.1,
+      startPosition: -1
     });
 
     hlsInstance.loadSource(VIDEO_URL);
