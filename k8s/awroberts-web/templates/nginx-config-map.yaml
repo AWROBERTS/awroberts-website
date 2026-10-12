@@ -34,6 +34,10 @@ data:
         # Per-client rate limit.
         limit_req_zone $binary_remote_addr zone=site_per_ip:10m rate=20r/s;
 
+        # HLS cache for /stream/ (see nginx.streamCache in values).
+        proxy_cache_path {{ .Values.nginx.streamCache.path }} levels=1:2 keys_zone=hls_stream:10m
+                         max_size={{ .Values.nginx.streamCache.maxSize }} inactive=60s use_temp_path=off;
+
         server {
             listen {{ .Values.nginx.listenPort }};
             listen [::]:{{ .Values.nginx.listenPort }};
@@ -86,6 +90,9 @@ data:
 
             # HLS background stream for the browser/p5 sketch.
             # The background service remains internal; this path exposes it through the main site origin.
+            # Cached on this node: the background nginx sends no-store, so its
+            # cache headers are ignored here and replaced for the browser.
+            # proxy_cache_lock collapses concurrent misses into one upstream fetch.
             location /stream/ {
                 limit_req zone=site_per_ip burst=80 nodelay;
                 proxy_pass http://{{ include "awroberts.fullname" . }}-background/stream/;
@@ -93,6 +100,31 @@ data:
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
+
+                proxy_cache hls_stream;
+                proxy_cache_key $uri;
+                proxy_cache_lock on;
+                proxy_cache_lock_timeout 5s;
+                proxy_cache_use_stale updating error timeout;
+                proxy_ignore_headers Cache-Control Expires Set-Cookie;
+                proxy_hide_header Cache-Control;
+                add_header X-Cache-Status $upstream_cache_status always;
+
+                location ~ \.ts$ {
+                    limit_req zone=site_per_ip burst=80 nodelay;
+                    proxy_pass http://{{ include "awroberts.fullname" . }}-background;
+                    proxy_cache_valid 200 {{ .Values.nginx.streamCache.segmentTtl }};
+                    add_header Cache-Control "public, max-age={{ trimSuffix "s" .Values.nginx.streamCache.segmentTtl }}" always;
+                    add_header X-Cache-Status $upstream_cache_status always;
+                }
+
+                location ~ \.m3u8$ {
+                    limit_req zone=site_per_ip burst=80 nodelay;
+                    proxy_pass http://{{ include "awroberts.fullname" . }}-background;
+                    proxy_cache_valid 200 {{ .Values.nginx.streamCache.playlistTtl }};
+                    add_header Cache-Control "no-cache" always;
+                    add_header X-Cache-Status $upstream_cache_status always;
+                }
             }
 
             # SPA fallback
