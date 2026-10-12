@@ -261,27 +261,26 @@ function setupHLS() {
       enableWorker: true,
       lowLatencyMode: true,
 
-      // DEEP BUFFER ARCHITECTURE FOR LARGE LIVE CHUNKS
+      // MAXIMUM BUFFERHeadROOM FOR LIVE CHUNKS
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
       maxBufferSize: 60 * 1000 * 1000,
       backBufferLength: 15,
 
-      // SAFEST LIVE WINDOW HEADROOM CONSTRAINTS
-      // These target starting the video safely back from the absolute tip
-      // of the live transmission feed, giving your network thread
-      // a highly durable 3-to-5 fragment buffer safety cushion.
-      liveSyncDurationCount: 5,        // Raised from 3: Targets 5 segments back from absolute live edge
-      liveMaxLatencyDurationCount: 8,  // Raised from 6: Maximum allowed drift before syncing
-      liveSyncDuration: 35,            // Explicitly requests a comfortable ~35s safety runway
-      liveMaxLatencyDuration: 60,
+      // AUTOMATED LIVE EDGE SLOP HEADROOM
+      liveSyncDurationCount: 5,
+      liveMaxLatencyDurationCount: 9,  // Increased slightly to allow a wider latency window
+      liveSyncDuration: 35,
+      liveMaxLatencyDuration: 65,
+      liveSyncPositionSlop: 3.5,       // NEW: Tells HLS.js not to nudge if within 3.5s of the live gap
 
-      // AGGRESSIVE ACCELERATED GAP NAVIGATION RULES
-      maxStarvationDelay: 3,
-      nudgeMaxRetry: 8,
-      nudgeDelay: 0.1,
+      // ROBUST ACCELERATED GAP-NAVIGATION RULES
+      maxStarvationDelay: 4,           // Increased to 4s to give HLS.js native gap-controller breathing room
+      nudgeMaxRetry: 10,               // Increased retry threshold for micro-stuttering
+      nudgeDelay: 0.2,                 // Slightly wider nudge step for large frames
       startPosition: -1
     });
+
 
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
