@@ -42,6 +42,14 @@ data:
                 add_header Cache-Control "no-cache";
             }
 
+            # The main site proxies /stream/... through unchanged, so map that
+            # prefix onto the output dir (root alone would look in stream/stream/).
+            location /stream/ {
+                # No try_files here: it misbehaves with alias; missing files 404 anyway.
+                alias "{{ .Values.backgroundVideo.hls.outputDir }}/";
+                add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+            }
+
             # Serve all HLS files directly
             location / {
                 add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
