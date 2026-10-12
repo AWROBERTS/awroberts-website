@@ -307,34 +307,45 @@ ensure_traefik_helm() {
 generate_deployment_json() {
   local output_file="${1:-deployment.json}"
 
+  # The cluster's version, not the local kubectl client's.
   get_kubernetes_version() {
-    kubectl version --client -o json 2>/dev/null \
-      | jq -r '.clientVersion.gitVersion // "unknown"' \
+    kubectl version -o json 2>/dev/null \
+      | jq -r '.serverVersion.gitVersion // "unknown"' \
       | sed 's/^v\+//'
   }
 
+  # `ctr version` needs root for the socket; the binary's own version doesn't.
   get_containerd_version() {
-    local version_line
-    version_line="$(ctr version 2>&1 | grep -m1 'Version:' || true)"
-    echo "${version_line}" | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]'
+    local version
+    version="$(containerd --version 2>/dev/null | awk '{print $3}' | sed 's/^v\+//')"
+    echo "${version:-unknown}"
   }
 
   get_docker_version() {
     docker version --format '{{.Server.Version}}' 2>/dev/null || echo "unknown"
   }
 
+  # Image is tag@digest (quay.io/cilium/cilium:v1.20.2@sha256:...), so drop
+  # the digest before taking the tag.
   get_cilium_version() {
-    kubectl get ds -n kube-system cilium \
-      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null \
-      | awk -F: '{print $NF}' \
-      || echo "unknown"
+    local image tag
+    image="$(kubectl get ds -n kube-system cilium \
+      -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+    image="${image%%@*}"
+    tag="${image##*:}"
+    if [[ -n "${tag}" && "${tag}" != "${image}" ]]; then
+      echo "${tag#v}"
+    else
+      echo "unknown"
+    fi
   }
 
+  # The release bundle (e.g. 1.5.1), not the API version (v1).
   get_gateway_api_version() {
     local raw
 
     raw="$(kubectl get crd gatewayclasses.gateway.networking.k8s.io \
-            -o jsonpath='{.spec.versions[0].name}' 2>/dev/null)"
+            -o jsonpath='{.metadata.annotations.gateway\.networking\.k8s\.io/bundle-version}' 2>/dev/null)"
 
     if [[ -z "$raw" ]]; then
       echo "unknown"
@@ -344,9 +355,9 @@ generate_deployment_json() {
   }
 
   get_helm_version() {
-    helm version --short 2>/dev/null \
-      | sed 's/^v\+//' \
-      || echo ""
+    local version
+    version="$(helm version --short 2>/dev/null | sed 's/^v\+//; s/+.*//')"
+    echo "${version:-unknown}"
   }
 
   get_service_name() {
@@ -702,102 +713,106 @@ deploy_images() {
 
   cleanup_old_images "${APP_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${APP_FULL_IMAGE}"
   cleanup_old_images "${BG_IMAGE_NAME_BASE}" "${RETENTION_DAYS}" "${BG_FULL_IMAGE}"
+
+  notes_and_status || echo "⚠️  notes_and_status report incomplete" >&2
 }
 
 # -----------------------------
 # NOTES AND STATUS
 # -----------------------------
 notes_and_status() {
+  # Report only: called as `notes_and_status || true`, so nothing here can
+  # fail a deploy that has otherwise succeeded.
+  local web_deploy="${DEPLOYMENT_NAME:-${HELM_RELEASE}-deploy}"
+  local site_host
+  site_host="$(kubectl -n "${NAMESPACE}" get gateway -o jsonpath='{.items[0].spec.listeners[0].hostname}' 2>/dev/null)"
+  site_host="${site_host:-awroberts.co.uk}"
+
+  echo
+  echo "=============================="
+  echo "🧭 Cluster Setup"
+  echo "=============================="
+  echo "Nodes:"
+  kubectl get nodes \
+    -o custom-columns='NAME:.metadata.name,STATUS:.status.conditions[?(@.type=="Ready")].status,ROLES:.metadata.labels.node-role\.kubernetes\.io/control-plane,ARCH:.status.nodeInfo.architecture,IP:.status.addresses[?(@.type=="InternalIP")].address,OS:.status.osImage,KUBELET:.status.nodeInfo.kubeletVersion,RUNTIME:.status.nodeInfo.containerRuntimeVersion'
+  echo
+  echo "Workload placement (web on the control plane, HLS on the ARM worker):"
+  kubectl -n "${NAMESPACE}" get pods \
+    -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+    -o custom-columns='POD:.metadata.name,STATUS:.status.phase,READY:.status.containerStatuses[0].ready,RESTARTS:.status.containerStatuses[0].restartCount,NODE:.spec.nodeName,IP:.status.podIP'
+
+  echo
   echo "=============================="
   echo "🌐 Network / NAT Information"
   echo "=============================="
-
-  if [[ "${INGRESS_HOSTNETWORK}" == "true" ]]; then
+  local host_network http_port https_port
+  host_network="$(kubectl -n traefik get deploy traefik -o jsonpath='{.spec.template.spec.hostNetwork}' 2>/dev/null)"
+  if [[ "${host_network}" == "true" ]]; then
+    echo "- Traefik uses hostNetwork on $(kubectl -n traefik get pod -l app.kubernetes.io/name=traefik -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null)"
     echo "- Router/NAT: forward WAN 80 -> NODE_IP:80 and WAN 443 -> NODE_IP:443"
   else
-    echo "- Router/NAT: forward WAN 80 -> NODE_IP:${HTTP_NODEPORT} and WAN 443 -> NODE_IP:${HTTPS_NODEPORT}"
+    http_port="$(kubectl -n traefik get svc traefik -o jsonpath='{.spec.ports[?(@.name=="web")].nodePort}' 2>/dev/null)"
+    https_port="$(kubectl -n traefik get svc traefik -o jsonpath='{.spec.ports[?(@.name=="websecure")].nodePort}' 2>/dev/null)"
+    echo "- Router/NAT: forward WAN 80 -> NODE_IP:${http_port:-?} and WAN 443 -> NODE_IP:${https_port:-?}"
   fi
+  echo "- Worker VM network ${WORKER_IP%.*}.0/24 routed via the Mac mini ($(getent hosts "${MAC_HOST:-}" 2>/dev/null | awk '{print $1}'))"
 
   echo
   echo "=============================="
-  echo "🚀 Deployment, Pods, Services, Routes"
+  echo "🚀 Deployment, Services, Routes"
   echo "=============================="
+  echo "Deployments:"
+  kubectl -n "${NAMESPACE}" get deploy -l "app.kubernetes.io/instance=${HELM_RELEASE}" -o wide
 
-  DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" \
-    -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  echo
+  echo "Rollout status (${web_deploy}):"
+  kubectl -n "${NAMESPACE}" rollout status "deploy/${web_deploy}" --timeout=30s
 
-  if [[ -z "$DEPLOYMENT_NAME" ]]; then
-    echo "⚠️  No Deployment found for Helm release '$HELM_RELEASE' in namespace '$NAMESPACE'"
-  else
-    echo "Deployment:"
-    kubectl -n "$NAMESPACE" get deploy "$DEPLOYMENT_NAME" -o wide
+  echo
+  echo "Services:"
+  kubectl -n "${NAMESPACE}" get svc -l "app.kubernetes.io/instance=${HELM_RELEASE}" \
+    -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port
 
-    echo
-    echo "Rollout status:"
-    kubectl -n "$NAMESPACE" rollout status deploy/"$DEPLOYMENT_NAME" --timeout=30s
-
-    echo
-    echo "Active Pods:"
-    kubectl -n "$NAMESPACE" get pods \
-      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-      --field-selector=status.phase=Running \
-      -o wide
-
-    echo
-    echo "Service:"
-    SERVICE_NAME=$(kubectl -n "$NAMESPACE" get svc \
-      -l "app.kubernetes.io/instance=$HELM_RELEASE" \
-      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
-    if [[ -z "$SERVICE_NAME" ]]; then
-      echo "Service not found"
-    else
-      kubectl -n "$NAMESPACE" get svc "$SERVICE_NAME" \
-        -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port,AGE:.metadata.creationTimestamp
-    fi
-
-    echo
-    echo "HTTPRoutes:"
-    kubectl -n "$NAMESPACE" get httproute \
-      -o wide 2>/dev/null || echo "HTTPRoute not found"
-    fi
+  echo
+  echo "HTTPRoutes:"
+  kubectl -n "${NAMESPACE}" get httproute -o wide 2>/dev/null || echo "HTTPRoute not found"
 
   echo
   echo "=============================="
-  echo "🔍 Traefik Diagnostics"
+  echo "🔍 Traefik / Gateway / TLS"
   echo "=============================="
-
   echo "Traefik Deployment:"
   kubectl -n traefik get deploy traefik -o wide 2>/dev/null || echo "Traefik deployment not found"
 
   echo
-  echo "Traefik Service:"
-  kubectl -n traefik get svc traefik \
-    -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,PORTS:.spec.ports[*].port,AGE:.metadata.creationTimestamp \
-    2>/dev/null || echo "Traefik service not found"
-
-  echo
   echo "Gateways:"
-  kubectl -n "$NAMESPACE" get gateway \
-    -o 'custom-columns=NAME:.metadata.name,CLASS:.spec.gatewayClassName,PROGRAMMED:.status.conditions[?(@.type=="Programmed")].status,AGE:.metadata.creationTimestamp' \
-    2>/dev/null || echo "No Gateways found in $NAMESPACE namespace"
+  kubectl -n "${NAMESPACE}" get gateway \
+    -o 'custom-columns=NAME:.metadata.name,CLASS:.spec.gatewayClassName,PROGRAMMED:.status.conditions[?(@.type=="Programmed")].status' \
+    2>/dev/null || echo "No Gateways found in ${NAMESPACE} namespace"
 
   echo
-  echo "TLS Secrets:"
-  kubectl -n "$NAMESPACE" get secret | grep tls 2>/dev/null || echo "No TLS secrets found in $NAMESPACE"
+  echo "TLS (${TLS_SECRET_NAME}):"
+  kubectl -n "${NAMESPACE}" get secret "${TLS_SECRET_NAME}" -o jsonpath='{.data.tls\.crt}' 2>/dev/null \
+    | base64 -d 2>/dev/null | openssl x509 -noout -subject -issuer -enddate 2>/dev/null \
+    || echo "TLS secret ${TLS_SECRET_NAME} not found"
 
   echo
   echo "=============================="
-  echo "🖥️ Node & Network Info"
+  echo "🎞️ Live Checks (https://${site_host})"
   echo "=============================="
+  local path code
+  for path in / /stream/index.m3u8 /stream/mobile/index.m3u8 /background-poster.png /deployment.json; do
+    code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${site_host}${path}")"
+    printf '  %-28s %s\n' "${path}" "${code:-error}"
+  done
+  echo "  served cert: $(echo | openssl s_client -connect "${site_host}:443" -servername "${site_host}" 2>/dev/null \
+    | openssl x509 -noout -enddate 2>/dev/null || echo unavailable)"
 
-  echo "Node IPs:"
-  kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
   echo
-
-  echo "Public IP:"
-  curl -s https://api.ipify.org || echo "Unavailable"
+  echo "=============================="
+  echo "🖥️ Public IP"
+  echo "=============================="
+  curl -s --max-time 10 https://api.ipify.org || echo "Unavailable"
   echo
   echo
 }
