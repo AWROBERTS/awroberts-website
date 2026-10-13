@@ -306,15 +306,17 @@ function setupHLS() {
       enableWorker: true,
       lowLatencyMode: true,
 
-      // MAXIMUM HEADROOM FOR DESKTOP 4K
-      maxBufferLength: 30,
-      maxMaxBufferLength: 60,
-      maxBufferSize: 60 * 1000 * 1000,
-      backBufferLength: 15,
+      // OPTIMIZED FOR 14MBPS RAW 4K COPY STREAMS:
+      // Drop the buffer requirements down so the player only pulls a fast,
+      // lightweight 6-second window on boot instead of choking the network.
+      maxBufferLength: 6,              // Lowered from 30 to stop the start-up freeze
+      maxMaxBufferLength: 12,          // Lowered from 60
+      maxBufferSize: 30 * 1000 * 1000, // Caps initial load safely at 30MB
+      backBufferLength: 4,
 
       // Rely ONLY on DurationCount for live tracking thresholds
-      liveSyncDurationCount: 5,        // Targets 5 segments back from absolute live edge
-      liveMaxLatencyDurationCount: 9,  // Maximum allowed drift before syncing
+      liveSyncDurationCount: 3,        // Targets 3 segments back from absolute live edge
+      liveMaxLatencyDurationCount: 6,  // Maximum allowed drift before syncing
 
       // OPTIMIZED SLOP HEADROOM:
       // Prevents the player from logging false-positive stall notices during the quick
