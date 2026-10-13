@@ -42,8 +42,6 @@ assets:
   publicPath: /assets
   mountPath: /usr/share/nginx/html/assets
 
-# /deployment.json for the site's diagnostics panel. The ConfigMap
-# (<fullname>-deployment-json) is created by the deploy script, not Helm.
 deploymentJson:
   mountPath: /etc/awroberts/deployment-json
 
@@ -56,16 +54,11 @@ nginx:
   root: /usr/share/nginx/html
   index: index.html
 
-  # Cache for /stream/ proxied from the background nginx on the worker VM,
-  # so each segment crosses the VM link once rather than once per viewer.
   streamCache:
     path: /var/cache/nginx/stream
-    maxSize: 400m          # emptyDir sizeLimit is set slightly above this
+    maxSize: 400m
     sizeLimit: 512Mi
-    # Live window is liveWindow x segmentDuration (20s); keep segments a bit
-    # longer than that. ffmpeg restarts reuse segment names, so don't go long.
     segmentTtl: 30s
-    # Playlists change every segment; 1s still collapses concurrent viewers.
     playlistTtl: 1s
 
   mimeTypes:
@@ -120,21 +113,14 @@ backgroundVideo:
 
   desktop:
     enabled: true
-    scale: "3840:2160"       # Force strict 4K parameter formatting (replaces "3840:-1")
-    bitrate: "14000k"        # Bumped from 8000k to 14Mbps to handle true 4K canvas data
-    maxrate: "16000k"        # Expanded ceiling to capture rich camera loop details
-    bufsize: "32000k"        # Increased allocation to match the 14Mbps profile
-    preset: "medium"         # Swapped from "veryfast" to "medium" to stop detail pixelation
 
   hls:
-    segmentDuration: 2       # Strictly lock to your fresh 2-second segment chunks
-    liveWindow: 6            # Tightened sliding live window size from 10 down to 6 segments
+    segmentDuration: 2
+    liveWindow: 6
     liveSegmentPrefix: "live_"
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
   resources:
-    # Real-time 4K libx264: x264 frame buffers alone exceed 512Mi, and it
-    # needs several cores to keep up with -re.
     ffmpegDesktop:
       requests:
         cpu: 1500m
@@ -160,13 +146,4 @@ backgroundVideo:
         memory: 128Mi
 
   mobile:
-    enabled: true
-    scale: "1280:-1"
-    bitrate: "900k"
-    maxrate: "1000k"
-    bufsize: "1500k"
-    audioBitrate: "128k"
-    liveWindow: 10
-    outputDir: "/var/www/html/awroberts/awroberts-media/stream/mobile"
-    segmentPrefix: "mobile_"
-    preset: "fast"
+    enabled: false # FIXED: Disabled legacy mobile software transcoding blocks

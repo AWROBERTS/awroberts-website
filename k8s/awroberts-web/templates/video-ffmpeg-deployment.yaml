@@ -72,15 +72,14 @@ spec:
 
               trap 'kill "$poster_loop_pid" 2>/dev/null || true; exit 0' TERM INT
 
+              # ----------------------------------------------------
+              # HIGH-PERFORMANCE ZERO-OVERHEAD STREAM COPY
+              # ----------------------------------------------------
               ffmpeg -y \
                 -re \
                 -stream_loop -1 \
                 -i {{ .Values.backgroundVideo.source }} \
-                -vf scale={{ .Values.backgroundVideo.desktop.scale }} \
-                -c:v libx264 -preset {{ .Values.backgroundVideo.desktop.preset }} \
-                -b:v {{ .Values.backgroundVideo.desktop.bitrate }} \
-                -maxrate {{ .Values.backgroundVideo.desktop.maxrate }} \
-                -bufsize {{ .Values.backgroundVideo.desktop.bufsize }} \
+                -c:v copy \
                 -c:a aac -b:a 128k \
                 -f hls \
                 -hls_time {{ .Values.backgroundVideo.hls.segmentDuration }} \
