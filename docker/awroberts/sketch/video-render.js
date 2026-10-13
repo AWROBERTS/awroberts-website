@@ -1,10 +1,8 @@
 // video-render.js
 
-// -----------------------------
-// BROWSER ELEMENT INTERCEPTOR
-// -----------------------------
-// Patches the global browser prototype to catch p5.js during internal setup
-// and forcefully inject the rendering hint before it draws a single pixel.
+// ----------------------------------------------------
+// PATHTYPE INTERCEPTOR (Silences readback warnings)
+// ----------------------------------------------------
 (function() {
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function(type, attributes) {
@@ -18,9 +16,9 @@
 
 import { bgVideoEl, videoReady, bgPosterImg, awrWeb } from './video-hls.js';
 
-// -----------------------------
+// ----------------------------------------------------
 // RENDER ENGINE ARCHITECTURE STATE
-// -----------------------------
+// ----------------------------------------------------
 let videoFadeStart = null;
 const videoFadeDuration = 1200;
 
@@ -37,9 +35,9 @@ let videoLayerReady = false;
 let lastVideoTime = -1;
 let hasVideoFrame = false;
 
-// -----------------------------
+// ----------------------------------------------------
 // CODESPACE INITIALIZATION PIPELINE
-// -----------------------------
+// ----------------------------------------------------
 export function initRenderLayers(p5Instance) {
   videoSourceCanvas = document.createElement("canvas");
   videoSourceCtx = videoSourceCanvas.getContext("2d", { alpha: false });
@@ -49,13 +47,12 @@ export function initRenderLayers(p5Instance) {
   videoLayer.pixelDensity(1);
   videoLayer.clear();
   videoLayerReady = true;
-
   videoLayerCtx = videoLayer.drawingContext;
 }
 
-// -----------------------------
-// FRAME COPY LOGIC
-// -----------------------------
+// ----------------------------------------------------
+// GETTERS & ACCELERATORS
+// ----------------------------------------------------
 export function getVideoLayerCanvas() {
   return (videoLayerReady && videoLayerCtx) ? videoLayerCtx.canvas : null;
 }
@@ -66,6 +63,9 @@ export function getVideoFadeAlpha() {
   return Math.min(Math.max(t, 0), 1);
 }
 
+// ----------------------------------------------------
+// CORE FRAME RENDERING PIPELINE
+// ----------------------------------------------------
 export function updateVideoFrame() {
   if (!bgVideoEl || !videoReady || !videoSourceReady || !videoLayerReady) return false;
   if (!bgVideoEl.videoWidth || !bgVideoEl.videoHeight) return false;
@@ -75,9 +75,7 @@ export function updateVideoFrame() {
 
   if (hasVideoFrame && !hasAdvanced) return true;
 
-  // PERFORMANCE OPTIMIZATION: Instead of allocating a massive 3840x2160 source canvas,
-  // downscale the color sampling context layer structurally to a smart 1280x720 container.
-  // This shields the main JS thread from heavy 4K pixel calculations during color readings.
+  // Set a clean 720p internal sampling size boundary to limit main thread strain
   const sampleW = 1280;
   const sampleH = 720;
 
@@ -95,13 +93,13 @@ export function updateVideoFrame() {
   }
 
   try {
-    // Draw the high-fidelity 4K video input downscaled into our 720p sampling canvas buffer
+    // 1. Draw raw high-fidelity 4K frame downscaled into our 720p memory buffer canvas
     videoSourceCtx.drawImage(bgVideoEl, 0, 0, sampleW, sampleH);
 
     const destW = videoLayer.width;
     const destH = videoLayer.height;
 
-    // Scale back up inside the graphics container to maintain clean visual sharpness on screen
+    // 2. Draw scaled back up on the visual canvas layer to maintain crystal clear screen sharpness
     videoLayerCtx.save();
     videoLayerCtx.clearRect(0, 0, destW, destH);
     videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, sampleW, sampleH, 0, 0, destW, destH);
@@ -112,44 +110,49 @@ export function updateVideoFrame() {
 
     if (videoFadeStart === null) {
       videoFadeStart = awrWeb.millis();
-      console.log("Video fade started");
     }
 
     return true;
   } catch (err) {
-    console.warn("Video frame copy skipped:", err);
     return hasVideoFrame;
   }
 }
 
-// -----------------------------
-// COLOUR SAMPLER
-// -----------------------------
+// ----------------------------------------------------
+// HIGH-PERFORMANCE PIXEL COLOUR SAMPLERS
+// ----------------------------------------------------
 export function sampleVideoColumn(x) {
-  if (!videoLayerReady || !hasVideoFrame) return null;
+  if (!videoSourceReady || !hasVideoFrame) return null;
   try {
-    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
-    return videoLayerCtx.getImageData(px, 0, 1, videoLayer.height).data;
-  } catch {
+    // Map the full-viewport X position down to the matching relative coordinate in our 720p canvas
+    const scaleX = (x / awrWeb.width) * videoSourceWidth;
+    const px = Math.floor(Math.max(0, Math.min(scaleX, videoSourceWidth - 1)));
+
+    // CRUCIAL FIX: Samples from videoSourceCtx (720px tall) instead of reading full screen context height.
+    return videoSourceCtx.getImageData(px, 0, 1, videoSourceHeight).data;
+  } catch (err) {
     return null;
   }
 }
 
 export function sampleVideoColor(x, y) {
-  if (!videoLayerReady || !hasVideoFrame) return;
+  if (!videoSourceReady || !hasVideoFrame) return null;
   try {
-    const px = Math.floor(awrWeb.constrain(x, 0, videoLayer.width - 1));
-    const py = Math.floor(awrWeb.constrain(y, 0, videoLayer.height - 1));
-    const d = videoLayerCtx.getImageData(px, py, 1, 1).data;
-    return [d[0], d[1], d[2]];
-  } catch {
-    return;
+    const scaleX = (x / awrWeb.width) * videoSourceWidth;
+    const scaleY = (y / awrWeb.height) * videoSourceHeight;
+    const px = Math.floor(Math.max(0, Math.min(scaleX, videoSourceWidth - 1)));
+    const py = Math.floor(Math.max(0, Math.min(scaleY, videoSourceHeight - 1)));
+
+    const d = videoSourceCtx.getImageData(px, py, 1, 1).data;
+    return [d, d, d];
+  } catch (err) {
+    return null;
   }
 }
 
-// -----------------------------
-// DRAW PIPELINE
-// -----------------------------
+// ----------------------------------------------------
+// STAGE BACKGROUND DRAW LOOP INTERFACES
+// ----------------------------------------------------
 export function drawBackgroundFallback() {
   if (!bgPosterImg) return;
   awrWeb.image(bgPosterImg, 0, 0, awrWeb.width, awrWeb.height);
