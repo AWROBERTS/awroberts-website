@@ -267,21 +267,53 @@ function setupHLS() {
   if (HlsGlobal && HlsGlobal.isSupported()) {
     console.log("Using Desktop HLS.js engine");
 
-    hlsInstance = new HlsGlobal({
+    // Define lightweight, fast-evicting configurations for mobile
+    // and deep-cushioned buffers for desktop machines.
+    const hlsConfig = isMobile ? {
       enableWorker: true,
       lowLatencyMode: true,
+
+      // LIGHTWEIGHT MOBILE TRACKING
+      maxBufferLength: 6,              // Only cache ~1 segment ahead to save mobile memory
+      maxMaxBufferLength: 10,
+      maxBufferSize: 15 * 1000 * 1000, // Caps memory footprint at a low 15MB
+      backBufferLength: 2,             // Instantly dump past frames to clear mobile hardware decoders
+
+      // Rely ONLY on DurationCount for live tracking thresholds
+      liveSyncDurationCount: 2,
+      liveMaxLatencyDurationCount: 4,
+      liveSyncPositionSlop: 1.5,
+
+      maxStarvationDelay: 1.5,
+      nudgeMaxRetry: 4,
+      nudgeDelay: 0.1,
+      startPosition: -1
+    } : {
+      enableWorker: true,
+      lowLatencyMode: true,
+
+      // MAXIMUM HEADROOM FOR DESKTOP 4K
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
       maxBufferSize: 60 * 1000 * 1000,
       backBufferLength: 15,
-      liveSyncDurationCount: 5,
-      liveMaxLatencyDurationCount: 9,
-      liveSyncPositionSlop: 3.5,
-      maxStarvationDelay: 4,
+
+      // Rely ONLY on DurationCount for live tracking thresholds
+      liveSyncDurationCount: 5,        // Targets 5 segments back from absolute live edge
+      liveMaxLatencyDurationCount: 9,  // Maximum allowed drift before syncing
+
+      // OPTIMIZED SLOP HEADROOM:
+      // Prevents the player from logging false-positive stall notices during the quick
+      // transition gaps between your brand-new, granular 2-second 4K segment files.
+      liveSyncPositionSlop: 4.5,
+      maxStarvationDelay: 6,
+
       nudgeMaxRetry: 10,
       nudgeDelay: 0.2,
       startPosition: -1
-    });
+    };
+
+    hlsInstance = new HlsGlobal(hlsConfig);
 
     hlsInstance.loadSource(VIDEO_URL);
     hlsInstance.attachMedia(bgVideoEl);
@@ -296,23 +328,39 @@ function setupHLS() {
         if (continuousStallCount > 3) {
           console.warn("HLS.js nudges failing — forcing hard stream edge recovery");
           continuousStallCount = 0;
+
+          // 1. Terminate stalled network request cycles
           hlsInstance.stopLoad();
 
+          // 2. Clear out the broken frame tracks from the browser's hardware pipeline
           if (typeof hlsInstance.skipToExtension === 'function') {
             hlsInstance.skipToExtension();
           }
 
+          // 3. Re-sync HLS.js with the live broadcast playlist edge
           hlsInstance.startLoad(-1);
 
+          // 4. SMART TARGET SEEK: Platform-optimized stream alignment
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = Math.max(0, livePos - 10);
+            if (isMobile) {
+              // MOBILE OPTIMIZATION: Snap tightly to a fresh live chunk boundary.
+              bgVideoEl.currentTime = Math.max(0, livePos - 3);
+            } else {
+              // DESKTOP: Sit comfortably back in a deep, pre-cached buffer track.
+              bgVideoEl.currentTime = Math.max(0, livePos - 10);
+            }
           } else {
-            bgVideoEl.currentTime = bgVideoEl.currentTime + 10;
+            // Fallback: Manually push the playhead past the stuck frame boundary
+            bgVideoEl.currentTime = bgVideoEl.currentTime + (isMobile ? 3 : 10);
           }
 
+          // 5. Force invoke the element layout track to clear the freeze
           bgVideoEl.play()
-            .then(() => { isRecoveringFromStall = false; })
+            .then(() => {
+              // Clear recovery locks strictly on a successful play resolution
+              isRecoveringFromStall = false;
+            })
             .catch(err => {
               console.warn("Hard recovery play jump failed:", err);
               isRecoveringFromStall = false;
@@ -324,6 +372,7 @@ function setupHLS() {
         return;
       }
 
+      // Handle structural fatal errors
       if (data.fatal) {
         continuousStallCount = 0;
         if (data.type === HlsGlobal.ErrorTypes.MEDIA_ERROR) {
@@ -340,6 +389,7 @@ function setupHLS() {
       }
     });
 
+    // Reset loop count whenever fragments play smoothly
     hlsInstance.on(HlsGlobal.Events.FRAG_CHANGED, () => {
       continuousStallCount = 0;
     });
