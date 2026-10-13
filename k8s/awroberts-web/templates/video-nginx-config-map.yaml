@@ -48,6 +48,18 @@ data:
                 # No try_files here: it misbehaves with alias; missing files 404 anyway.
                 alias "{{ .Values.backgroundVideo.hls.outputDir }}/";
                 add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+
+                # ----------------------------------------------------
+                # HIGH-BITRATE 4K STATIC FILE OPTIMIZATIONS
+                # ----------------------------------------------------
+                # Tells the Linux kernel to allocate larger RAM buffers when reading
+                # your massive uncompressed 4K .ts segments from the shared disk volume.
+                output_buffers 4 1024k;
+
+                # Maximise memory packet sizes to send data across the hypervisor instantly
+                sendfile_max_chunk 512k;
+                tcp_nopush on;
+                tcp_nodelay on;
             }
 
             # Serve all HLS files directly
