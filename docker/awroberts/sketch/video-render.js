@@ -75,46 +75,36 @@ export function updateVideoFrame() {
 
   if (hasVideoFrame && !hasAdvanced) return true;
 
-  const sourceW = bgVideoEl.videoWidth;
-  const sourceH = bgVideoEl.videoHeight;
+  // PERFORMANCE OPTIMIZATION: Instead of allocating a massive 3840x2160 source canvas,
+  // downscale the color sampling context layer structurally to a smart 1280x720 container.
+  // This shields the main JS thread from heavy 4K pixel calculations during color readings.
+  const sampleW = 1280;
+  const sampleH = 720;
 
-  if (videoSourceWidth !== sourceW || videoSourceHeight !== sourceH) {
-    videoSourceCanvas.width = sourceW;
-    videoSourceCanvas.height = sourceH;
-    videoSourceWidth = sourceW;
-    videoSourceHeight = sourceH;
+  if (videoSourceWidth !== sampleW || videoSourceHeight !== sampleH) {
+    videoSourceCanvas.width = sampleW;
+    videoSourceCanvas.height = sampleH;
+    videoSourceWidth = sampleW;
+    videoSourceHeight = sampleH;
   }
 
-    if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
+  if (videoLayer.width !== awrWeb.width || videoLayer.height !== awrWeb.height) {
     videoLayer.resizeCanvas(awrWeb.width, awrWeb.height);
     videoLayer.pixelDensity(1);
-    videoLayerCtx = videoLayer.drawingContext; // Patched automatically by the interceptor
+    videoLayerCtx = videoLayer.drawingContext;
   }
 
   try {
-    videoSourceCtx.drawImage(bgVideoEl, 0, 0, sourceW, sourceH);
+    // Draw the high-fidelity 4K video input downscaled into our 720p sampling canvas buffer
+    videoSourceCtx.drawImage(bgVideoEl, 0, 0, sampleW, sampleH);
 
     const destW = videoLayer.width;
     const destH = videoLayer.height;
-    const srcAspect  = sourceW / sourceH;
-    const destAspect = destW   / destH;
 
-    let sx, sy, sw, sh;
-    if (srcAspect > destAspect) {
-      sh = sourceH;
-      sw = sourceH * destAspect;
-      sx = (sourceW - sw) / 2;
-      sy = 0;
-    } else {
-      sw = sourceW;
-      sh = sourceW / destAspect;
-      sx = 0;
-      sy = (sourceH - sh) / 2;
-    }
-
+    // Scale back up inside the graphics container to maintain clean visual sharpness on screen
     videoLayerCtx.save();
     videoLayerCtx.clearRect(0, 0, destW, destH);
-    videoLayerCtx.drawImage(videoSourceCanvas, sx, sy, sw, sh, 0, 0, destW, destH);
+    videoLayerCtx.drawImage(videoSourceCanvas, 0, 0, sampleW, sampleH, 0, 0, destW, destH);
     videoLayerCtx.restore();
 
     lastVideoTime = currentTime;
