@@ -157,6 +157,7 @@ function setupVideoEvents() {
 
   let stalledTimer = null;
   let waitingTimeout = null; // High-precision track supervisor
+  let dynamicPauseDebounce = null; // Layout conflict debouncer
 
   const recoverStall = () => {
     if (stalledTimer) return;
@@ -224,12 +225,25 @@ function setupVideoEvents() {
     continuousStallCount = 0;
     if (stalledTimer) { clearTimeout(stalledTimer); stalledTimer = null; }
     if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
+    if (dynamicPauseDebounce) { clearTimeout(dynamicPauseDebounce); dynamicPauseDebounce = null; }
   });
 
   bgVideoEl.addEventListener("pause", () => {
-    console.warn("Video event: pause — ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
-    if (!bgVideoEl.ended) {
-      bgVideoEl.play().catch(err => console.warn("Auto-resume play() failed:", err));
+    console.warn("Video event: pause intercepted — ended=" + bgVideoEl.ended + " t=" + bgVideoEl.currentTime.toFixed(2));
+
+    if (bgVideoEl.ended || isRecoveringFromStall) return;
+
+    // PERFORMANCE PATCH: Debounce auto-resume play calls to shield the browser
+    // thread from rapid layout or window focus changes triggering pipeline locks.
+    if (!dynamicPauseDebounce) {
+      dynamicPauseDebounce = setTimeout(() => {
+        dynamicPauseDebounce = null;
+        if (!bgVideoEl || bgVideoEl.paused === false || bgVideoEl.ended) return;
+
+        console.log("Watchdog: Resolving unintended layout background pause — forcing play");
+        bgVideoEl.play()
+          .catch(err => console.warn("Auto-resume play() collision avoided:", err));
+      }, 150);
     }
   });
 
