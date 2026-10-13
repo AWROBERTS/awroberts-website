@@ -100,7 +100,6 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  # hls-input volume: <media.hostPath>/hls on the node, mounted here.
   source: "/usr/share/nginx/html/hls/stream.m3u8"
 
   ffmpeg:
@@ -121,15 +120,15 @@ backgroundVideo:
 
   desktop:
     enabled: true
-    scale: "3840:-1"
-    bitrate: "8000k"
-    maxrate: "10000k"
-    bufsize: "20000k"
-    preset: "veryfast"
+    scale: "3840:2160"       # Force strict 4K parameter formatting (replaces "3840:-1")
+    bitrate: "14000k"        # Bumped from 8000k to 14Mbps to handle true 4K canvas data
+    maxrate: "16000k"        # Expanded ceiling to capture rich camera loop details
+    bufsize: "32000k"        # Increased allocation to match the 14Mbps profile
+    preset: "medium"         # Swapped from "veryfast" to "medium" to stop detail pixelation
 
   hls:
-    segmentDuration: 2
-    liveWindow: 10
+    segmentDuration: 2       # Strictly lock to your fresh 2-second segment chunks
+    liveWindow: 6            # Tightened sliding live window size from 10 down to 6 segments
     liveSegmentPrefix: "live_"
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
