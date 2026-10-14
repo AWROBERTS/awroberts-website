@@ -65,14 +65,14 @@ export function initVideoSystem() {
   // MOBILE FALLBACK GRAPHIC RE-LOAD LOOP
   // ----------------------------------------------------
   if (isMobile) {
-    console.log("Mobile device detected: Activating smart RAM image-reloader loop");
+    console.log("Mobile device detected: Activating 2-second fluid RAM image-reloader loop");
 
     // Set videoReady to true so p5 knows it can draw the bgPosterImg asset layer
     videoReady = true;
 
     if (mobileTimer) clearInterval(mobileTimer);
 
-    // Fetch the latest extracted live stream frame out of RAM cache every 4 seconds
+    // Fetch the latest extracted live stream frame out of RAM cache every 2 seconds
     mobileTimer = setInterval(async () => {
       try {
         const freshPoster = await awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
@@ -81,9 +81,9 @@ export function initVideoSystem() {
           console.log("🎨 Mobile: Successfully reloaded fresh live background canvas slice");
         }
       } catch (err) {
-        console.warn("Mobile image reloader encountered an asset fetch slip, retaining last frame", err);
+        console.warn("Mobile image reloader encountered an asset fetch slip", err);
       }
-    }, 4000);
+    }, 2000);
 
     return; // Exit completely. No video elements or watchdogs needed for mobile!
   }
