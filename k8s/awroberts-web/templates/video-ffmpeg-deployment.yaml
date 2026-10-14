@@ -139,7 +139,7 @@ spec:
               cpu: {{ .Values.backgroundVideo.resources.ffmpegDesktop.requests.cpu }}
               memory: {{ .Values.backgroundVideo.resources.ffmpegDesktop.requests.memory }}
             limits:
-              cpu: {{ .Values.backgroundVideo.resources.ffmpegDesktop.limits.limits.cpu | default .Values.backgroundVideo.resources.ffmpegDesktop.limits.cpu }}
+              cpu: {{ .Values.backgroundVideo.resources.ffmpegDesktop.limits.cpu }}
               memory: {{ .Values.backgroundVideo.resources.ffmpegDesktop.limits.memory }}
 
       volumes:
