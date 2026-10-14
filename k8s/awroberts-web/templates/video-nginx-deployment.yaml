@@ -65,11 +65,16 @@ spec:
           configMap:
             name: {{ include "awroberts.fullname" . }}-background-nginx
 
+        # ----------------------------------------------------
+        # HIGH-SPEED SHARED LINUX RAM HIGHWAY (NGINX ROOT)
+        # ----------------------------------------------------
+        # Connects your web server onto the exact same host RAM footprint as your encoder.
         - name: hls-output-media
           hostPath:
             path: {{ .Values.backgroundVideo.nginx.volume.shmRootPath }}
             type: DirectoryOrCreate
 
+        # Connects onto the shared RAM stream subfolder tracking block.
         - name: hls-output-hls
           hostPath:
             path: {{ .Values.backgroundVideo.nginx.volume.shmStreamPath }}
