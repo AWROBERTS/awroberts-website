@@ -115,7 +115,12 @@ spec:
             path: {{ .Values.media.hostPath }}/hls
             type: Directory
 
+        # ----------------------------------------------------
+        # AUTOMATED HIGH-SPEED RAM MEMORY RUNWAY
+        # ----------------------------------------------------
+        # Replaces your slow host hard drive volume with a native cluster RAM disk.
+        # This completely stops multi-device LAN lag with zero manual setup required!
         - name: hls-output
-          hostPath:
-            path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
-            type: DirectoryOrCreate
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi  # 512 Megabytes is plenty of headroom to hold your rolling 30s runway
