@@ -155,7 +155,29 @@ export function sampleVideoColor(x, y) {
 // ----------------------------------------------------
 export function drawBackgroundFallback() {
   if (!bgPosterImg) return;
-  awrWeb.image(bgPosterImg, 0, 0, awrWeb.width, awrWeb.height);
+
+  awrWeb.push();
+  awrWeb.imageMode(awrWeb.CENTER);
+
+  let imgW = bgPosterImg.width > 10 ? bgPosterImg.width : 3840;
+  let imgH = bgPosterImg.height > 10 ? bgPosterImg.height : 2160;
+
+  let scaleX = awrWeb.width / imgW;
+  let scaleY = awrWeb.height / imgH;
+  let dominantScale = Math.max(scaleX, scaleY);
+
+  let renderWidth = imgW * dominantScale;
+  let renderHeight = imgH * dominantScale;
+
+  awrWeb.image(
+    bgPosterImg,
+    awrWeb.width / 2,
+    awrWeb.height / 2,
+    renderWidth,
+    renderHeight
+  );
+
+  awrWeb.pop();
 }
 
 export function drawVideo() {
@@ -174,6 +196,25 @@ export function drawVideo() {
 
   awrWeb.push();
   awrWeb.drawingContext.globalAlpha = alpha / 255;
-  awrWeb.image(videoLayer, 0, 0, awrWeb.width, awrWeb.height);
+  awrWeb.imageMode(awrWeb.CENTER);
+
+  let vidW = videoLayer.width > 10 ? videoLayer.width : 3840;
+  let vidH = videoLayer.height > 10 ? videoLayer.height : 2160;
+
+  let scaleX = awrWeb.width / vidW;
+  let scaleY = awrWeb.height / vidH;
+  let dominantScale = Math.max(scaleX, scaleY);
+
+  let renderWidth = vidW * dominantScale;
+  let renderHeight = vidH * dominantScale;
+
+  awrWeb.image(
+    videoLayer,
+    awrWeb.width / 2,
+    awrWeb.height / 2,
+    renderWidth,
+    renderHeight
+  );
+
   awrWeb.pop();
 }
