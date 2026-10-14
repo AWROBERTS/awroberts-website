@@ -151,16 +151,33 @@ export function sampleVideoColor(x, y) {
 }
 
 // ----------------------------------------------------
-// STAGE BACKGROUND DRAW LOOP INTERFACES
+// DUAL-BUFFER MEMORY TRACKING CHANNELS
 // ----------------------------------------------------
-export function drawBackgroundFallback() {
-  if (!bgPosterImg) return;
+
+let currentMobileImg = null;
+let nextMobileImg = null;
+let blendStartMillis = null;
+const BLEND_DURATION = 1000; // 1 full second of pure cross-dissolve frame melting
+
+export function stageNextMobileFrame(freshImage) {
+  if (!currentMobileImg) {
+    currentMobileImg = freshImage;
+    if (typeof bgPosterImg !== 'undefined') bgPosterImg = freshImage;
+    return;
+  }
+  nextMobileImg = freshImage;
+  blendStartMillis = awrWeb.millis();
+}
+
+function drawCroppedImage(img, alpha) {
+  if (!img) return;
 
   awrWeb.push();
   awrWeb.imageMode(awrWeb.CENTER);
+  awrWeb.drawingContext.globalAlpha = alpha / 255;
 
-  let imgW = bgPosterImg.width > 10 ? bgPosterImg.width : 3840;
-  let imgH = bgPosterImg.height > 10 ? bgPosterImg.height : 2160;
+  let imgW = img.width > 10 ? img.width : 3840;
+  let imgH = img.height > 10 ? img.height : 2160;
 
   let scaleX = awrWeb.width / imgW;
   let scaleY = awrWeb.height / imgH;
@@ -170,19 +187,86 @@ export function drawBackgroundFallback() {
   let renderHeight = imgH * dominantScale;
 
   awrWeb.image(
-    bgPosterImg,
+    img,
     awrWeb.width / 2,
     awrWeb.height / 2,
     renderWidth,
     renderHeight
   );
-
   awrWeb.pop();
+}
+
+export function drawBackgroundFallback() {
+  // ----------------------------------------------------
+  // DESKTOP SUBTLE SMOOTH BLEND LANE
+  // ----------------------------------------------------
+  // FIXED: Clamps the minimum alpha floor so it never drops into a severe black gap
+  if (typeof isMobile !== 'undefined' && !isMobile) {
+    if (bgPosterImg) {
+      awrWeb.push();
+      awrWeb.imageMode(awrWeb.CENTER);
+
+      // Grab the active fade alpha from your global state context
+      let currentAlpha = awrWeb.drawingContext.globalAlpha * 255;
+      // CLAMP: Keeps at least 40% visibility alive on screen to smooth out the cut!
+      let safeAlpha = Math.max(100, currentAlpha);
+      awrWeb.drawingContext.globalAlpha = safeAlpha / 255;
+
+      let imgW = bgPosterImg.width > 10 ? bgPosterImg.width : 3840;
+      let imgH = bgPosterImg.height > 10 ? bgPosterImg.height : 2160;
+
+      let scaleX = awrWeb.width / imgW;
+      let scaleY = awrWeb.height / imgH;
+      let dominantScale = Math.max(scaleX, scaleY);
+
+      let renderWidth = imgW * dominantScale;
+      let renderHeight = imgH * dominantScale;
+
+      awrWeb.image(
+        bgPosterImg,
+        awrWeb.width / 2,
+        awrWeb.height / 2,
+        renderWidth,
+        renderHeight
+      );
+      awrWeb.pop();
+    }
+    return;
+  }
+
+  // ----------------------------------------------------
+  // MOBILE DUAL-BUFFER CROSS-DISSOLVE MELTING MATRIX
+  // ----------------------------------------------------
+  if (!currentMobileImg) {
+    if (bgPosterImg) currentMobileImg = bgPosterImg;
+    else return;
+  }
+
+  if (nextMobileImg && blendStartMillis !== null) {
+    let elapsed = awrWeb.millis() - blendStartMillis;
+    let progress = awrWeb.constrain(elapsed / BLEND_DURATION, 0, 1);
+
+    let currentAlpha = awrWeb.constrain((1 - progress) * 255, 0, 255);
+    let nextAlpha = awrWeb.constrain(progress * 255, 0, 255);
+
+    drawCroppedImage(currentMobileImg, currentAlpha);
+    drawCroppedImage(nextMobileImg, nextAlpha);
+
+    if (progress >= 1) {
+      currentMobileImg = nextMobileImg;
+      if (typeof bgPosterImg !== 'undefined') bgPosterImg = nextMobileImg;
+      nextMobileImg = null;
+      blendStartMillis = null;
+    }
+  } else {
+    drawCroppedImage(currentMobileImg, 255);
+  }
 }
 
 export function drawVideo() {
   drawBackgroundFallback();
 
+  if (typeof isMobile !== 'undefined' && isMobile) return;
   if (!videoReady || !videoLayerReady) return;
 
   const frameAvailable = updateVideoFrame();
