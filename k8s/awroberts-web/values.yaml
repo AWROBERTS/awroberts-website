@@ -93,7 +93,11 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
+  # Desktop configuration track
   source: "/usr/share/nginx/html/hls/stream.m3u8"
+
+  # Mobile configuration track
+  mobileSource: "/usr/share/nginx/html/hls/stream_mobile.m3u8"
 
   ffmpeg:
     image:
@@ -106,20 +110,24 @@ backgroundVideo:
       repository: docker.io/library/background-video
       tag: latest
       pullPolicy: Never
-
-    # HIGH-SPEED SHARED LINUX RAM HIGHWAY (SHM MAPPINGS)
-    # This clearly describes your volatile shared memory volume roots
-    # to eliminate hardcoded values and fix multi-device LAN lag natively.
     volume:
       shmRootPath: "/dev/shm/awroberts-media"
       shmStreamPath: "/dev/shm/awroberts-media/stream"
 
+      # Added a dedicated memory lane for your mobile segments
+      shmMobileStreamPath: "/dev/shm/awroberts-media/stream_mobile"
+
   desktop:
     enabled: true
 
+  mobile:
+    enabled: true
+    segmentPrefix: "live_mob_"
+    liveWindow: 15
+
   hls:
     segmentDuration: 2
-    liveWindow: 15           # Safe 30-second live buffer window
+    liveWindow: 15
     liveSegmentPrefix: "live_"
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
@@ -138,6 +146,3 @@ backgroundVideo:
       limits:
         cpu: 200m
         memory: 128Mi
-
-  mobile:
-    enabled: false           # Disabled permanently
