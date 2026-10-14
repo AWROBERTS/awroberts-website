@@ -45,13 +45,13 @@ data:
             # ----------------------------------------------------
             # 1. LIVE MASTER PLAYLIST TRACK (Must never be cached)
             # ----------------------------------------------------
-            # Uses a regular expression match to capture the .m3u8 playlist file
-            # exclusively, forcing the player to fetch real-time updates instantly.
-            location ~* /stream/.*\.m3u8$ {
-                alias "{{ .Values.backgroundVideo.hls.outputDir }}/";
+            # Uses a strict capture group (^/stream/(.*\.m3u8)$) and maps it to $1.
+            # This allows Nginx to serve the file directly, completely killing the broken HTTP 301 redirect loop!
+            location ~* ^/stream/(.*\.m3u8)$ {
+                alias "{{ .Values.backgroundVideo.hls.outputDir }}/$1";
                 add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
 
-                # High-speed static kernel allocations
+                # Performance kernels
                 output_buffers 4 1024k;
                 sendfile_max_chunk 512k;
                 tcp_nopush on;
@@ -61,17 +61,11 @@ data:
             # ----------------------------------------------------
             # 2. HEAVY 4K COPY VIDEO SEGMENTS (Cached locally for 10s)
             # ----------------------------------------------------
-            # The main site proxies /stream/... through unchanged, so map that
-            # prefix onto the output dir (root alone would look in stream/stream/).
             location /stream/ {
-                # No try_files here: it misbehaves with alias; missing files 404 anyway.
                 alias "{{ .Values.backgroundVideo.hls.outputDir }}/";
-
-                # Grants the browser a brief 10s local cache headroom cushion.
-                # This breaks the 11-second data-starving network choke permanently.
                 add_header Cache-Control "public, max-age=10, no-transform" always;
 
-                # High-speed static kernel allocations
+                # Performance kernels for fast memory file mapping
                 output_buffers 4 1024k;
                 sendfile_max_chunk 512k;
                 tcp_nopush on;
