@@ -60,13 +60,13 @@ export function initVideoSystem() {
 
   bgVideoEl = document.getElementById("bg-video");
 
-  // SAFELY PLACED EXISTENCE CHECK FIRST
+  // Safely check if the element exists first before touching properties
   if (!bgVideoEl) {
     console.warn("bgVideoEl not found — retrying initVideoSystem()");
     return setTimeout(initVideoSystem, 50);
   }
 
-  // Programmatic hardware decoder overrides for mobile browser engines
+  // Programmatic hardware decoder overrides for mobile browser engines (iOS and Android compliant)
   bgVideoEl.muted = true;
   bgVideoEl.defaultMuted = true;
   bgVideoEl.setAttribute('playsinline', '');
@@ -241,7 +241,7 @@ function setupVideoEvents() {
     if (!dynamicPauseDebounce) {
       dynamicPauseDebounce = setTimeout(() => {
         dynamicPauseDebounce = null;
-        if (!bgVideoEl || bgVideoEl.paused) return;
+        if (!bgVideoEl || !bgVideoEl.paused) return;
         console.log("Watchdog: Resolving unintended layout background pause — forcing play");
         bgVideoEl.play().catch(err => console.warn("Watchdog dynamic pause override failed:", err));
       }, 150);
@@ -253,50 +253,91 @@ function setupVideoEvents() {
 // HLS INITIALIZATION ENGINE
 // -----------------------------
 function setupHLS() {
-  if (!HlsGlobal || !HlsGlobal.isSupported()) {
-    console.warn("HLS.js is not supported natively in this client engine.");
-    return;
-  }
+  if (HlsGlobal && HlsGlobal.isSupported()) {
+    console.log("Using Desktop/Android HLS.js engine wrapper");
 
-  // desktop configuration runway
-  const hlsConfig = {
-    enableWorker: true,
-    lowLatencyMode: false,
-    liveSyncDurationCount: 3,         // Stay exactly 6 seconds behind the live edge
-    liveMaxLatencyDurationCount: 6,    // Force a live jump if 12s out of sync
-    maxBufferLength: 10,               // Pre-cache up to 20 seconds of video chunks ahead in RAM memory
-    maxMaxBufferLength: 20,
-    maxBufferSize: 50 * 1000 * 1000,   // Grant a generous 50MB RAM cushion pool
-    maxFragLookUpTolerance: 0.5,
-    maxBufferHole: 0.5,                // Automatically skip over microsecond packet drops cleanly without freezing
-    lowBufferWatchdogPeriod: 0.5,
-    highBufferWatchdogPeriod: 2
-  };
+    const hlsConfig = {
+      enableWorker: true,
+      lowLatencyMode: false,
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 6,
+      maxBufferLength: 10,
+      maxMaxBufferLength: 20,
+      maxBufferSize: 50 * 1000 * 1000,
+      maxFragLookUpTolerance: 0.5,
+      maxBufferHole: 0.5,
+      lowBufferWatchdogPeriod: 0.5,
+      highBufferWatchdogPeriod: 2
+    };
 
-  hlsInstance = new HlsGlobal(hlsConfig);
-  hlsInstance.loadSource(VIDEO_URL);
-  hlsInstance.attachMedia(bgVideoEl);
+    hlsInstance = new HlsGlobal(hlsConfig);
+    hlsInstance.loadSource(VIDEO_URL);
+    hlsInstance.attachMedia(bgVideoEl);
 
-  hlsInstance.on(HlsGlobal.Events.MANIFEST_PARSED, () => {
-    console.log("setupHLS(): HlsGlobal manifest parsed successfully.");
-    videoReady = true;
-    bgVideoEl.play().catch(err => console.warn("Initial active HLS play failed:", err));
-  });
+    hlsInstance.on(HlsGlobal.Events.MANIFEST_PARSED, () => {
+      console.log("setupHLS(): HlsGlobal manifest parsed successfully.");
+      videoReady = true;
 
-  hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
-    if (data.fatal) {
-      console.warn("Fatal HLS error encountered:", data.details);
-      switch (data.type) {
-        case HlsGlobal.ErrorTypes.NETWORK_ERROR:
-          hlsInstance.startLoad();
-          break;
-        case HlsGlobal.ErrorTypes.MEDIA_ERROR:
-          hlsInstance.recoverMediaError();
-          break;
-        default:
-          setupHLS();
-          break;
+      bgVideoEl.play().catch(err => {
+        console.warn("Android Chrome Autoplay Blocked: Waiting for first user touch to unlock stream.", err);
+
+        const unlockMobileChrome = () => {
+          bgVideoEl.play()
+            .then(() => {
+              console.log("Android Chrome streaming engine successfully unlocked via user interaction.");
+              document.removeEventListener('touchstart', unlockMobileChrome);
+              document.removeEventListener('click', unlockMobileChrome);
+            })
+            .catch(p5Err => console.error("Mobile lock persist:", p5Err));
+        };
+
+        document.addEventListener('touchstart', unlockMobileChrome, { passive: true });
+        document.addEventListener('click', unlockMobileChrome, { passive: true });
+      });
+    });
+
+    hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        console.warn("Fatal HLS error encountered:", data.details);
+        switch (data.type) {
+          case HlsGlobal.ErrorTypes.NETWORK_ERROR:
+            hlsInstance.startLoad();
+            break;
+          case HlsGlobal.ErrorTypes.MEDIA_ERROR:
+            hlsInstance.recoverMediaError();
+            break;
+          default:
+            setupHLS();
+            break;
+        }
       }
-    }
-  });
+    });
+  }
+  else if (bgVideoEl.canPlayType('application/vnd.apple.mpegurl')) {
+    console.log("Native Apple iOS hardware engine channel detected — bypassing HLS.js layer");
+
+    bgVideoEl.src = VIDEO_URL;
+
+    bgVideoEl.addEventListener('loadedmetadata', () => {
+      console.log("Native iOS metadata parsed successfully.");
+      videoReady = true;
+
+      bgVideoEl.play().catch(err => {
+        console.warn("iOS Safari Autoplay Blocked: Waiting for first user interaction to trigger stream.", err);
+
+        const unlockMobileSafari = () => {
+          bgVideoEl.play()
+            .then(() => {
+              console.log("iOS Safari hardware playback channel successfully unlocked.");
+              document.removeEventListener('touchstart', unlockMobileSafari);
+              document.removeEventListener('click', unlockMobileSafari);
+            })
+            .catch(safariErr => console.error("iOS hardware unlock failed:", safariErr));
+        };
+
+        document.addEventListener('touchstart', unlockMobileSafari, { passive: true });
+        document.addEventListener('click', unlockMobileSafari, { passive: true });
+      });
+    });
+  }
 }
