@@ -306,17 +306,17 @@ function setupHLS() {
       enableWorker: true,
       lowLatencyMode: true,
 
-      // OPTIMIZED FOR 14MBPS RAW 4K COPY STREAMS:
-      // Drop the buffer requirements down so the player only pulls a fast,
-      // lightweight 6-second window on boot instead of choking the network.
-      maxBufferLength: 6,              // Lowered from 30 to stop the start-up freeze
-      maxMaxBufferLength: 12,          // Lowered from 60
-      maxBufferSize: 30 * 1000 * 1000, // Caps initial load safely at 30MB
+      // PERFECT BUFFER Headroom ZONE:
+      // The server keeps 15 segments, but the browser only loops and caches 8.
+      // This completely stops the player from racing the encoder on disk!
+      maxBufferLength: 8,              // Set to 8
+      maxMaxBufferLength: 16,          // Set to 16
+      maxBufferSize: 35 * 1000 * 1000,
       backBufferLength: 4,
 
-      // Rely ONLY on DurationCount for live tracking thresholds
-      liveSyncDurationCount: 3,        // Targets 3 segments back from absolute live edge
-      liveMaxLatencyDurationCount: 6,  // Maximum allowed drift before syncing
+      // High-precision live edge alignment thresholds
+      liveSyncDurationCount: 4,
+      liveMaxLatencyDurationCount: 8,
 
       // OPTIMIZED SLOP HEADROOM:
       // Prevents the player from logging false-positive stall notices during the quick
