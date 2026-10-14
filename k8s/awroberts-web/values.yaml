@@ -116,7 +116,7 @@ backgroundVideo:
 
   hls:
     segmentDuration: 2
-    liveWindow: 6
+    liveWindow: 15
     liveSegmentPrefix: "live_"
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
