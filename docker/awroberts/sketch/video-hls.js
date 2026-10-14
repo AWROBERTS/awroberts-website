@@ -62,30 +62,31 @@ export function initVideoSystem() {
   initRenderLayers(awrWeb);
 
   // ----------------------------------------------------
-  // MOBILE FALLBACK GRAPHIC RE-LOAD LOOP
+  // MOBILE FALLBACK DUAL-BUFFER FILE RELOADER LOOP
   // ----------------------------------------------------
   if (isMobile) {
-    console.log("Mobile device detected: Activating 2-second fluid RAM image-reloader loop");
+    console.log("Mobile device detected: Activating Dual-Buffer Image Cross-Dissolve Engine");
 
     // Set videoReady to true so p5 knows it can draw the bgPosterImg asset layer
     videoReady = true;
 
     if (mobileTimer) clearInterval(mobileTimer);
 
-    // Fetch the latest extracted live stream frame out of RAM cache every 2 seconds
+    // Query the server RAM highway precisely on your 2-second heartbeat
     mobileTimer = setInterval(async () => {
       try {
         const freshPoster = await awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
         if (freshPoster) {
-          bgPosterImg = freshPoster;
-          console.log("🎨 Mobile: Successfully reloaded fresh live background canvas slice");
+          import('./video-render.js').then((module) => {
+            module.stageNextMobileFrame(freshPoster);
+          });
         }
       } catch (err) {
-        console.warn("Mobile image reloader encountered an asset fetch slip", err);
+        console.warn("Mobile dual-buffer loader encountered a packet fetch slip", err);
       }
     }, 2000);
 
-    return; // Exit completely. No video elements or watchdogs needed for mobile!
+    return; // Exit completely. No heavy video elements or watchdogs needed for mobile!
   }
 
   // ----------------------------------------------------
