@@ -30,39 +30,6 @@ spec:
       nodeSelector:
         kubernetes.io/arch: arm64
 
-      # ----------------------------------------------------
-      # SMART VISUAL JUMP PROTECTION (INIT-CONTAINER)
-      # ----------------------------------------------------
-      # Seeds the default poster ONLY if the shared RAM directory is empty on cold boot.
-      # If the stream is already running, it exits silently to preserve your live frames!
-      initContainers:
-        - name: init-poster-guard
-          image: "busybox:1.36"
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -u
-              SHM_ROOT="/var/www/html/awroberts/awroberts-media"
-              TARGET_POSTER="$SHM_ROOT/background-poster.png"
-              FALLBACK_SRC="{{ .Values.assets.mountPath }}/{{ .Values.assets.fallbackImage }}"
-
-              mkdir -p "$SHM_ROOT"
-
-              if [ ! -f "$TARGET_POSTER" ]; then
-                if [ -f "$FALLBACK_SRC" ]; then
-                  cp "$FALLBACK_SRC" "$TARGET_POSTER"
-                  echo "RAM cache empty: Default startup poster pre-seeded safely."
-                fi
-              else
-                echo "Active stream poster detected: Skipping overwrite to prevent visual drift!"
-              fi
-          volumeMounts:
-            - name: hls-output
-              mountPath: /var/www/html/awroberts/awroberts-media
-            - name: site-assets
-              mountPath: {{ .Values.assets.mountPath }}
-
       containers:
         - name: ffmpeg
           image: "{{ .Values.backgroundVideo.ffmpeg.image.repository }}:{{ .Values.backgroundVideo.ffmpeg.image.tag }}"
@@ -149,17 +116,10 @@ spec:
             type: Directory
 
         # ----------------------------------------------------
-        # AUTOMATED HIGH-SPEED RAM MEMORY RUNWAY
+        # HIGH-SPEED SHARED LINUX RAM HIGHWAY (FFMPEG ROOT)
         # ----------------------------------------------------
+        # Points your encoder directly to the shared host memory pool configuration.
         - name: hls-output
-          emptyDir:
-            medium: Memory
-            sizeLimit: 512Mi
-
-        # ----------------------------------------------------
-        # LINKED WEBSITE SOURCE STATIC ASSETS MOUNT
-        # ----------------------------------------------------
-        - name: site-assets
           hostPath:
-            path: {{ .Values.media.hostPath }}/assets
+            path: {{ .Values.backgroundVideo.nginx.volume.shmRootPath }}
             type: DirectoryOrCreate
