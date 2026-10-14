@@ -67,10 +67,10 @@ spec:
 
         - name: hls-output-media
           hostPath:
-            path: {{ .Values.backgroundVideo.nginx.volume.hostPath }}
+            path: {{ .Values.backgroundVideo.nginx.volume.shmRootPath }}
             type: DirectoryOrCreate
 
         - name: hls-output-hls
           hostPath:
-            path: {{ .Values.backgroundVideo.hls.outputDir }}
+            path: {{ .Values.backgroundVideo.nginx.volume.shmStreamPath }}
             type: DirectoryOrCreate
