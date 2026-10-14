@@ -80,9 +80,4 @@ spec:
             path: {{ .Values.backgroundVideo.nginx.volume.shmStreamPath }}
             type: DirectoryOrCreate
 
-        # Grants your Nginx pod view access into the mobile memory stream lane
-        - name: hls-output-mobile
-          hostPath:
-            path: {{ .Values.backgroundVideo.nginx.volume.shmMobileStreamPath }}
-            type: DirectoryOrCreate
 
