@@ -93,11 +93,8 @@ autoscaling:
   enabled: false
 
 backgroundVideo:
-  # Desktop configuration track
+  # Desktop configuration track (Master live stream engine source)
   source: "/usr/share/nginx/html/hls/stream.m3u8"
-
-  # Mobile configuration track
-  mobileSource: "/usr/share/nginx/html/hls/stream_mobile.m3u8"
 
   ffmpeg:
     image:
@@ -111,19 +108,15 @@ backgroundVideo:
       tag: latest
       pullPolicy: Never
     volume:
+      # High-speed shared host memory volume roots
       shmRootPath: "/dev/shm/awroberts-media"
       shmStreamPath: "/dev/shm/awroberts-media/stream"
-
-      # Added a dedicated memory lane for your mobile segments
-      shmMobileStreamPath: "/dev/shm/awroberts-media/stream_mobile"
 
   desktop:
     enabled: true
 
   mobile:
-    enabled: true
-    segmentPrefix: "live_mob_"
-    liveWindow: 15
+    enabled: false           # Safely disabled permanently
 
   hls:
     segmentDuration: 2
