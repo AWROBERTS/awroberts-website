@@ -107,12 +107,19 @@ backgroundVideo:
       tag: latest
       pullPolicy: Never
 
+    # HIGH-SPEED SHARED LINUX RAM HIGHWAY (SHM MAPPINGS)
+    # This clearly describes your volatile shared memory volume roots
+    # to eliminate hardcoded values and fix multi-device LAN lag natively.
+    volume:
+      shmRootPath: "/dev/shm/awroberts-media"
+      shmStreamPath: "/dev/shm/awroberts-media/stream"
+
   desktop:
     enabled: true
 
   hls:
     segmentDuration: 2
-    liveWindow: 15
+    liveWindow: 15           # Safe 30-second live buffer window
     liveSegmentPrefix: "live_"
     outputDir: "/var/www/html/awroberts/awroberts-media/stream"
 
@@ -124,15 +131,6 @@ backgroundVideo:
       limits:
         cpu: 3500m
         memory: 3Gi
-
-    ffmpegMobile:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-
     nginx:
       requests:
         cpu: 20m
@@ -142,4 +140,4 @@ backgroundVideo:
         memory: 128Mi
 
   mobile:
-    enabled: false # FIXED: Disabled legacy mobile software transcoding blocks
+    enabled: false           # Disabled permanently
