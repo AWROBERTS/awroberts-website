@@ -33,9 +33,11 @@ const HlsGlobal = window.Hls;
 const isMobile =
   /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
 
+// FIX: Direct mobile viewports to native cropped mobile stream directory
 const VIDEO_URL = isMobile
-  ? "/stream/mobile/index.m3u8?v=" + Date.now()
+  ? "/stream_mobile/index.m3u8?v=" + Date.now()
   : "/stream/index.m3u8?v=" + Date.now();
+
 
 const POSTER_URL = "/background-poster.png";
 
