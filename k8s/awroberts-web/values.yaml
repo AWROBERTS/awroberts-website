@@ -107,10 +107,6 @@ backgroundVideo:
       tag: latest
       pullPolicy: Never
 
-    volume:
-      name: hls-output
-      hostPath: /var/www/html/awroberts/awroberts-media
-
   desktop:
     enabled: true
 
