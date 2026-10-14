@@ -26,23 +26,24 @@
 </head>
 
 <body>
-  <video id="bg-video"
-         muted
-         playsinline
-         autoplay
-         crossorigin="anonymous"
-         style="
-           position:absolute;
-           top:0;
-           left:0;
-           width:1px;
-           height:1px;
-           opacity:0;
-           z-index:-1;
-         ">
-  </video>
 
-  <div id="canvas-container"></div>
+  <!--
+    This wraps the video tag inside a full-screen, unclickable overflow clip layer.
+    By setting the video width/height to 100% and opacity to 0.01, the mobile OS
+    declares it "actively visible in the viewport" and unlocks the hardware acceleration
+    chip thread, allowing p5.js to parse the pixel matrix smoothly!
+  -->
+  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; z-index: -2;">
+    <video id="bg-video"
+           muted
+           playsinline
+           autoplay
+           crossorigin="anonymous"
+           style="display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0.01;">
+    </video>
+  </div>
+
+  <div id="canvas-container" style="position: relative; z-index: 1;"></div>
 
   <!-- Correct way to load a p5 module -->
   <script type="module">
