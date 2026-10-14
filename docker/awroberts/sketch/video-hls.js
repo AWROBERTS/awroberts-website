@@ -28,17 +28,17 @@ let continuousStallCount = 0;
 const HlsGlobal = window.Hls;
 
 // -----------------------------
-// MOBILE / DESKTOP STREAM SELECTION
+// MOBILE / DESKTOP SETUP SELECTION
 // -----------------------------
-const isMobile =
+export const isMobile =
   /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
 
-// FIX: Direct mobile viewports to native cropped mobile stream directory
-const VIDEO_URL = isMobile
-  ? "/stream_mobile/index.m3u8?v=" + Date.now()
-  : "/stream/index.m3u8?v=" + Date.now();
-
+// Direct desktop to your pristine 4K copy stream path
+const VIDEO_URL = "/stream/index.m3u8?v=" + Date.now();
 const POSTER_URL = "/background-poster.png";
+
+// Mobile image-loop configuration timer pointer
+let mobileTimer = null;
 
 // -----------------------------
 // PRELOAD
@@ -58,24 +58,51 @@ export function initVideoSystem() {
     return setTimeout(initVideoSystem, 50);
   }
 
+  // Initialize independent graphics surfaces for the canvas sketches
+  initRenderLayers(awrWeb);
+
+  // ----------------------------------------------------
+  // MOBILE FALLBACK GRAPHIC RE-LOAD LOOP
+  // ----------------------------------------------------
+  if (isMobile) {
+    console.log("Mobile device detected: Activating smart RAM image-reloader loop");
+
+    // Set videoReady to true so p5 knows it can draw the bgPosterImg asset layer
+    videoReady = true;
+
+    if (mobileTimer) clearInterval(mobileTimer);
+
+    // Fetch the latest extracted live stream frame out of RAM cache every 4 seconds
+    mobileTimer = setInterval(async () => {
+      try {
+        const freshPoster = await awrWeb.loadImage(POSTER_URL + '?v=' + Date.now());
+        if (freshPoster) {
+          bgPosterImg = freshPoster;
+          console.log("🎨 Mobile: Successfully reloaded fresh live background canvas slice");
+        }
+      } catch (err) {
+        console.warn("Mobile image reloader encountered an asset fetch slip, retaining last frame", err);
+      }
+    }, 4000);
+
+    return; // Exit completely. No video elements or watchdogs needed for mobile!
+  }
+
+  // ----------------------------------------------------
+  // DESKTOP PIPELINE CODE PATH
+  // ----------------------------------------------------
   bgVideoEl = document.getElementById("bg-video");
 
-  // Safely check if the element exists first before touching properties
   if (!bgVideoEl) {
     console.warn("bgVideoEl not found — retrying initVideoSystem()");
     return setTimeout(initVideoSystem, 50);
   }
 
-  // Programmatic hardware decoder overrides for mobile browser engines (iOS and Android compliant)
   bgVideoEl.muted = true;
   bgVideoEl.defaultMuted = true;
   bgVideoEl.setAttribute('playsinline', '');
-  bgVideoEl.setAttribute('webkit-playsinline', '');
 
-  console.log("initVideoSystem(): video element found:", bgVideoEl);
-
-  // Initialize independent graphics surfaces
-  initRenderLayers(awrWeb);
+  console.log("initVideoSystem(): Desktop video element found:", bgVideoEl);
 
   setupVideoEvents();
   setupHLS();
@@ -148,7 +175,7 @@ export function initVideoSystem() {
 }
 
 // -----------------------------
-// VIDEO EVENTS
+// VIDEO EVENTS (DESKTOP ONLY)
 // -----------------------------
 function setupVideoEvents() {
   bgVideoEl.loop = false;
@@ -164,8 +191,8 @@ function setupVideoEvents() {
   });
 
   let stalledTimer = null;
-  let waitingTimeout = null; // High-precision track supervisor
-  let dynamicPauseDebounce = null; // Layout conflict debouncer
+  let waitingTimeout = null;
+  let dynamicPauseDebounce = null;
 
   const recoverStall = () => {
     if (stalledTimer) return;
@@ -210,7 +237,7 @@ function setupVideoEvents() {
           hlsInstance.startLoad(-1);
           const livePos = hlsInstance.liveSyncPosition;
           if (livePos != null && isFinite(livePos)) {
-            bgVideoEl.currentTime = Math.max(0, livePos - (isMobile ? 3 : 10));
+            bgVideoEl.currentTime = Math.max(0, livePos - 10);
           }
         }
 
@@ -250,11 +277,11 @@ function setupVideoEvents() {
 }
 
 // -----------------------------
-// HLS INITIALIZATION ENGINE
+// HLS INITIALIZATION ENGINE (DESKTOP ONLY)
 // -----------------------------
 function setupHLS() {
   if (HlsGlobal && HlsGlobal.isSupported()) {
-    console.log("Using Desktop/Android HLS.js engine wrapper");
+    console.log("Using Desktop HLS.js engine wrapper");
 
     const hlsConfig = {
       enableWorker: true,
@@ -277,23 +304,7 @@ function setupHLS() {
     hlsInstance.on(HlsGlobal.Events.MANIFEST_PARSED, () => {
       console.log("setupHLS(): HlsGlobal manifest parsed successfully.");
       videoReady = true;
-
-      bgVideoEl.play().catch(err => {
-        console.warn("Android Chrome Autoplay Blocked: Waiting for first user touch to unlock stream.", err);
-
-        const unlockMobileChrome = () => {
-          bgVideoEl.play()
-            .then(() => {
-              console.log("Android Chrome streaming engine successfully unlocked via user interaction.");
-              document.removeEventListener('touchstart', unlockMobileChrome);
-              document.removeEventListener('click', unlockMobileChrome);
-            })
-            .catch(p5Err => console.error("Mobile lock persist:", p5Err));
-        };
-
-        document.addEventListener('touchstart', unlockMobileChrome, { passive: true });
-        document.addEventListener('click', unlockMobileChrome, { passive: true });
-      });
+      bgVideoEl.play().catch(err => console.warn("Initial active HLS play failed:", err));
     });
 
     hlsInstance.on(HlsGlobal.Events.ERROR, (event, data) => {
@@ -311,33 +322,6 @@ function setupHLS() {
             break;
         }
       }
-    });
-  }
-  else if (bgVideoEl.canPlayType('application/vnd.apple.mpegurl')) {
-    console.log("Native Apple iOS hardware engine channel detected — bypassing HLS.js layer");
-
-    bgVideoEl.src = VIDEO_URL;
-
-    bgVideoEl.addEventListener('loadedmetadata', () => {
-      console.log("Native iOS metadata parsed successfully.");
-      videoReady = true;
-
-      bgVideoEl.play().catch(err => {
-        console.warn("iOS Safari Autoplay Blocked: Waiting for first user interaction to trigger stream.", err);
-
-        const unlockMobileSafari = () => {
-          bgVideoEl.play()
-            .then(() => {
-              console.log("iOS Safari hardware playback channel successfully unlocked.");
-              document.removeEventListener('touchstart', unlockMobileSafari);
-              document.removeEventListener('click', unlockMobileSafari);
-            })
-            .catch(safariErr => console.error("iOS hardware unlock failed:", safariErr));
-        };
-
-        document.addEventListener('touchstart', unlockMobileSafari, { passive: true });
-        document.addEventListener('click', unlockMobileSafari, { passive: true });
-      });
     });
   }
 }
