@@ -157,12 +157,11 @@ export function sampleVideoColor(x, y) {
 let currentMobileImg = null;
 let nextMobileImg = null;
 let blendStartMillis = null;
-const BLEND_DURATION = 1000; // 1 full second of pure cross-dissolve frame melting
+const BLEND_DURATION = 2000; // Stretches the cross-fade across the entire 2-second heartbeat
 
 export function stageNextMobileFrame(freshImage) {
   if (!currentMobileImg) {
     currentMobileImg = freshImage;
-    if (typeof bgPosterImg !== 'undefined') bgPosterImg = freshImage;
     return;
   }
   nextMobileImg = freshImage;
@@ -197,18 +196,12 @@ function drawCroppedImage(img, alpha) {
 }
 
 export function drawBackgroundFallback() {
-  // ----------------------------------------------------
-  // DESKTOP SUBTLE SMOOTH BLEND LANE
-  // ----------------------------------------------------
-  // FIXED: Clamps the minimum alpha floor so it never drops into a severe black gap
   if (typeof isMobile !== 'undefined' && !isMobile) {
     if (bgPosterImg) {
       awrWeb.push();
       awrWeb.imageMode(awrWeb.CENTER);
 
-      // Grab the active fade alpha from your global state context
       let currentAlpha = awrWeb.drawingContext.globalAlpha * 255;
-      // CLAMP: Keeps at least 40% visibility alive on screen to smooth out the cut!
       let safeAlpha = Math.max(100, currentAlpha);
       awrWeb.drawingContext.globalAlpha = safeAlpha / 255;
 
@@ -233,6 +226,36 @@ export function drawBackgroundFallback() {
     }
     return;
   }
+
+  if (!currentMobileImg) {
+    if (bgPosterImg) currentMobileImg = bgPosterImg;
+    else return;
+  }
+
+  if (nextMobileImg && blendStartMillis !== null) {
+    let elapsed = awrWeb.millis() - blendStartMillis;
+    let progress = awrWeb.constrain(elapsed / BLEND_DURATION, 0, 1);
+
+    // SINE INTERPOLATION CURVE
+    // Calculates a smooth sinusoidal wave multiplier to blend the frames.
+    // This stops the images from ever locking or stalling at the end of the loop!
+    let sineProgress = (1 - Math.cos(progress * Math.PI)) / 2;
+
+    let currentAlpha = awrWeb.constrain((1 - sineProgress) * 255, 0, 255);
+    let nextAlpha = awrWeb.constrain(sineProgress * 255, 0, 255);
+
+    drawCroppedImage(currentMobileImg, currentAlpha);
+    drawCroppedImage(nextMobileImg, nextAlpha);
+
+    if (progress >= 1) {
+      currentMobileImg = nextMobileImg;
+      nextMobileImg = null;
+      blendStartMillis = null;
+    }
+  } else {
+    drawCroppedImage(currentMobileImg, 255);
+  }
+}
 
   // ----------------------------------------------------
   // MOBILE DUAL-BUFFER CROSS-DISSOLVE MELTING MATRIX
