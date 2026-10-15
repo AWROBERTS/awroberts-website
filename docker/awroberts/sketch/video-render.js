@@ -153,11 +153,10 @@ export function sampleVideoColor(x, y) {
 // ----------------------------------------------------
 // DUAL-BUFFER MEMORY TRACKING CHANNELS
 // ----------------------------------------------------
-
 let currentMobileImg = null;
 let nextMobileImg = null;
 let blendStartMillis = null;
-const BLEND_DURATION = 2000; // Stretches the cross-fade across the entire 2-second heartbeat
+const BLEND_DURATION = 2000; // FIXED: Stretches the cross-fade across the entire 2-second heartbeat
 
 export function stageNextMobileFrame(freshImage) {
   if (!currentMobileImg) {
@@ -236,9 +235,7 @@ export function drawBackgroundFallback() {
     let elapsed = awrWeb.millis() - blendStartMillis;
     let progress = awrWeb.constrain(elapsed / BLEND_DURATION, 0, 1);
 
-    // SINE INTERPOLATION CURVE
-    // Calculates a smooth sinusoidal wave multiplier to blend the frames.
-    // This stops the images from ever locking or stalling at the end of the loop!
+    // SINE INTERPOLATION CURVE: Smooth sinusoidal wave multiplier
     let sineProgress = (1 - Math.cos(progress * Math.PI)) / 2;
 
     let currentAlpha = awrWeb.constrain((1 - sineProgress) * 255, 0, 255);
@@ -249,35 +246,6 @@ export function drawBackgroundFallback() {
 
     if (progress >= 1) {
       currentMobileImg = nextMobileImg;
-      nextMobileImg = null;
-      blendStartMillis = null;
-    }
-  } else {
-    drawCroppedImage(currentMobileImg, 255);
-  }
-}
-
-  // ----------------------------------------------------
-  // MOBILE DUAL-BUFFER CROSS-DISSOLVE MELTING MATRIX
-  // ----------------------------------------------------
-  if (!currentMobileImg) {
-    if (bgPosterImg) currentMobileImg = bgPosterImg;
-    else return;
-  }
-
-  if (nextMobileImg && blendStartMillis !== null) {
-    let elapsed = awrWeb.millis() - blendStartMillis;
-    let progress = awrWeb.constrain(elapsed / BLEND_DURATION, 0, 1);
-
-    let currentAlpha = awrWeb.constrain((1 - progress) * 255, 0, 255);
-    let nextAlpha = awrWeb.constrain(progress * 255, 0, 255);
-
-    drawCroppedImage(currentMobileImg, currentAlpha);
-    drawCroppedImage(nextMobileImg, nextAlpha);
-
-    if (progress >= 1) {
-      currentMobileImg = nextMobileImg;
-      if (typeof bgPosterImg !== 'undefined') bgPosterImg = nextMobileImg;
       nextMobileImg = null;
       blendStartMillis = null;
     }
