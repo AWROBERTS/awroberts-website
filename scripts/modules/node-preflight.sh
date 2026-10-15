@@ -32,10 +32,13 @@ source "${SHARED_DIR}/load-env-file.sh"
 # Disable swap + configure sysctls
 # ----------------------------------------------------------------------------
 disable_swap_and_sysctls() {
+  # 1. Disable current runtime swap
   sudo_if_needed swapoff -a || true
 
-  sudo_if_needed sed -i '/ swap / s/^/#/' /etc/fstab || true
+  # 2. Match 'swap' even if surrounded by tabs instead of spaces
+  sudo_if_needed sed -i.bak '/[[:space:]]swap[[:space:]]/ s/^/#/' /etc/fstab || true
 
+  # 3. Configure sysctls
   sudo_if_needed tee /etc/sysctl.d/k8s.conf >/dev/null <<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
