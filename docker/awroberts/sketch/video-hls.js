@@ -72,26 +72,28 @@ export function initVideoSystem() {
 
     if (mobileTimer) clearInterval(mobileTimer);
 
-    // Query the server RAM highway precisely on your 2-second heartbeat
-    mobileTimer = setInterval(() => {
-      const cacheBustUrl = POSTER_URL + '?v=' + Date.now();
+    // Resolve the module link once at startup instead of inside the 2s loop
+    import('./video-render.js').then((renderModule) => {
+      console.log("Render module successfully mapped for mobile execution pipeline.");
 
-      // Use native p5 callback parameters
-      awrWeb.loadImage(
-        cacheBustUrl,
-        (freshPoster) => {
-          if (freshPoster) {
-            // Import is resolved immediately without background thread throttling
-            import('./video-render.js').then((module) => {
-              module.stageNextMobileFrame(freshPoster);
-            });
+      // Start the heartbeat timer only AFTER the system module architecture is ready
+      mobileTimer = setInterval(() => {
+        const cacheBustUrl = POSTER_URL + '?v=' + Date.now();
+
+        // Execute the asset pull via raw p5 callbacks using the pre-mapped pointer
+        awrWeb.loadImage(
+          cacheBustUrl,
+          (freshPoster) => {
+            if (freshPoster) {
+              renderModule.stageNextMobileFrame(freshPoster);
+            }
+          },
+          (err) => {
+            console.warn("Mobile dual-buffer loader encountered a packet fetch slip", err);
           }
-        },
-        (err) => {
-          console.warn("Mobile dual-buffer loader encountered a packet fetch slip", err);
-        }
-      );
-    }, 2000);
+        );
+      }, 2000);
+    }).catch(err => console.error("Critical failure during mobile graphics mapping", err));
 
     return; // Exit completely. No heavy video elements or watchdogs needed for mobile!
   }
