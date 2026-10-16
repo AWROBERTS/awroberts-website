@@ -65,38 +65,56 @@ export function initVideoSystem() {
   // MOBILE FALLBACK DUAL-BUFFER FILE RELOADER LOOP
   // ----------------------------------------------------
   if (isMobile) {
-    console.log("Mobile device detected: Activating Dual-Buffer Image Cross-Dissolve Engine");
+    console.log("Mobile device detected: Activating Sequential Cross-Dissolve Chain");
 
     videoReady = true;
 
-    if (mobileTimer) clearInterval(mobileTimer);
-
-    // Resolve the module link once at startup instead of inside the 2s loop
     import('./video-render.js').then((renderModule) => {
+      console.log("Render module mapped.");
 
-      mobileTimer = setInterval(() => {
-        const cacheBustUrl = POSTER_URL + '?v=' + Date.now();
+      // Track the latest timestamp to defeat out-of-order network race conditions
+      let latestRenderedTimestamp = 0;
 
-        // use native p5 success callbacks to save the main thread
+      function fetchNextMobileFrame() {
+        const requestTimestamp = Date.now();
+        const cacheBustUrl = POSTER_URL + '?v=' + requestTimestamp;
+
         awrWeb.loadImage(
           cacheBustUrl,
           (freshPoster) => {
+            // Drop the frame instantly if a newer request already finished before this one
+            if (requestTimestamp < latestRenderedTimestamp) {
+              console.warn("Discarding out-of-order network frame to prevent time-travel glitch");
+              // Chain the next fetch immediately
+              setTimeout(fetchNextMobileFrame, 2000);
+              return;
+            }
+
             if (freshPoster) {
-              // Explicitly update your global pointer for the drawing engine
+              latestRenderedTimestamp = requestTimestamp;
               bgPosterImg = freshPoster;
-              // Hand the ready asset down to your dissolve shader
+
+              // Hand the image down to your drawing engine
               renderModule.stageNextMobileFrame(freshPoster);
             }
+
+            // Chain the next fetch ONLY after the current frame is fully resolved and rendering
+            setTimeout(fetchNextMobileFrame, 2000);
           },
           (err) => {
-            console.warn("Mobile dual-buffer loader encountered a packet fetch slip", err);
+            console.warn("Mobile packet fetch slip, retrying...", err);
+            // If the network drops a packet, wait 2 seconds and try again gracefully
+            setTimeout(fetchNextMobileFrame, 2000);
           }
         );
-      }, 2000);
+      }
+
+      // Start the sequential processing chain
+      fetchNextMobileFrame();
 
     }).catch(err => console.error("Mobile graphics mapping failure", err));
 
-    return; // Exit completely.
+    return;
   }
 
   // ----------------------------------------------------
