@@ -67,24 +67,24 @@ export function initVideoSystem() {
   if (isMobile) {
     console.log("Mobile device detected: Activating Dual-Buffer Image Cross-Dissolve Engine");
 
-    // Set videoReady to true so p5 knows it can draw the bgPosterImg asset layer
     videoReady = true;
 
     if (mobileTimer) clearInterval(mobileTimer);
 
     // Resolve the module link once at startup instead of inside the 2s loop
     import('./video-render.js').then((renderModule) => {
-      console.log("Render module successfully mapped for mobile execution pipeline.");
 
-      // Start the heartbeat timer only AFTER the system module architecture is ready
       mobileTimer = setInterval(() => {
         const cacheBustUrl = POSTER_URL + '?v=' + Date.now();
 
-        // Execute the asset pull via raw p5 callbacks using the pre-mapped pointer
+        // use native p5 success callbacks to save the main thread
         awrWeb.loadImage(
           cacheBustUrl,
           (freshPoster) => {
             if (freshPoster) {
+              // Explicitly update your global pointer for the drawing engine
+              bgPosterImg = freshPoster;
+              // Hand the ready asset down to your dissolve shader
               renderModule.stageNextMobileFrame(freshPoster);
             }
           },
@@ -93,9 +93,10 @@ export function initVideoSystem() {
           }
         );
       }, 2000);
-    }).catch(err => console.error("Critical failure during mobile graphics mapping", err));
 
-    return; // Exit completely. No heavy video elements or watchdogs needed for mobile!
+    }).catch(err => console.error("Mobile graphics mapping failure", err));
+
+    return; // Exit completely.
   }
 
   // ----------------------------------------------------
