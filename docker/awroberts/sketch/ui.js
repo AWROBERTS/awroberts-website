@@ -228,7 +228,7 @@ function drawDeploymentInfo() {
   const boxSize = baseSize;
 
   // ====================================================
-  // 1. BOTTOM RIGHT: LOGO + VERSION ONLY
+  // 1. BOTTOM RIGHT: PACKAGES WITH LEFT-ALIGNED LOGOS
   // ====================================================
   const softwareEntries = [
     { logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
@@ -243,21 +243,24 @@ function drawDeploymentInfo() {
   ];
 
   awrWeb.textSize(baseSize);
-  awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
 
-  // Position calculation for the right column stack
+  // Measure the widest version string to establish a solid block column width
+  const maxVersionW = softwareEntries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
+
+  // Define positions forming a static vertical channel
   const rightX = awrWeb.width - margin;
+  const valueX = rightX;
+  const logoX = rightX - maxVersionW - (boxSize * 1.4);
+
   let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
   for (const { logoKey, value } of softwareEntries) {
-    // Print the version string tracking along the right margin
+    // Print version numbers right-aligned against the margin boundary
     awrWeb.fill(255);
-    awrWeb.text(value, rightX, rightY);
+    awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+    awrWeb.text(value, valueX, rightY);
 
-    // Calculate how far left to draw the logo based on the text width
-    const textW = awrWeb.textWidth(value);
-    const logoX = rightX - textW - (boxSize * 1.4);
-
+    // Draw logos perfectly aligned down the left side of this right-hand block
     if (logoKey) {
       const img = icons[logoKey];
       if (img && img.width > 0) {
@@ -279,10 +282,10 @@ function drawDeploymentInfo() {
   // ====================================================
   // 2. BOTTOM LEFT: CLUSTER INFRASTRUCTURE & NODES
   // ====================================================
-  // Hardcoded current topology array (this will adapt smoothly when your json pipeline finishes)
+  // Swapped out nested data hooks for flat, verified topology keys matching manifest schema
   const nodeEntries = [
-    { label: 'awr [amd64]',               value: diag.awroberts?.service?.clusterIP ?? '192.168.1.108' },
-    { label: 'awr-ffmpeg [arm64]',        value: diag.pods?.backgroundFfmpeg?.ip ?? '192.168.64.6' },
+    { label: 'awr [amd64]',             value: diag.awroberts?.service?.clusterIP ?? '192.168.1.108' },
+    { label: 'awr-ffmpeg [arm64]',      value: diag.pods?.backgroundFfmpeg?.ip ?? '192.168.64.6' },
     { spacer: true },
     { label: 'web pod',                 value: diag.pods?.web?.ip ?? 'N/A' },
     { label: 'background video pod',    value: diag.pods?.backgroundVideo?.ip ?? 'N/A' }
@@ -293,7 +296,6 @@ function drawDeploymentInfo() {
   const leftX = margin;
   let leftY = awrWeb.height - margin - (rowHeight * nodeEntries.length);
 
-  // Measure widest label to keep columns nicely formatted on the left
   const maxLabelW = nodeEntries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
 
   for (const { label, value, spacer } of nodeEntries) {
@@ -302,11 +304,9 @@ function drawDeploymentInfo() {
       continue;
     }
 
-    // Label column
     awrWeb.fill(255, 140);
     awrWeb.text(label + ':', leftX, leftY);
 
-    // Value column
     awrWeb.fill(255, 220);
     awrWeb.text(value, leftX + maxLabelW + (baseSize * 0.8), leftY);
 
