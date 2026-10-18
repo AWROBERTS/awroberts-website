@@ -223,73 +223,94 @@ function drawDeploymentInfo() {
   if (!diag) return;
 
   const baseSize = awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.02;
-  awrWeb.textSize(baseSize);
-  awrWeb.textAlign(awrWeb.RIGHT); // Align typography anchors securely to the right edge
-  awrWeb.fill(255);
-
+  const rowHeight = baseSize * 1.3;
   const margin = 30;
-
-  const entries = [
-    { label: 'containerd',              logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
-    { label: 'docker',                  logoKey: 'logo-docker',     value: diag.docker?.version ?? 'N/A' },
-    { label: 'cilium',                  logoKey: 'logo-cilium',     value: diag.cilium?.version ?? 'N/A' },
-    { label: 'kubernetes',              logoKey: 'logo-kubernetes', value: diag.kubernetes?.version ?? 'N/A' },
-    { label: 'gateway api',             logoKey: 'logo-gatewayapi', value: diag.gatewayAPI?.version ?? 'N/A' },
-    { label: 'helm',                    logoKey: 'logo-helm',       value: diag.helm?.version ?? 'N/A' },
-    { label: 'traefik',                 logoKey: 'logo-traefik',    value: diag.traefik?.build?.version ?? 'N/A' },
-    { label: 'hls.js',                  logoKey: 'logo-hlsjs',      value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
-    { label: 'p5.js',                   logoKey: 'logo-p5js',       value: diag.libraries?.['p5.js']?.version ?? 'N/A' },
-    { spacer: true },
-    { label: 'cluster',                 value: diag.awroberts?.service?.clusterIP ?? 'N/A' },
-    { label: 'web pod',                 value: diag.pods?.web?.ip ?? 'N/A' },
-    { label: 'background video pod',    value: diag.pods?.backgroundVideo?.ip ?? 'N/A' },
-    { label: 'background ffmpeg pod',   value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A' }
-  ];
-
   const boxSize = baseSize;
 
-  // Calculate text dimensions backwards from right edge bounding limits
-  const maxValueW = entries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
-  const maxLabelW = entries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+  // ====================================================
+  // 1. BOTTOM RIGHT: LOGO + VERSION ONLY
+  // ====================================================
+  const softwareEntries = [
+    { logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
+    { logoKey: 'logo-docker',     value: diag.docker?.version ?? 'N/A' },
+    { logoKey: 'logo-cilium',     value: diag.cilium?.version ?? 'N/A' },
+    { logoKey: 'logo-kubernetes', value: diag.kubernetes?.version ?? 'N/A' },
+    { logoKey: 'logo-gatewayapi', value: diag.gatewayAPI?.version ?? 'N/A' },
+    { logoKey: 'logo-helm',       value: diag.helm?.version ?? 'N/A' },
+    { logoKey: 'logo-traefik',    value: diag.traefik?.build?.version ?? 'N/A' },
+    { logoKey: 'logo-hlsjs',      value: diag.libraries?.['hls.js']?.version ?? 'N/A' },
+    { logoKey: 'logo-p5js',       value: diag.libraries?.['p5.js']?.version ?? 'N/A' }
+  ];
 
-  // Layout alignment anchors computed backwards from screen edge limits
+  awrWeb.textSize(baseSize);
+  awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+
+  // Position calculation for the right column stack
   const rightX = awrWeb.width - margin;
-  const valueX = rightX;
-  const labelX = rightX - maxValueW - (baseSize * 0.8);
-  const logoX  = labelX - maxLabelW - (boxSize * 1.4);
+  let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
-  let y = awrWeb.height - margin - (baseSize * 1.3 * entries.length);
+  for (const { logoKey, value } of softwareEntries) {
+    // Print the version string tracking along the right margin
+    awrWeb.fill(255);
+    awrWeb.text(value, rightX, rightY);
 
-  for (const { label, logoKey, value, spacer } of entries) {
-    if (!spacer) {
-      // 1. Position and draw system components logos on the inner left layer of the block
-      if (logoKey) {
-        const img = icons[logoKey];
-        if (img && img.width > 0) {
-          const scale = Math.min(boxSize / img.width, boxSize / img.height);
-          const w = img.width * scale;
-          const h = img.height * scale;
-          const cx = logoX + (boxSize - w) / 2;
-          const cy = y + (boxSize - h) / 2;
+    // Calculate how far left to draw the logo based on the text width
+    const textW = awrWeb.textWidth(value);
+    const logoX = rightX - textW - (boxSize * 1.4);
 
-          awrWeb.push();
-          awrWeb.image(img, cx, cy, w, h);
-          awrWeb.pop();
-        }
+    if (logoKey) {
+      const img = icons[logoKey];
+      if (img && img.width > 0) {
+        const scale = Math.min(boxSize / img.width, boxSize / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const cx = logoX + (boxSize - w) / 2;
+        const cy = rightY + (boxSize - h) / 2;
+
+        awrWeb.push();
+        awrWeb.image(img, cx, cy, w, h);
+        awrWeb.pop();
       }
-
-      // 2. Draw platform text data labels right-aligned
-      awrWeb.fill(255);
-      awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
-
-      // Label text column
-      awrWeb.text(label + ':', labelX, y);
-
-      // Value data column
-      awrWeb.text(value, valueX, y);
     }
 
-    y += baseSize * 1.3;
+    rightY += rowHeight;
+  }
+
+  // ====================================================
+  // 2. BOTTOM LEFT: CLUSTER INFRASTRUCTURE & NODES
+  // ====================================================
+  // Hardcoded current topology array (this will adapt smoothly when your json pipeline finishes)
+  const nodeEntries = [
+    { label: 'awr [amd64]',               value: diag.awroberts?.service?.clusterIP ?? '192.168.1.108' },
+    { label: 'awr-ffmpeg [arm64]',        value: diag.pods?.backgroundFfmpeg?.ip ?? '192.168.64.6' },
+    { spacer: true },
+    { label: 'web pod',                 value: diag.pods?.web?.ip ?? 'N/A' },
+    { label: 'background video pod',    value: diag.pods?.backgroundVideo?.ip ?? 'N/A' }
+  ];
+
+  awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
+
+  const leftX = margin;
+  let leftY = awrWeb.height - margin - (rowHeight * nodeEntries.length);
+
+  // Measure widest label to keep columns nicely formatted on the left
+  const maxLabelW = nodeEntries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+
+  for (const { label, value, spacer } of nodeEntries) {
+    if (spacer) {
+      leftY += rowHeight;
+      continue;
+    }
+
+    // Label column
+    awrWeb.fill(255, 140);
+    awrWeb.text(label + ':', leftX, leftY);
+
+    // Value column
+    awrWeb.fill(255, 220);
+    awrWeb.text(value, leftX + maxLabelW + (baseSize * 0.8), leftY);
+
+    leftY += rowHeight;
   }
 }
 
