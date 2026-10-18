@@ -224,11 +224,10 @@ function drawDeploymentInfo() {
 
   const baseSize = awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.02;
   awrWeb.textSize(baseSize);
-  awrWeb.textAlign(awrWeb.LEFT);
+  awrWeb.textAlign(awrWeb.RIGHT); // Align typography anchors securely to the right edge
   awrWeb.fill(255);
 
   const margin = 30;
-  const x = margin;
 
   const entries = [
     { label: 'containerd',              logoKey: 'logo-containerd', value: diag.containerd?.version ?? 'N/A' },
@@ -248,36 +247,48 @@ function drawDeploymentInfo() {
   ];
 
   const boxSize = baseSize;
-  const labelColW = Math.max(
-    baseSize * 4,
-    entries.filter(e => !e.logoKey).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0)
-  );
+
+  // Calculate text dimensions backwards from right edge bounding limits
   const maxValueW = entries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
-  const rightEdge = x + labelColW + baseSize * 0.8 + maxValueW;
+  const maxLabelW = entries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+
+  // Layout alignment anchors computed backwards from screen edge limits
+  const rightX = awrWeb.width - margin;
+  const valueX = rightX;
+  const labelX = rightX - maxValueW - (baseSize * 0.8);
+  const logoX  = labelX - maxLabelW - (boxSize * 1.4);
 
   let y = awrWeb.height - margin - (baseSize * 1.3 * entries.length);
 
   for (const { label, logoKey, value, spacer } of entries) {
     if (!spacer) {
+      // 1. Position and draw system components logos on the inner left layer of the block
       if (logoKey) {
         const img = icons[logoKey];
         if (img && img.width > 0) {
           const scale = Math.min(boxSize / img.width, boxSize / img.height);
           const w = img.width * scale;
           const h = img.height * scale;
-          const cx = x + (boxSize - w) / 2;
+          const cx = logoX + (boxSize - w) / 2;
           const cy = y + (boxSize - h) / 2;
 
+          awrWeb.push();
           awrWeb.image(img, cx, cy, w, h);
+          awrWeb.pop();
         }
-      } else {
-        awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
-        awrWeb.text(label + ':', x, y);
       }
 
+      // 2. Draw platform text data labels right-aligned
+      awrWeb.fill(255);
       awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
-      awrWeb.text(value, rightEdge, y);
+
+      // Label text column
+      awrWeb.text(label + ':', labelX, y);
+
+      // Value data column
+      awrWeb.text(value, valueX, y);
     }
+
     y += baseSize * 1.3;
   }
 }
