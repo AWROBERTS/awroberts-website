@@ -244,25 +244,26 @@ function drawDeploymentInfo() {
 
   awrWeb.textSize(baseSize);
 
-  // Measure the widest version string to establish a solid block column width
+  // Measure the widest version string to establish the icon column position
   const maxVersionW = softwareEntries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
 
-  // Define positions forming a static vertical channel
   const rightX = awrWeb.width - margin;
+
+  // Version numbers print exactly at the right margin (rightX)
   const valueX = rightX;
 
-  // Increased the multiplier from 1.4 to 2.2 to push the logos left and add breathing room
+  // Keep the icons perfectly sitting out to the left with your ideal spacing channel
   const logoX = rightX - maxVersionW - (boxSize * 2.2);
 
   let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
   for (const { logoKey, value } of softwareEntries) {
-    // Print version numbers right-aligned against the margin boundary
+    // Print version numbers right-aligned perfectly against the right border margin
     awrWeb.fill(255);
     awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
     awrWeb.text(value, valueX, rightY);
 
-    // Draw logos perfectly aligned down the left side of this right-hand block
+    // Draw logos perfectly aligned down the left side of this right-hand block channel
     if (logoKey) {
       const img = icons[logoKey];
       if (img && img.width > 0) {
