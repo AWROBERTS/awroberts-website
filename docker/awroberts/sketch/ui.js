@@ -250,7 +250,9 @@ function drawDeploymentInfo() {
   // Define positions forming a static vertical channel
   const rightX = awrWeb.width - margin;
   const valueX = rightX;
-  const logoX = rightX - maxVersionW - (boxSize * 1.4);
+
+  // Increased the multiplier from 1.4 to 2.2 to push the logos left and add breathing room
+  const logoX = rightX - maxVersionW - (boxSize * 2.2);
 
   let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
