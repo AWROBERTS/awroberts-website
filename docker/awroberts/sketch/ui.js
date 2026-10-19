@@ -257,12 +257,12 @@ function drawDeploymentInfo() {
 
   let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
-    for (const { logoKey, value } of softwareEntries) {
+  for (const { logoKey, value } of softwareEntries) {
     // Print version numbers right-aligned perfectly against the margin boundary
     awrWeb.fill(255);
     awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
 
-    // FIX: Subtract a tiny percentage of baseSize to pull the text up into vertical alignment with the logo box
+    // Subtract a tiny percentage of baseSize to pull the text up into vertical alignment with the logo box
     awrWeb.text(value, valueX, rightY - (baseSize * 0.12));
 
     // Draw logos perfectly aligned down the left side of this right-hand block channel
