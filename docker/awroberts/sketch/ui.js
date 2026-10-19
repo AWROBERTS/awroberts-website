@@ -222,7 +222,7 @@ function openSocial(index) {
 function drawDeploymentInfo() {
   if (!diag) return;
 
-  const baseSize = awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.02;
+  const baseSize = awrWeb.min(awrWeb.windowWidth, awrWeb.windowHeight) * 0.018;
   const rowHeight = baseSize * 1.3;
   const margin = 30;
   const boxSize = baseSize;
@@ -243,37 +243,36 @@ function drawDeploymentInfo() {
   ];
 
   awrWeb.textSize(baseSize);
+  awrWeb.fill(255);
+  // Force typography to anchor strictly to its true vertical middle axis
+  awrWeb.textAlign(awrWeb.RIGHT, awrWeb.CENTER);
 
-  // Measure the widest version string to establish the icon column position
+  // Measure the widest version string to maintain a rock-solid column channel
   const maxVersionW = softwareEntries.reduce((max, e) => Math.max(max, awrWeb.textWidth(e.value)), 0);
 
   const rightX = awrWeb.width - margin;
-
-  // Version numbers print exactly at the right margin (rightX)
   const valueX = rightX;
-
-  // Keep the icons perfectly sitting out to the left with your ideal spacing channel
   const logoX = rightX - maxVersionW - (boxSize * 2.2);
 
   let rightY = awrWeb.height - margin - (rowHeight * softwareEntries.length);
 
   for (const { logoKey, value } of softwareEntries) {
-    // Print version numbers right-aligned perfectly against the margin boundary
-    awrWeb.fill(255);
-    awrWeb.textAlign(awrWeb.RIGHT, awrWeb.TOP);
+    // Calculate the concrete grid row midpoint coordinate for this row line
+    const rowMidpointY = rightY + (rowHeight / 2);
 
-    // Subtract a tiny percentage of baseSize to pull the text up into vertical alignment with the logo box
-    awrWeb.text(value, valueX, rightY - (baseSize * 0.12));
+    // Render version text anchored neatly off that center tracking line
+    awrWeb.text(value, valueX, rowMidpointY);
 
-    // Draw logos perfectly aligned down the left side of this right-hand block channel
     if (logoKey) {
       const img = icons[logoKey];
       if (img && img.width > 0) {
         const scale = Math.min(boxSize / img.width, boxSize / img.height);
         const w = img.width * scale;
         const h = img.height * scale;
+
+        // Center the graphics container perfectly onto the same midpoint line pixel
         const cx = logoX + (boxSize - w) / 2;
-        const cy = rightY + (boxSize - h) / 2;
+        const cy = rowMidpointY - (h / 2);
 
         awrWeb.push();
         awrWeb.image(img, cx, cy, w, h);
@@ -285,37 +284,29 @@ function drawDeploymentInfo() {
   }
 
   // ====================================================
-  // 2. BOTTOM LEFT: CLUSTER INFRASTRUCTURE & NODES
+  // 2. BOTTOM LEFT: STRUCTURAL CLUSTER INFO
   // ====================================================
-  // Swapped out nested data hooks for flat, verified topology keys matching manifest schema
-  const nodeEntries = [
-    { label: 'awr [amd64]',             value: diag.awroberts?.service?.clusterIP ?? '192.168.1.108' },
-    { label: 'awr-ffmpeg [arm64]',      value: diag.pods?.backgroundFfmpeg?.ip ?? '192.168.64.6' },
-    { spacer: true },
-    { label: 'web pod',                 value: diag.pods?.web?.ip ?? 'N/A' },
-    { label: 'background video pod',    value: diag.pods?.backgroundVideo?.ip ?? 'N/A' }
+  const clusterTopology = [
+    { target: 'CLUSTER LOAD-BALANCER', value: diag.awroberts?.service?.clusterIP ?? 'N/A', extra: 'Traefik Ingress Routing' },
+    { target: 'NODE: awr [amd64]',     value: diag.pods?.web?.ip ?? 'N/A',               extra: '-> awroberts-web-pod' },
+    { target: 'NODE: awr-ffmpeg [arm64]', value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A',  extra: '-> background-ffmpeg-worker' },
   ];
 
   awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
 
   const leftX = margin;
-  let leftY = awrWeb.height - margin - (rowHeight * nodeEntries.length);
+  let leftY = awrWeb.height - margin - (rowHeight * clusterTopology.length * 1.5);
 
-  const maxLabelW = nodeEntries.filter(e => !e.spacer).reduce((max, e) => Math.max(max, awrWeb.textWidth(e.label + ':')), 0);
+  for (const { target, value, extra } of clusterTopology) {
+    // Label item header (Dimmed/Clean system-blue accent tint)
+    awrWeb.fill(127, 203, 255, 160);
+    awrWeb.text(target, leftX, leftY);
 
-  for (const { label, value, spacer } of nodeEntries) {
-    if (spacer) {
-      leftY += rowHeight;
-      continue;
-    }
+    // Live IP structural details mapped out right beneath the header line
+    awrWeb.fill(255, 230);
+    awrWeb.text(`  ↳ IP: ${value}  (${extra})`, leftX, leftY + (baseSize * 1.1));
 
-    awrWeb.fill(255, 140);
-    awrWeb.text(label + ':', leftX, leftY);
-
-    awrWeb.fill(255, 220);
-    awrWeb.text(value, leftX + maxLabelW + (baseSize * 0.8), leftY);
-
-    leftY += rowHeight;
+    leftY += rowHeight * 1.6;
   }
 }
 
