@@ -25,7 +25,7 @@ let socialLinks = [
 ];
 
 let hoveringSocial = -1;
-let glowColor = [127, 203, 255];
+let glowColor =;
 let fadeStartTime;
 let diag;
 
@@ -287,9 +287,9 @@ function drawDeploymentInfo() {
   // 2. BOTTOM LEFT: STRUCTURAL CLUSTER INFO
   // ====================================================
   const clusterTopology = [
-    { target: 'CLUSTER LOAD-BALANCER', value: diag.awroberts?.service?.clusterIP ?? 'N/A', extra: 'Traefik Ingress Routing' },
-    { target: 'NODE: awr [amd64]',     value: diag.pods?.web?.ip ?? 'N/A',               extra: '-> awroberts-web-pod' },
-    { target: 'NODE: awr-ffmpeg [arm64]', value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A',  extra: '-> background-ffmpeg-worker' },
+    { target: 'Cluster Load-Balancer', value: diag.awroberts?.service?.clusterIP ?? 'N/A', extra: 'Traefik Ingress Routing' },
+    { target: 'Node: awr [amd64]',     value: diag.pods?.web?.ip ?? 'N/A',               extra: 'awroberts-web-pod' },
+    { target: 'Node: awr-ffmpeg [arm64]', value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A',  extra: 'background-ffmpeg-worker' },
   ];
 
   awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
@@ -298,13 +298,13 @@ function drawDeploymentInfo() {
   let leftY = awrWeb.height - margin - (rowHeight * clusterTopology.length * 1.5);
 
   for (const { target, value, extra } of clusterTopology) {
-    // Label item header (Dimmed/Clean system-blue accent tint)
-    awrWeb.fill(127, 203, 255, 160);
+    // Primary Header: Clean white typography
+    awrWeb.fill(255);
     awrWeb.text(target, leftX, leftY);
 
-    // Live IP structural details mapped out right beneath the header line
-    awrWeb.fill(255, 230);
-    awrWeb.text(`  ↳ IP: ${value}  (${extra})`, leftX, leftY + (baseSize * 1.1));
+    // Sub-details: Minimalist muted gray with modern separator formatting
+    awrWeb.fill(160);
+    awrWeb.text(`  •  IP: ${value}  |  ${extra}`, leftX, leftY + (baseSize * 1.1));
 
     leftY += rowHeight * 1.6;
   }
