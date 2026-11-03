@@ -298,13 +298,9 @@ function drawDeploymentInfo() {
   let leftY = awrWeb.height - margin - (rowHeight * clusterTopology.length * 1.5);
 
   for (const { target, value, extra } of clusterTopology) {
-    // Primary Header: Clean white typography
     awrWeb.fill(255);
     awrWeb.text(target, leftX, leftY);
-
-    // Sub-details: Minimalist muted gray with modern separator formatting
-    awrWeb.fill(160);
-    awrWeb.text(`  •  IP: ${value}  |  ${extra}`, leftX, leftY + (baseSize * 1.1));
+    awrWeb.text(`    IP: ${value}    ${extra}`, leftX, leftY + (baseSize * 1.1));
 
     leftY += rowHeight * 1.6;
   }
