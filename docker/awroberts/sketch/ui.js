@@ -25,7 +25,7 @@ let socialLinks = [
 ];
 
 let hoveringSocial = -1;
-let glowColor =;
+let glowColor =0;
 let fadeStartTime;
 let diag;
 
