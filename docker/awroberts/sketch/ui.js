@@ -284,12 +284,12 @@ function drawDeploymentInfo() {
   }
 
   // ====================================================
-  // 2. BOTTOM LEFT: STRUCTURAL CLUSTER INFO
+  // 2. BOTTOM LEFT: STRUCTURAL CLUSTER INFO (ALL WHITE, NO LINES)
   // ====================================================
   const clusterTopology = [
-    { target: 'Cluster Load-Balancer', value: diag.awroberts?.service?.clusterIP ?? 'N/A', extra: 'Traefik Ingress Routing' },
-    { target: 'Node: awr [amd64]',     value: diag.pods?.web?.ip ?? 'N/A',               extra: 'awroberts-web-pod' },
-    { target: 'Node: awr-ffmpeg [arm64]', value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A',  extra: 'background-ffmpeg-worker' },
+    { target: 'CLUSTER LOAD-BALANCER', value: diag.awroberts?.service?.clusterIP ?? 'N/A', extra: 'Traefik Ingress Routing' },
+    { target: 'NODE: awr [amd64]',     value: diag.pods?.web?.ip ?? 'N/A',               extra: 'awroberts-web-pod' },
+    { target: 'NODE: awr-ffmpeg [arm64]', value: diag.pods?.backgroundFfmpeg?.ip ?? 'N/A',  extra: 'background-ffmpeg-worker' },
   ];
 
   awrWeb.textAlign(awrWeb.LEFT, awrWeb.TOP);
@@ -298,13 +298,14 @@ function drawDeploymentInfo() {
   let leftY = awrWeb.height - margin - (rowHeight * clusterTopology.length * 1.5);
 
   for (const { target, value, extra } of clusterTopology) {
-    // Primary Header: Clean white typography
+    // Both lines now use solid, crisp white (no more gray/tinted colors)
     awrWeb.fill(255);
+
+    // 1. Primary Header Line
     awrWeb.text(target, leftX, leftY);
 
-    // Sub-details: Minimalist muted gray with modern separator formatting
-    awrWeb.fill(160);
-    awrWeb.text(`  •  IP: ${value}  |  ${extra}`, leftX, leftY + (baseSize * 1.1));
+    // 2. Sub-details Line (No "•", no "|", just clean spaces separating data)
+    awrWeb.text(`    IP: ${value}    ${extra}`, leftX, leftY + (baseSize * 1.1));
 
     leftY += rowHeight * 1.6;
   }
