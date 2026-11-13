@@ -13,6 +13,7 @@ set -euo pipefail
 #   4. Install + configure kubeadm/kubelet/kubectl
 #   5. Validate cluster access
 #   6. Join worker to cluster
+#   7. Enable kubelet on boot
 #
 # This replaces ALL old worker scripts under functions/.
 # ============================================================================
@@ -54,6 +55,9 @@ bootstrap_worker() {
   echo "=== [6] Joining worker to cluster ==="
   join_worker
 
+  echo "=== [7] Enabling kubelet on boot ==="
+  sudo_if_needed systemctl enable --now kubelet
+
   echo "=== Worker bootstrap complete ==="
 }
 
@@ -61,15 +65,16 @@ bootstrap_worker() {
 # Main entrypoint
 # ----------------------------------------------------------------------------
 main() {
-  # Hard guard: if worker is already joined, skip bootstrap
+  # Hard guard: if worker is already joined, ensure runtime services are enabled/active and skip bootstrap
   if [[ -f /etc/kubernetes/kubelet.conf ]]; then
-    echo "Worker already joined. Skipping worker bootstrap."
+    echo "Worker already joined. Ensuring containerd and kubelet are enabled and running..."
+    load_env_file
+    sudo_if_needed systemctl enable --now containerd kubelet
     return 0
   fi
 
   bootstrap_worker
 }
-
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   main "$@"
