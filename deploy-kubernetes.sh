@@ -4,12 +4,9 @@ set -euo pipefail
 # ============================================================================
 # Kubernetes Deployment Orchestrator (Module Architecture)
 # ============================================================================
-# This script:
-#   1. Loads environment variables
-#   2. Syncs modules + shared + wrappers to both nodes
-#   3. Runs control-plane bootstrap
-#   4. Runs worker bootstrap
-#
+# This script loads environment variables, ensures the worker VM and runtime
+# services are active, runs control-plane and worker bootstrap scripts, and
+# syncs necessary modules and kubeconfigs.
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,130 +21,78 @@ WORKER_DIR="${SCRIPTS_ROOT}/worker"
 source "${SHARED_DIR}/load-env-file.sh"
 source "${SHARED_DIR}/sudo-if-needed.sh"
 
-# ----------------------------------------------------------------------------
-# Phase 2: Provision worker VM (autoinstall)
-# ----------------------------------------------------------------------------
 provision_worker_vm() {
   echo "=== Provisioning worker VM (autoinstall) ==="
   bash "${WORKER_DIR}/provision-worker-vm.sh"
 }
 
-# ----------------------------------------------------------------------------
-# Sync scripts to worker
-# ----------------------------------------------------------------------------
+ensure_worker_ready_if_joined() {
+  if ssh "${WORKER_USER}@${WORKER_HOST}" "test -f /etc/kubernetes/kubelet.conf"; then
+    echo "=== Worker already joined — ensuring containerd and kubelet are active ==="
+    ssh "${WORKER_USER}@${WORKER_HOST}" \
+      "echo '${WORKER_PASSWORD}' | sudo -S systemctl enable --now containerd kubelet"
+
+    echo "=== Waiting for worker node to report Ready ==="
+    ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
+      "kubectl wait --for=condition=Ready node/${WORKER_HOST} --timeout=60s"
+  fi
+}
+
 sync_to_worker() {
   echo "=== Syncing scripts to worker (${WORKER_HOST}) ==="
-
-  # Ensure remote directory exists and is owned by the correct user
   ssh "${WORKER_USER}@${WORKER_HOST}" \
     "echo '${WORKER_PASSWORD}' | sudo -S mkdir -p /var/www/html/awroberts/scripts && \
      echo '${WORKER_PASSWORD}' | sudo -S chown -R ${WORKER_USER}:${WORKER_USER} /var/www/html/awroberts"
 
-  rsync -avz \
-    "${MODULES_DIR}" \
-    "${SHARED_DIR}" \
-    "${WORKER_DIR}" \
-    "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/scripts/"
-
-  # Sync environment files to worker
-  rsync -avz \
-    "${PROJECT_ROOT}/awroberts-cluster.env" \
-    "${PROJECT_ROOT}/awroberts-control-plane.env" \
-    "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/"
-
+  rsync -avz "${MODULES_DIR}" "${SHARED_DIR}" "${WORKER_DIR}" "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/scripts/"
+  rsync -avz "${PROJECT_ROOT}/awroberts-cluster.env" "${PROJECT_ROOT}/awroberts-control-plane.env" "${WORKER_USER}@${WORKER_HOST}:/var/www/html/awroberts/"
 }
 
-# ----------------------------------------------------------------------------
-# Sync kubeconfig to worker
-# ----------------------------------------------------------------------------
 sync_kubeconfig_to_worker() {
   echo "=== Syncing kubeconfig to worker (${WORKER_HOST}) ==="
-
-  if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
-    echo "ERROR: admin.conf not found in ${PROJECT_ROOT}. Control-plane not initialized."
-    exit 1
-  fi
+  [[ ! -f "${PROJECT_ROOT}/admin.conf" ]] && { echo "ERROR: admin.conf not found."; exit 1; }
 
   ssh "${WORKER_USER}@${WORKER_HOST}" "mkdir -p /home/${WORKER_USER}/.kube"
-
-  scp "${PROJECT_ROOT}/admin.conf" \
-      "${WORKER_USER}@${WORKER_HOST}:/home/${WORKER_USER}/.kube/config"
-
-  ssh "${WORKER_USER}@${WORKER_HOST}" \
-  "echo '${WORKER_PASSWORD}' | sudo -S chmod 600 /home/${WORKER_USER}/.kube/config"
+  scp "${PROJECT_ROOT}/admin.conf" "${WORKER_USER}@${WORKER_HOST}:/home/${WORKER_USER}/.kube/config"
+  ssh "${WORKER_USER}@${WORKER_HOST}" "echo '${WORKER_PASSWORD}' | sudo -S chmod 600 /home/${WORKER_USER}/.kube/config"
 }
 
-# ----------------------------------------------------------------------------
-# Run control-plane bootstrap
-# ----------------------------------------------------------------------------
 run_control_plane() {
   echo "=== Running control-plane bootstrap ==="
-
-  ssh -tt "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" \
-    "bash /var/www/html/awroberts/scripts/control-plane/bootstrap.sh"
+  ssh -tt "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" "bash /var/www/html/awroberts/scripts/control-plane/bootstrap.sh"
 }
 
-# ----------------------------------------------------------------------------
-# Run worker bootstrap
-# ----------------------------------------------------------------------------
 run_worker() {
   echo "=== Running worker bootstrap ==="
-
-  ssh -tt "${WORKER_USER}@${WORKER_HOST}" \
-    "bash /var/www/html/awroberts/scripts/worker/bootstrap.sh"
+  ssh -tt "${WORKER_USER}@${WORKER_HOST}" "bash /var/www/html/awroberts/scripts/worker/bootstrap.sh"
 }
 
-# ----------------------------------------------------------------------------
-# Worker is reachable
-# ----------------------------------------------------------------------------
 worker_is_reachable() {
   ping -c 1 -W 1 "${WORKER_HOST}" >/dev/null 2>&1
 }
 
-# ----------------------------------------------------------------------------
-# Main orchestration
-# ----------------------------------------------------------------------------
 main() {
-  echo "=== Loading environment ==="
   load_env_file
-
   MAC_IP=$(getent hosts "$MAC_HOST" | awk '{print $1}')
+  sudo ip route replace "${WORKER_IP%.*}.0/24" via "$MAC_IP" dev enp1s0
 
-  echo "Ensuring route to worker VM network exists..."
-  WORKER_NET="${WORKER_IP%.*}.0/24"
-  sudo ip route replace "$WORKER_NET" via "$MAC_IP" dev enp1s0
-
-  # Worker must be up before the control-plane bootstrap: its image step
-  # builds the ARM background-video image on the worker.
-  echo "=== Checking worker reachability (${WORKER_HOST}) ==="
   if worker_is_reachable; then
     echo "Worker VM reachable at ${WORKER_HOST} — skipping provisioning."
   else
     provision_worker_vm
   fi
 
+  ensure_worker_ready_if_joined
   run_control_plane
 
   echo "=== Syncing kubeconfig from control-plane ==="
   ssh "${CONTROL_PLANE_USER}@${CONTROL_PLANE_HOST}" "sudo cat /etc/kubernetes/admin.conf" > "${PROJECT_ROOT}/admin.conf"
+  [[ ! -f "${PROJECT_ROOT}/admin.conf" ]] && { echo "ERROR: Failed to retrieve admin.conf."; exit 1; }
 
-  if [[ ! -f "${PROJECT_ROOT}/admin.conf" ]]; then
-    echo "ERROR: Failed to retrieve admin.conf from control-plane."
-    exit 1
-  fi
-
-  echo "=== Syncing scripts to worker ==="
   sync_to_worker
-
-  echo "=== Syncing kubeconfig to worker ==="
   sync_kubeconfig_to_worker
-
-  echo "=== Running worker bootstrap ==="
   run_worker
-
   echo "=== Deployment complete ==="
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  main "$@"
-fi
+[[ "${BASH_SOURCE[0]}" == "$0" ]] && main "$@"
